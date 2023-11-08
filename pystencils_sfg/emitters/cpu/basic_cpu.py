@@ -14,7 +14,8 @@ class BasicCpuEmitter:
             'ctx': self._ctx,
             'basename': self._basename,
             'root_namespace': self._ctx.root_namespace,
-            'kernel_namespaces': list(self._ctx.kernel_namespaces)
+            'kernel_namespaces': list(self._ctx.kernel_namespaces()),
+            'functions': list(self._ctx.functions())
         }
 
         template_name = "BasicCpu"

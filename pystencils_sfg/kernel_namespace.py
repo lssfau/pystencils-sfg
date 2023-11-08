@@ -20,11 +20,11 @@ class SfgKernelNamespace:
         """Adds an existing pystencils AST to this namespace."""
         astname = ast.function_name
         if astname in self._asts:
-            raise ValueError(f"Duplicate ASTs: An AST with name {astname} was already registered in namespace {self._name}")
+            raise ValueError(f"Duplicate ASTs: An AST with name {astname} already exists in namespace {self._name}")
 
         self._asts[astname] = ast
 
-        return SfgKernelHandle(self._ctx, astname, self)
+        return SfgKernelHandle(self._ctx, astname, self, ast.get_parameters())
 
     def create(self, assignments, config: CreateKernelConfig):
         ast = create_kernel(assignments, config)
@@ -32,10 +32,11 @@ class SfgKernelNamespace:
 
 
 class SfgKernelHandle:
-    def __init__(self, ctx, name: str, namespace: SfgKernelNamespace):
+    def __init__(self, ctx, name: str, namespace: SfgKernelNamespace, parameters):
         self._ctx = ctx
         self._name = name
         self._namespace = namespace
+        self._parameters = parameters
 
     @property
     def kernel_name(self):
@@ -47,5 +48,9 @@ class SfgKernelHandle:
 
     @property
     def fully_qualified_name(self):
-        return f"{self.ctx.root_namespace}::{self.kernel_namespace}::{self.kernel_name}"
+        return f"{self._ctx.root_namespace}::{self.kernel_namespace.name}::{self.kernel_name}"
+    
+    @property
+    def parameters(self):
+        return self._parameters
     
