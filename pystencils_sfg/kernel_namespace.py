@@ -32,11 +32,20 @@ class SfgKernelNamespace:
 
 
 class SfgKernelHandle:
-    def __init__(self, ctx, name: str, namespace: SfgKernelNamespace, parameters):
+    def __init__(self, ctx, name: str, namespace: SfgKernelNamespace, parameters: Sequence[KernelFunction.Parameter]):
         self._ctx = ctx
         self._name = name
         self._namespace = namespace
         self._parameters = parameters
+
+        self._scalar_params = set()
+        self._fields = set()
+
+        for param in self._parameters:
+            if param.is_field_parameter:
+                self._fields |= set(param.fields)
+            else:
+                self._scalar_params.add(param.symbol)
 
     @property
     def kernel_name(self):
@@ -53,4 +62,12 @@ class SfgKernelHandle:
     @property
     def parameters(self):
         return self._parameters
+
+    @property
+    def scalar_parameters(self):
+        return self._scalar_params
+
+    @property
+    def fields(self):
+        return self.fields
     

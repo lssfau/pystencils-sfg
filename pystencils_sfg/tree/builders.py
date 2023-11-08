@@ -5,13 +5,14 @@ if TYPE_CHECKING:
     from ..context import SfgContext
 
 from abc import ABC, abstractmethod
+
+from pystencils import Field
+
 from .basic_nodes import SfgCallTreeNode, SfgSequence, SfgBlock, SfgCustomStatement
 from .conditional import SfgCondition, SfgCustomCondition, SfgBranch
+from ..source_concepts.containers import SrcContiguousContainer
     
 class SfgNodeBuilder(ABC):
-    def __init__(self, ctx: SfgContext) -> None:
-        self._ctx = ctx
-
     @abstractmethod
     def resolve(self) -> SfgCallTreeNode:
         pass
@@ -40,8 +41,8 @@ class SfgSequencer:
     
 
 class SfgBranchBuilder(SfgNodeBuilder):
-    def __init__(self, ctx: SfgContext) -> None:
-        super().__init__(ctx)
+    def __init__(self, ctx: SfgContext):
+        self._ctx = ctx
         self._phase = 0
 
         self._cond = None
@@ -67,7 +68,7 @@ class SfgBranchBuilder(SfgNodeBuilder):
                 self._branch_true = self._ctx.seq(*args)
             case 2: # Else-branch
                 self._branch_false = self._ctx.seq(*args)
-            case _: # There's not third branch!
+            case _: # There's no third branch!
                 raise TypeError("Branch construct already complete.")
 
         self._phase += 1
@@ -78,3 +79,13 @@ class SfgBranchBuilder(SfgNodeBuilder):
         return SfgBranch(self._cond, self._branch_true, self._branch_false)
     
     
+class SfgFieldMappingBuilder(SfgNodeBuilder):
+    def __init__(self, ctx: SfgContext):
+        super().__init__(ctx)
+
+        self._field = None
+        self._container = None
+
+    def __call__(self, field: Field, container: SrcContiguousContainer):
+        self._field = field
+        self._container = container

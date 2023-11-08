@@ -41,20 +41,30 @@ class SfgCallTreeLeaf(SfgCallTreeNode, ABC):
     def required_symbols(self) -> set(TypedSymbol):
         pass
 
+
+class SfgParameterDefinition(SfgCallTreeLeaf):
+    def __init__(self, defined_param: TypedSymbol, required_params: Set[TypedSymbol], code_string: str):
+        self._defined_param = defined_param
+        self._required_params = required_params
+        self._code_string = code_string
+
     @property
-    @abstractmethod
-    def defined_symbols(self) -> set(TypedSymbol):
-        pass
-    
+    def defined_symbol(self) -> TypedSymbol:
+        return self._defined_param
+
+    @property
+    def required_symbols(self) -> set(TypedSymbol):
+        return self._required_params
+
+    def get_code(self):
+        return self._code_string
+
 
 class SfgCustomStatement(SfgCallTreeLeaf):
     def __init__(self, statement: str):
         self._statement = statement
 
     def required_symbols(self) -> set(TypedSymbol):
-        return set()
-    
-    def defined_symbols(self) -> set(TypedSymbol):
         return set()
     
     def get_code(self, ctx: SfgContext) -> str:
@@ -95,10 +105,6 @@ class SfgKernelCallNode(SfgCallTreeLeaf):
     @property
     def required_symbols(self) -> set(TypedSymbol):
         return set(p.symbol for p in self._kernel_handle.parameters)
-    
-    @property
-    def defined_symbols(self) -> set(TypedSymbol):
-        return set()
     
     def get_code(self, ctx: SfgContext) -> str:
         ast_params = self._kernel_handle.parameters

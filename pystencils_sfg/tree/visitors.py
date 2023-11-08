@@ -3,10 +3,41 @@ from functools import reduce
 
 from pystencils.typing import TypedSymbol
 
-from .basic_nodes import SfgCallTreeNode, SfgCallTreeLeaf, SfgSequence
+from .basic_nodes import SfgCallTreeNode, SfgCallTreeLeaf, SfgSequence, SfgParameterDefinition
+
+
+class FlattenSequences():
+    """Flattens any nested sequences occuring in a kernel call tree."""
+    def visit(self, node: SfgCallTreeNode) -> None:
+        if isinstance(node, SfgSequence):
+            return self._visit_SfgSequence(node)
+        else:
+            for c in node.children:
+                self.visit(c)
+
+    def _visit_SfgSequence(self, sequence: SfgSequence) -> None:
+        children_flattened = []
+        
+        def flatten(seq: SfgSequence):
+            for c in seq.children:
+                if isinstance(c, SfgSequence):
+                    flatten(c)
+                else:
+                    children_flattened.append(c)
+        
+        flatten(sequence)
+
+        for c in children_flattened:
+            self.visit(c)
+
+        sequence._children = children_flattened
 
 
 class ParameterCollector():
+    """Collects all parameters required but not defined in a kernel call tree.
+
+    Requires that all sequences in the tree are flattened.
+    """
     def visit(self, node: SfgCallTreeNode) -> Set[TypedSymbol]:
         if isinstance(node, SfgCallTreeLeaf):
             return self._visit_SfgCallTreeLeaf(node)
@@ -25,11 +56,10 @@ class ParameterCollector():
         
         params = set()
         for c in sequence.children[::-1]:
-            if isinstance(c, SfgCallTreeLeaf):
-                #   Only a leaf in a sequence may effectively define symbols
-                #   Remove these from the required parameters
+            if isinstance(c, SfgParameterDefinitionNode):
                 params -= c.defined_symbols
             
+            assert not isinstance(c, SfgSequence), "Sequence not flattened."
             params |= self.visit(c)
         return params
 

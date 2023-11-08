@@ -18,9 +18,6 @@ class SfgCustomCondition(SfgCondition):
 
     def required_symbols(self) -> set(TypedSymbol):
         return set()
-    
-    def defined_symbols(self) -> set(TypedSymbol):
-        return set()
 
     def get_code(self, ctx: SfgContext) -> str:
         return self._cond_text
