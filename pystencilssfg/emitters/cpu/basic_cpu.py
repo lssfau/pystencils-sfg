@@ -24,7 +24,8 @@ class BasicCpuEmitter:
             'ctx': self._ctx,
             'basename': self._basename,
             'root_namespace': self._ctx.root_namespace,
-            'includes': list(self._ctx.includes()),
+            'public_includes': list(incl.get_code() for incl in self._ctx.includes() if not incl.private),
+            'private_includes': list(incl.get_code() for incl in self._ctx.includes() if incl.private),
             'kernel_namespaces': list(self._ctx.kernel_namespaces()),
             'functions': list(self._ctx.functions())
         }

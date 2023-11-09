@@ -40,6 +40,12 @@ class SfgBranch(SfgCallTreeNode):
         else:
             return (self._branch_true,)
         
+    def replace_child(self, child_idx: int, node: SfgCallTreeNode) -> None:
+        match child_idx:
+            case 0: self._branch_true = node
+            case 1: self._branch_false = node
+            case _: raise IndexError(f"Invalid child index: {child_idx}. SfgBlock has only two children.")
+        
     def get_code(self, ctx: SfgContext) -> str:
         code = f"if({self._cond.get_code(ctx)}) {{\n"
         code += ctx.codestyle.indent(self._branch_true.get_code(ctx))

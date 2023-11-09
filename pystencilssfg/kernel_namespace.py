@@ -29,8 +29,8 @@ class SfgKernelNamespace:
 
         return SfgKernelHandle(self._ctx, astname, self, ast.get_parameters())
 
-    def create(self, assignments, config: CreateKernelConfig):
-        ast = create_kernel(assignments, config)
+    def create(self, assignments, config: CreateKernelConfig = None):
+        ast = create_kernel(assignments, config=config)
         return self.add(ast)
 
 

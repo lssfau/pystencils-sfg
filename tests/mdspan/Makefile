@@ -1,6 +1,6 @@
 
 CXX := clang++
-CXX_FLAGS := '-DDEBUG -g'
+CXX_FLAGS := -DDEBUG -g -std=c++2b -I/home/fhennig/lssgit/mdspan/include
 
 PYTHON := python
 
@@ -16,7 +16,7 @@ GEN_SRC := generated_src
 all: $(BIN)/mdspan_test
 
 clean: 
-	rm -rf $(BIN) $(OUT) $(GEN_SRC)
+	rm -rf $(BIN) $(OBJ) $(GEN_SRC)
 
 $(GEN_SRC)/kernels.cpp $(GEN_SRC)/kernels.h &: kernels.py
 	@$(dir_guard)

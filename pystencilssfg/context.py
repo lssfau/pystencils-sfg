@@ -13,10 +13,12 @@ from pystencils import Field
 from pystencils.astnodes import KernelFunction
 
 from .kernel_namespace import SfgKernelNamespace, SfgKernelHandle
-from .tree import SfgCallTreeNode, SfgSequence, SfgKernelCallNode, SfgCondition, SfgBranch
+from .tree import SfgCallTreeNode, SfgSequence, SfgKernelCallNode
+from .tree.deferred_nodes import SfgDeferredFieldMapping
 from .tree.builders import SfgBranchBuilder, make_sequence
+from .tree.visitors import CollectIncludes
 from .source_concepts.containers import SrcField
-from .source_components import SfgFunction
+from .source_components import SfgFunction, SfgHeaderInclude
 
 
 @dataclass
@@ -73,7 +75,7 @@ class SfgContext:
         self._default_kernel_namespace = SfgKernelNamespace(self, "kernels")
 
         #   Source Components
-        self._includes = []
+        self._includes = set()
         self._kernel_namespaces = { self._default_kernel_namespace.name : self._default_kernel_namespace }
         self._functions = dict()
 
@@ -89,6 +91,38 @@ class SfgContext:
     def codestyle(self) -> SfgCodeStyle:
         return self._codestyle
 
+    #----------------------------------------------------------------------------------------------
+    #   Source Component Getters
+    #----------------------------------------------------------------------------------------------
+    
+    def includes(self) -> Generator[SfgHeaderInclude, None, None]:
+        yield from self._includes
+
+    def kernel_namespaces(self) -> Generator[SfgKernelNamespace, None, None]:
+        yield from self._kernel_namespaces.values()
+
+    def functions(self) -> Generator[SfgFunction, None, None]:
+        yield from self._functions.values()
+
+    #----------------------------------------------------------------------------------------------
+    #   Source Component Adders
+    #----------------------------------------------------------------------------------------------
+
+    def add_include(self, include: SfgHeaderInclude):
+        self._includes.add(include)
+
+    def add_function(self, func: SfgFunction):
+        if func.name in self._functions:
+            raise ValueError(f"Duplicate function: {func.name}")
+        
+        self._functions[func.name] = func
+        for incl in CollectIncludes().visit(func._tree):
+            self.add_include(incl)
+
+    #----------------------------------------------------------------------------------------------
+    #   Factory-like Adders
+    #----------------------------------------------------------------------------------------------
+
     @property
     def kernels(self) -> SfgKernelNamespace:
         return self._default_kernel_namespace
@@ -100,23 +134,14 @@ class SfgContext:
         kns = SfgKernelNamespace(self, name)
         self._kernel_namespaces[name] = kns
         return kns
-    
-    def includes(self) -> Generator[str, None, None]:
-        yield from self._includes
-
-    def kernel_namespaces(self) -> Generator[SfgKernelNamespace, None, None]:
-        yield from self._kernel_namespaces.values()
-
-    def functions(self) -> Generator[SfgFunction, None, None]:
-        yield from self._functions.values()
 
     def include(self, header_file: str):
-        if not (header_file.startswith("<") and header_file.endswith(">")):
-            if not (header_file.startswith('"') and header_file.endswith('"')):
-                header_file = f'"{header_file}"'
+        system_header = False
+        if header_file.startswith("<") and header_file.endswith(">"):
+            header_file = header_file[1:-1]
+            system_header = True
         
-        self._includes.append(header_file)
-    
+        self.add_include(SfgHeaderInclude(header_file, system_header=system_header))
 
     def function(self, 
                  name: str,
@@ -136,7 +161,7 @@ class SfgContext:
             def sequencer(*args: SfgCallTreeNode):
                 tree = make_sequence(*args)
                 func = SfgFunction(self, name, tree)
-                self._functions[name] = func
+                self.add_function(func)
 
             return sequencer
         
@@ -156,5 +181,5 @@ class SfgContext:
         if src_object is None:
             raise NotImplementedError("Automatic field extraction is not implemented yet.")
         else:
-            return src_object.extract_parameters(field)
+            return SfgDeferredFieldMapping(field, src_object)
     

@@ -1,5 +1,9 @@
 #include "{{basename}}.h"
 
+{% for incl in private_includes -%}
+{{incl}}
+{% endfor %}
+
 #define FUNC_PREFIX inline
 
 namespace {{root_namespace}} {
@@ -9,7 +13,7 @@ namespace {{root_namespace}} {
 *************************************************************************************/
 
 {% for kns in kernel_namespaces -%}
-namespace {{ kns.name }}{
+namespace {{ kns.name }} {
 
 {% for ast in kns.asts %}
 {{ ast | generate_kernel_definition }}

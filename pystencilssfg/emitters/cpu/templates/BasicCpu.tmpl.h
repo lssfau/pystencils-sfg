@@ -1,13 +1,12 @@
 #pragma once
 
-#define RESTRICT __restrict__
-
 #include <cstdint>
 
-{% for header in includes %}
-#include {{header}}
+{% for incl in public_includes -%}
+{{incl}}
 {% endfor %}
 
+#define RESTRICT __restrict__
 
 namespace {{root_namespace}} {
 
