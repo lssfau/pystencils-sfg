@@ -66,7 +66,7 @@ class ExpandingParameterCollector():
             return self._visit_branchingNode(node)
 
     def _visit_SfgCallTreeLeaf(self, leaf: SfgCallTreeLeaf) -> Set[TypedSymbol]:
-        return leaf.required_symbols
+        return leaf.required_parameters
 
     def _visit_SfgSequence(self, sequence: SfgSequence) -> Set[TypedSymbol]:
         """
@@ -87,7 +87,7 @@ class ExpandingParameterCollector():
                     iter_nested_sequences(c, visible_params)
                 else:
                     if isinstance(c, SfgStatements):
-                        visible_params -= c.defined_symbols
+                        visible_params -= c.defined_parameters
                     
                     visible_params |= self.visit(c)
 
@@ -117,7 +117,7 @@ class ParameterCollector():
             return self._visit_branchingNode(node)
 
     def _visit_SfgCallTreeLeaf(self, leaf: SfgCallTreeLeaf) -> Set[TypedSymbol]:
-        return leaf.required_symbols
+        return leaf.required_parameters
 
     def _visit_SfgSequence(self, sequence: SfgSequence) -> Set[TypedSymbol]:
         """
@@ -127,7 +127,7 @@ class ParameterCollector():
         params = set()
         for c in sequence.children[::-1]:
             if isinstance(c, SfgStatements):
-                params -= c.defined_symbols
+                params -= c.defined_parameters
             
             assert not isinstance(c, SfgSequence), "Sequence not flattened."
             params |= self.visit(c)

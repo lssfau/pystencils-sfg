@@ -14,7 +14,7 @@ from ..exceptions import SfgException
 from .basic_nodes import SfgCallTreeNode
 from .builders import make_sequence
 
-from ..source_concepts.containers import SrcField
+from ..source_concepts import SrcField
 
 
 class SfgDeferredNode(SfgCallTreeNode, ABC):

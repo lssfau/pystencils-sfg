@@ -6,13 +6,10 @@ if TYPE_CHECKING:
     from ..source_components import SfgHeaderInclude
 
 from abc import ABC, abstractmethod
-from functools import reduce
 from itertools import chain
 
-from jinja2.filters import do_indent
-
 from ..kernel_namespace import SfgKernelHandle
-from ..source_concepts.source_concepts import SrcObject
+from  ..source_concepts.source_objects import SrcObject, TypedSymbolOrObject
 
 from ..exceptions import SfgException
 
@@ -54,7 +51,7 @@ class SfgCallTreeLeaf(SfgCallTreeNode, ABC):
 
     @property
     @abstractmethod
-    def required_symbols(self) -> Set[TypedSymbol]:
+    def required_parameters(self) -> Set[TypedSymbolOrObject]:
         pass
 
 
@@ -77,33 +74,25 @@ class SfgStatements(SfgCallTreeLeaf):
 
     def __init__(self, 
                  code_string: str,
-                 defined_objects: Sequence[Union[SrcObject, TypedSymbol]],
-                 required_objects: Sequence[Union[SrcObject, TypedSymbol]]):
+                 defined_params: Sequence[TypedSymbolOrObject],
+                 required_params: Sequence[TypedSymbolOrObject]):
         self._code_string = code_string
         
-        def to_symbol(obj: Union[SrcObject, TypedSymbol]):
-            if isinstance(obj, SrcObject):
-                return obj.typed_symbol
-            elif isinstance(obj, TypedSymbol):
-                return obj
-            else:
-                raise ValueError(f"Required object in expression is neither TypedSymbol nor SrcObject: {obj}")
-        
-        self._defined_symbols = set(map(to_symbol, defined_objects))
-        self._required_symbols = set(map(to_symbol, required_objects))
+        self._defined_params = set(defined_params)
+        self._required_params = set(required_params)
 
         self._required_includes = set()
-        for obj in chain(required_objects, defined_objects):
+        for obj in chain(required_params, defined_params):
             if isinstance(obj, SrcObject):
                 self._required_includes |= obj.required_includes
             
     @property
-    def required_symbols(self) -> Set[TypedSymbol]:
-        return self._required_symbols
+    def required_parameters(self) -> Set[TypedSymbolOrObject]:
+        return self._required_params
     
     @property
-    def defined_symbols(self) -> Set[TypedSymbol]:
-        return self._defined_symbols
+    def defined_parameters(self) -> Set[TypedSymbolOrObject]:
+        return self._defined_params
     
     @property
     def required_includes(self) -> Set[SfgHeaderInclude]:
@@ -153,7 +142,7 @@ class SfgKernelCallNode(SfgCallTreeLeaf):
         self._kernel_handle = kernel_handle
 
     @property
-    def required_symbols(self) -> Set[TypedSymbol]:
+    def required_parameters(self) -> Set[TypedSymbolOrObject]:
         return set(p.symbol for p in self._kernel_handle.parameters)
     
     def get_code(self, ctx: SfgContext) -> str:

@@ -13,11 +13,11 @@ from pystencils import Field
 from pystencils.astnodes import KernelFunction
 
 from .kernel_namespace import SfgKernelNamespace, SfgKernelHandle
-from .tree import SfgCallTreeNode, SfgSequence, SfgKernelCallNode
+from .tree import SfgCallTreeNode, SfgSequence, SfgKernelCallNode, SfgStatements
 from .tree.deferred_nodes import SfgDeferredFieldMapping
 from .tree.builders import SfgBranchBuilder, make_sequence
 from .tree.visitors import CollectIncludes
-from .source_concepts.containers import SrcField
+from .source_concepts import SrcField, TypedSymbolOrObject
 from .source_components import SfgFunction, SfgHeaderInclude
 
 
@@ -167,7 +167,7 @@ class SfgContext:
         
 
     #----------------------------------------------------------------------------------------------
-    #   Call Tree Node Factory
+    #   In-Sequence builders to be used within the second phase of SfgContext.function().
     #----------------------------------------------------------------------------------------------
 
     def call(self, kernel_handle: SfgKernelHandle) -> SfgKernelCallNode:
@@ -182,4 +182,7 @@ class SfgContext:
             raise NotImplementedError("Automatic field extraction is not implemented yet.")
         else:
             return SfgDeferredFieldMapping(field, src_object)
+    
+    def map_param(self, lhs: TypedSymbolOrObject, rhs: TypedSymbolOrObject, mapping: str):
+        return SfgStatements(mapping, (lhs,), (rhs,))
     

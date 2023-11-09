@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Sequence, Optional
+from typing import TYPE_CHECKING, Sequence, Optional, Set
 
 if TYPE_CHECKING:
     from ..context import SfgContext
@@ -8,6 +8,7 @@ from jinja2.filters import do_indent
 from pystencils.typing import TypedSymbol
 
 from .basic_nodes import SfgCallTreeNode, SfgCallTreeLeaf
+from ..source_concepts.source_objects import TypedSymbolOrObject
 
 class SfgCondition(SfgCallTreeLeaf):
     pass
@@ -16,7 +17,7 @@ class SfgCustomCondition(SfgCondition):
     def __init__(self, cond_text: str):
         self._cond_text = cond_text
 
-    def required_symbols(self) -> set(TypedSymbol):
+    def required_parameters(self) -> Set[TypedSymbolOrObject]:
         return set()
 
     def get_code(self, ctx: SfgContext) -> str:

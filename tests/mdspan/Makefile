@@ -27,8 +27,10 @@ $(OBJ)/kernels.o: $(GEN_SRC)/kernels.cpp $(GEN_SRC)/kernels.h
 	$(CXX) $(CXX_FLAGS) -c -o $@ $<
 
 $(OBJ)/main.o: main.cpp $(GEN_SRC)/kernels.h
+	@$(dir_guard)
 	$(CXX) $(CXX_FLAGS) -c -o $@ $<
 
 $(BIN)/mdspan_test: $(OBJ)/kernels.o $(OBJ)/main.o
+	@$(dir_guard)
 	$(CXX) $(CXX_FLAGS) -o $@ $^
 
