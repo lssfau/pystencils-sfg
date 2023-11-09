@@ -1,6 +1,5 @@
-from .source_objects import SrcObject, SrcField, SrcVector, PsType, SrcType, TypedSymbolOrObject
+from .source_objects import SrcObject, SrcField, SrcVector, TypedSymbolOrObject
 
 __all__ = [
-    SrcObject, SrcField, SrcVector,
-    PsType, SrcType, TypedSymbolOrObject
+    SrcObject, SrcField, SrcVector, TypedSymbolOrObject
 ]

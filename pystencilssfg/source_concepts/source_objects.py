@@ -6,33 +6,12 @@ if TYPE_CHECKING:
     from ..source_components import SfgHeaderInclude
     from ..tree import SfgStatements, SfgSequence
 
-from numpy import dtype
-
 from abc import ABC, abstractmethod
 
 from pystencils import TypedSymbol, Field
-from pystencils.typing import AbstractType, FieldPointerSymbol, FieldStrideSymbol, FieldShapeSymbol
+from pystencils.typing import FieldPointerSymbol, FieldStrideSymbol, FieldShapeSymbol
 
-PsType: TypeAlias = Union[type, dtype, AbstractType]
-"""Types used in interacting with pystencils.
-
-PsType represents various ways of specifying types within pystencils.
-In particular, it encompasses most ways to construct an instance of `AbstractType`,
-for example via `create_type`.
-
-(Note that, while `create_type` does accept strings, they are excluded here for
-reasons of safety. It is discouraged to use strings for type specifications when working
-with pystencils!)
-"""
-
-SrcType = NewType('SrcType', str)
-"""Nonprimitive C/C++-Types occuring during source file generation.
-
-Nonprimitive C/C++ types are represented by their names.
-When necessary, the SFG package checks equality of types by these name strings; it does
-not care about typedefs, aliases, namespaces, etc!
-"""
-
+from ..types import SrcType
 
 class SrcObject:
     """C/C++ object of nonprimitive type.
@@ -100,7 +79,7 @@ class SrcField(SrcObject, ABC):
         )
 
 
-class SrcVector(SrcObject):
+class SrcVector(SrcObject, ABC):
     @abstractmethod
     def extract_component(self, destination: TypedSymbolOrObject, coordinate: int):
         pass

@@ -5,16 +5,15 @@ from pystencils.typing import FieldPointerSymbol, FieldStrideSymbol, FieldShapeS
 from ...tree import SfgStatements
 from ..source_objects import SrcField
 from ...source_components.header_include import SfgHeaderInclude
-from ..source_objects import PsType
+from ...types import PsType, cpp_typename
 from ...exceptions import SfgException
 
 class std_mdspan(SrcField):
     dynamic_extent = "std::dynamic_extent"
 
     def __init__(self, identifer: str, T: PsType, extents: Tuple[int, str], extents_type: PsType = int, reference: bool = False):
-        from pystencils.typing import create_type
-        T = create_type(T)
-        extents_type = create_type(extents_type)
+        T = cpp_typename(T)
+        extents_type = cpp_typename(extents_type)
 
         typestring = f"std::mdspan< {T}, std::extents< {extents_type}, {', '.join(str(e) for e in extents)} > > {'&' if reference else ''}"
         super().__init__(typestring, identifer)

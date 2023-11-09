@@ -1,16 +1,17 @@
 from typing import Set, Union, Tuple
 
-from pystencils.typing import FieldPointerSymbol, FieldStrideSymbol, FieldShapeSymbol, create_type
+from pystencils.typing import FieldPointerSymbol, FieldStrideSymbol, FieldShapeSymbol
 
 from ...tree import SfgStatements
 from ..source_objects import SrcField, SrcVector
-from ..source_objects import SrcObject, SrcType, TypedSymbolOrObject
+from ..source_objects import SrcObject, TypedSymbolOrObject
+from ...types import SrcType, PsType, cpp_typename
 from ...source_components.header_include import SfgHeaderInclude
 from ...exceptions import SfgException
 
 class std_vector(SrcVector, SrcField):
-    def __init__(self, identifer: str, T: SrcType, unsafe: bool = False):
-        typestring = f"std::vector< {T} >"
+    def __init__(self, identifer: str, T: Union[SrcType, PsType], unsafe: bool = False):
+        typestring = f"std::vector< {cpp_typename(T)} >"
         super(SrcObject, self).__init__(identifer, typestring)
 
         self._element_type = T
@@ -56,7 +57,6 @@ class std_vector(SrcVector, SrcField):
         else:
             return SfgStatements(f"assert( 1 == {stride} );", (), ())
 
-
     def extract_component(self, destination: TypedSymbolOrObject, coordinate: int):
         if self._unsafe:
             mapping = f"{destination.dtype} {destination.name} = {self._identifier}[{coordinate}];"
@@ -66,8 +66,7 @@ class std_vector(SrcVector, SrcField):
         return SfgStatements(mapping, (destination,), (self,))
 
 
-
 class std_vector_ref(std_vector):
-    def __init__(self, identifer: str, T: SrcType):
+    def __init__(self, identifer: str, T: Union[SrcType, PsType]):
         typestring = f"std::vector< {T} > &"
         super(SrcObject, self).__init__(identifer, typestring)
