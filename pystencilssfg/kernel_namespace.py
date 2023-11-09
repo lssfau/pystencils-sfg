@@ -1,4 +1,7 @@
 # from .context import SfgContext
+
+from typing import Sequence
+
 from pystencils import CreateKernelConfig, create_kernel
 from pystencils.astnodes import KernelFunction
 

@@ -1,16 +1,21 @@
-from typing import Callable, Sequence, Generator, Union, Optional
+from typing import Generator, Union, Optional, Sequence
 from dataclasses import dataclass
 
+import sys
 import os
 from os import path
 
+from argparse import ArgumentParser
+
 from jinja2.filters import do_indent
 
+from pystencils import Field
 from pystencils.astnodes import KernelFunction
 
 from .kernel_namespace import SfgKernelNamespace, SfgKernelHandle
 from .tree import SfgCallTreeNode, SfgSequence, SfgKernelCallNode, SfgCondition, SfgBranch
-from .tree.builders import SfgBranchBuilder, SfgSequencer
+from .tree.builders import SfgBranchBuilder, make_sequence
+from .source_concepts.containers import SrcField
 from .source_components import SfgFunction
 
 
@@ -25,23 +30,29 @@ class SfgCodeStyle:
 class SourceFileGenerator:
     def __init__(self,
                  namespace: str = "pystencils",
-                 basename: str = None,
                  codestyle: SfgCodeStyle = SfgCodeStyle()):
         
-        if basename is None:
-            import __main__
-            scriptpath = __main__.__file__
-            scriptname = path.split(scriptpath)[1]
-            basename = path.splitext(scriptname)[0]
+        parser = ArgumentParser(
+            "pystencilssfg",
+            description="pystencils Source File Generator")
+        
+        parser.add_argument("script_args", nargs='*')
+        parser.add_argument("-d", "--output-dir", type=str, default='.', dest='output_directory')
 
-        self.basename = basename
-        self.header_filename = basename + ".h"
-        self.cpp_filename = basename + ".cpp"
+        args = parser.parse_args(sys.argv)
 
-        self._context = SfgContext(namespace, codestyle)
+        import __main__
+        scriptpath = __main__.__file__
+        scriptname = path.split(scriptpath)[1]
+        basename = path.splitext(scriptname)[0]        
+
+        self._context = SfgContext(args.script_args, namespace, codestyle)
+
+        from .emitters.cpu.basic_cpu import BasicCpuEmitter
+        self._emitter = BasicCpuEmitter(self._context, basename, args.output_directory)
 
     def clean_files(self):
-        for file in (self.header_filename, self.cpp_filename):
+        for file in self._emitter.output_files:
             if path.exists(file):
                 os.remove(file)
 
@@ -51,12 +62,12 @@ class SourceFileGenerator:
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is None:
-            from .emitters.cpu.basic_cpu import BasicCpuEmitter
-            BasicCpuEmitter(self._context, self.basename).write_files()
+            self._emitter.write_files()
 
 
 class SfgContext:
-    def __init__(self, root_namespace: str, codestyle: SfgCodeStyle):
+    def __init__(self, argv, root_namespace: str, codestyle: SfgCodeStyle):
+        self._argv = argv
         self._root_namespace = root_namespace
         self._codestyle = codestyle
         self._default_kernel_namespace = SfgKernelNamespace(self, "kernels")
@@ -66,8 +77,9 @@ class SfgContext:
         self._kernel_namespaces = { self._default_kernel_namespace.name : self._default_kernel_namespace }
         self._functions = dict()
 
-        #   Builder Components
-        self._sequencer = SfgSequencer(self)
+    @property
+    def argv(self) -> Sequence[str]:
+        return self._argv
 
     @property
     def root_namespace(self) -> str:
@@ -88,6 +100,9 @@ class SfgContext:
         kns = SfgKernelNamespace(self, name)
         self._kernel_namespaces[name] = kns
         return kns
+    
+    def includes(self) -> Generator[str, None, None]:
+        yield from self._includes
 
     def kernel_namespaces(self) -> Generator[SfgKernelNamespace, None, None]:
         yield from self._kernel_namespaces.values()
@@ -96,7 +111,12 @@ class SfgContext:
         yield from self._functions.values()
 
     def include(self, header_file: str):
+        if not (header_file.startswith("<") and header_file.endswith(">")):
+            if not (header_file.startswith('"') and header_file.endswith('"')):
+                header_file = f'"{header_file}"'
+        
         self._includes.append(header_file)
+    
 
     def function(self, 
                  name: str,
@@ -114,7 +134,7 @@ class SfgContext:
                 raise TypeError(f"Invalid type of argument `ast_or_kernel_handle`!")
         else:
             def sequencer(*args: SfgCallTreeNode):
-                tree = self.seq(*args)
+                tree = make_sequence(*args)
                 func = SfgFunction(self, name, tree)
                 self._functions[name] = func
 
@@ -125,14 +145,16 @@ class SfgContext:
     #   Call Tree Node Factory
     #----------------------------------------------------------------------------------------------
 
-    @property
-    def seq(self) -> SfgSequencer:
-        return self._sequencer
-
     def call(self, kernel_handle: SfgKernelHandle) -> SfgKernelCallNode:
         return SfgKernelCallNode(kernel_handle)
     
     @property
     def branch(self) -> SfgBranchBuilder:
-        return SfgBranchBuilder(self)
+        return SfgBranchBuilder()
+    
+    def map_field(self, field: Field, src_object: Optional[SrcField] = None) -> SfgSequence:
+        if src_object is None:
+            raise NotImplementedError("Automatic field extraction is not implemented yet.")
+        else:
+            return src_object.extract_parameters(field)
     

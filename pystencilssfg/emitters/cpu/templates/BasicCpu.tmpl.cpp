@@ -23,11 +23,9 @@ namespace {{ kns.name }}{
 *************************************************************************************/
 
 {% for function in functions %}
-
 void {{ function.name }} ( {{ function | generate_function_parameter_list }} ) { 
   {{ function | generate_function_body | indent(2) }}
 }
-
 {% endfor %}
 
 } // namespace {{root_namespace}}

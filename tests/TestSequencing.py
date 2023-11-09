@@ -1,4 +1,4 @@
-from pystencils_sfg import SourceFileGenerator
+from pystencilssfg import SourceFileGenerator
 
 from lbmpy.advanced_streaming import Timestep
 from lbmpy import LBMConfig, create_lb_ast

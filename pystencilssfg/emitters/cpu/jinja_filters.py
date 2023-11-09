@@ -4,8 +4,7 @@ from pystencils.astnodes import KernelFunction
 from pystencils import Backend
 from pystencils.backends import generate_c
 
-from pystencils_sfg.tree import SfgCallTreeNode
-from pystencils_sfg.source_components import SfgFunction
+from pystencilssfg.source_components import SfgFunction
 
 @pass_context
 def generate_kernel_definition(ctx, ast: KernelFunction):

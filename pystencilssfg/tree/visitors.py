@@ -3,7 +3,7 @@ from functools import reduce
 
 from pystencils.typing import TypedSymbol
 
-from .basic_nodes import SfgCallTreeNode, SfgCallTreeLeaf, SfgSequence, SfgParameterDefinition
+from .basic_nodes import SfgCallTreeNode, SfgCallTreeLeaf, SfgSequence, SfgStatements
 
 
 class FlattenSequences():
@@ -56,7 +56,7 @@ class ParameterCollector():
         
         params = set()
         for c in sequence.children[::-1]:
-            if isinstance(c, SfgParameterDefinitionNode):
+            if isinstance(c, SfgStatements):
                 params -= c.defined_symbols
             
             assert not isinstance(c, SfgSequence), "Sequence not flattened."

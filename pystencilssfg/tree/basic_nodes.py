@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any, Sequence, Set, Union, Iterable
 
 if TYPE_CHECKING:
     from ..context import SfgContext
@@ -10,6 +10,7 @@ from functools import reduce
 from jinja2.filters import do_indent
 
 from ..kernel_namespace import SfgKernelHandle
+from ..source_concepts.source_concepts import SrcObject
 
 from pystencils.typing import TypedSymbol
 
@@ -38,37 +39,54 @@ class SfgCallTreeLeaf(SfgCallTreeNode, ABC):
 
     @property
     @abstractmethod
-    def required_symbols(self) -> set(TypedSymbol):
+    def required_symbols(self) -> Set[TypedSymbol]:
         pass
 
 
-class SfgParameterDefinition(SfgCallTreeLeaf):
-    def __init__(self, defined_param: TypedSymbol, required_params: Set[TypedSymbol], code_string: str):
-        self._defined_param = defined_param
-        self._required_params = required_params
-        self._code_string = code_string
-
-    @property
-    def defined_symbol(self) -> TypedSymbol:
-        return self._defined_param
-
-    @property
-    def required_symbols(self) -> set(TypedSymbol):
-        return self._required_params
-
-    def get_code(self):
-        return self._code_string
-
-
-class SfgCustomStatement(SfgCallTreeLeaf):
-    def __init__(self, statement: str):
-        self._statement = statement
-
-    def required_symbols(self) -> set(TypedSymbol):
-        return set()
+class SfgStatements(SfgCallTreeLeaf):
+    """Represents (a sequence of) statements in the source language.
     
+    This class groups together arbitrary code strings
+    (e.g. sequences of C++ statements, cf. https://en.cppreference.com/w/cpp/language/statements),
+    and annotates them with the set of symbols read and written by these statements.
+
+    It is the user's responsibility to ensure that the code string is valid code in the output language,
+    and that the lists of required and defined objects are correct and complete.
+
+    Args:
+        code_string: Code to be printed out.
+        defined_objects: Objects (as `SrcObject` or `TypedSymbol`) that will be newly defined and visible to
+            code in sequence after these statements.
+        required_objects: Objects (as `SrcObject` or `TypedSymbol`) that are required as input to these statements.
+    """
+
+    def __init__(self, 
+                 code_string: str,
+                 defined_objects: Sequence[Union[SrcObject, TypedSymbol]],
+                 required_objects: Sequence[Union[SrcObject, TypedSymbol]]):
+        self._code_string = code_string
+        
+        def to_symbol(obj: Union[SrcObject, TypedSymbol]):
+            if isinstance(obj, SrcObject):
+                self._required_symbols.add(obj.typed_symbol)
+            elif isinstance(obj, TypedSymbol):
+                self._required_symbols.add(obj)
+            else:
+                raise ValueError(f"Required object in expression is neither TypedSymbol nor SrcObject: {obj}")
+        
+        self._defined_symbols = set(map(to_symbol, defined_objects))
+        self._required_symbols = set(map(to_symbol, required_objects))
+            
+    @property
+    def required_symbols(self) -> Set[TypedSymbol]:
+        return self._required_symbols
+    
+    @property
+    def defined_symbols(self) -> Set[TypedSymbol]:
+        return self._defined_symbols
+            
     def get_code(self, ctx: SfgContext) -> str:
-        return self._statement
+        return self._code_string
 
 
 class SfgSequence(SfgCallTreeNode):
@@ -103,7 +121,7 @@ class SfgKernelCallNode(SfgCallTreeLeaf):
         self._kernel_handle = kernel_handle
 
     @property
-    def required_symbols(self) -> set(TypedSymbol):
+    def required_symbols(self) -> Set[TypedSymbol]:
         return set(p.symbol for p in self._kernel_handle.parameters)
     
     def get_code(self, ctx: SfgContext) -> str:
