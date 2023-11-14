@@ -1,3 +1,3 @@
-# pystencils Source File Generator (ps-sfg)
+# pystencils Source File Generator (pystencils-sfg)
 
 

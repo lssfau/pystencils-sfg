@@ -1,19 +1,16 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, Sequence, Set, Union, Iterable
-
-if TYPE_CHECKING:
-    from ..context import SfgContext
-    from ..source_components import SfgHeaderInclude
+from typing import TYPE_CHECKING, Sequence, Set
 
 from abc import ABC, abstractmethod
 from itertools import chain
 
 from ..kernel_namespace import SfgKernelHandle
 from  ..source_concepts.source_objects import SrcObject, TypedSymbolOrObject
-
 from ..exceptions import SfgException
 
-from pystencils.typing import TypedSymbol
+if TYPE_CHECKING:
+    from ..context import SfgContext
+    from ..source_components import SfgHeaderInclude
 
 class SfgCallTreeNode(ABC):
     """Base class for all nodes comprising SFG call trees. """
@@ -72,7 +69,7 @@ class SfgStatements(SfgCallTreeLeaf):
         required_objects: Objects (as `SrcObject` or `TypedSymbol`) that are required as input to these statements.
     """
 
-    def __init__(self, 
+    def __init__(self,
                  code_string: str,
                  defined_params: Sequence[TypedSymbolOrObject],
                  required_params: Sequence[TypedSymbolOrObject]):

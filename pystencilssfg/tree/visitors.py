@@ -1,8 +1,6 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, Sequence, Set, Union, Iterable
 
-if TYPE_CHECKING:
-    from ..context import SfgContext
+from typing import TYPE_CHECKING, Set
 
 from functools import reduce
 
@@ -12,8 +10,13 @@ from .basic_nodes import SfgCallTreeNode, SfgCallTreeLeaf, SfgSequence, SfgState
 from .deferred_nodes import SfgParamCollectionDeferredNode
 
 
+if TYPE_CHECKING:
+    from ..context import SfgContext
+
+
 class FlattenSequences():
     """Flattens any nested sequences occuring in a kernel call tree."""
+
     def visit(self, node: SfgCallTreeNode) -> None:
         if isinstance(node, SfgSequence):
             return self._visit_SfgSequence(node)
@@ -23,14 +26,14 @@ class FlattenSequences():
 
     def _visit_SfgSequence(self, sequence: SfgSequence) -> None:
         children_flattened = []
-        
+
         def flatten(seq: SfgSequence):
             for c in seq.children:
                 if isinstance(c, SfgSequence):
                     flatten(c)
                 else:
                     children_flattened.append(c)
-        
+
         flatten(sequence)
 
         for c in children_flattened:
@@ -49,14 +52,15 @@ class CollectIncludes:
 
 
 class ExpandingParameterCollector():
+    """Collects all parameters required but not defined in a kernel call tree.
+    Expands any deferred nodes of type `SfgParamCollectionDeferredNode` found within sequences on the way.
+    """
+
     def __init__(self, ctx: SfgContext) -> None:
         self._ctx = ctx
 
         self._flattener = FlattenSequences()
 
-    """Collects all parameters required but not defined in a kernel call tree.
-    Expands any deferred nodes of type `SfgParamCollectionDeferredNode` found within sequences on the way.
-    """
     def visit(self, node: SfgCallTreeNode) -> Set[TypedSymbol]:
         if isinstance(node, SfgCallTreeLeaf):
             return self._visit_SfgCallTreeLeaf(node)
@@ -72,13 +76,13 @@ class ExpandingParameterCollector():
         """
             Only in a sequence may parameters be defined and visible to subsequent nodes.
         """
-        
+
         params = set()
 
         def iter_nested_sequences(seq: SfgSequence, visible_params: Set[TypedSymbol]):
             for i in range(len(seq.children) - 1, -1, -1):
                 c = seq.children[i]
-                
+
                 if isinstance(c, SfgParamCollectionDeferredNode):
                     c = c.expand(self._ctx, visible_params=visible_params)
                     seq.replace_child(i, c)
@@ -88,7 +92,7 @@ class ExpandingParameterCollector():
                 else:
                     if isinstance(c, SfgStatements):
                         visible_params -= c.defined_parameters
-                    
+
                     visible_params |= self.visit(c)
 
         iter_nested_sequences(sequence, params)
@@ -108,6 +112,7 @@ class ParameterCollector():
 
     Requires that all sequences in the tree are flattened.
     """
+
     def visit(self, node: SfgCallTreeNode) -> Set[TypedSymbol]:
         if isinstance(node, SfgCallTreeLeaf):
             return self._visit_SfgCallTreeLeaf(node)
@@ -123,12 +128,12 @@ class ParameterCollector():
         """
             Only in a sequence may parameters be defined and visible to subsequent nodes.
         """
-        
+
         params = set()
         for c in sequence.children[::-1]:
             if isinstance(c, SfgStatements):
                 params -= c.defined_parameters
-            
+
             assert not isinstance(c, SfgSequence), "Sequence not flattened."
             params |= self.visit(c)
         return params
