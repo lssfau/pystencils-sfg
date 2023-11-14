@@ -36,22 +36,22 @@ class SourceFileGenerator:
         
         parser = ArgumentParser(
             "pystencilssfg",
-            description="pystencils Source File Generator")
+            description="pystencils Source File Generator",
+            allow_abbrev=False)
         
-        parser.add_argument("script_args", nargs='*')
-        parser.add_argument("-d", "--output-dir", type=str, default='.', dest='output_directory')
+        parser.add_argument("-d", "--sfg-output-dir", type=str, default='.', dest='output_directory')
 
-        args = parser.parse_args(sys.argv)
+        generator_args, script_args = parser.parse_known_args(sys.argv)
 
         import __main__
         scriptpath = __main__.__file__
         scriptname = path.split(scriptpath)[1]
         basename = path.splitext(scriptname)[0]        
 
-        self._context = SfgContext(args.script_args, namespace, codestyle)
+        self._context = SfgContext(script_args, namespace, codestyle)
 
         from .emitters.cpu.basic_cpu import BasicCpuEmitter
-        self._emitter = BasicCpuEmitter(self._context, basename, args.output_directory)
+        self._emitter = BasicCpuEmitter(self._context, basename, generator_args.output_directory)
 
     def clean_files(self):
         for file in self._emitter.output_files:

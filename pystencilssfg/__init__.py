@@ -7,3 +7,5 @@ __all__ = [
     SourceFileGenerator, SfgContext, SfgKernelNamespace, SfgKernelHandle,
     PsType, SrcType
 ]
+
+__version__ = "0.0.0"
