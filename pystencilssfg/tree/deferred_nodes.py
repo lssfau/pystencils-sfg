@@ -1,5 +1,7 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Set
+from typing import TYPE_CHECKING
+
+from pystencilssfg.context import SfgContext
 
 if TYPE_CHECKING:
     from ..context import SfgContext
@@ -15,6 +17,7 @@ from .basic_nodes import SfgCallTreeNode
 from .builders import make_sequence
 
 from ..source_concepts import SrcField
+from ..source_concepts.source_objects import TypedSymbolOrObject
 
 
 class SfgDeferredNode(SfgCallTreeNode, ABC):
@@ -32,16 +35,13 @@ class SfgDeferredNode(SfgCallTreeNode, ABC):
     def __init__(self):
         self._children = SfgDeferredNode.InvalidAccess
 
-    get_code = InvalidAccess
-
-    @abstractmethod
-    def expand(self, ctx: SfgContext, *args, **kwargs) -> SfgCallTreeNode:
-        pass
+    def get_code(self, ctx: SfgContext) -> str:
+        raise SfgException("Invalid access into deferred node; deferred nodes must be expanded first.")
 
 
 class SfgParamCollectionDeferredNode(SfgDeferredNode, ABC):
     @abstractmethod
-    def expand(self, ctx: SfgContext, visible_params: Set[TypedSymbol]) -> SfgCallTreeNode:
+    def expand(self, ctx: SfgContext, visible_params: set[TypedSymbolOrObject]) -> SfgCallTreeNode:
         pass
 
 
@@ -50,7 +50,7 @@ class SfgDeferredFieldMapping(SfgParamCollectionDeferredNode):
         self._field = field
         self._src_field = src_field
 
-    def expand(self, ctx: SfgContext, visible_params: Set[TypedSymbol]) -> SfgCallTreeNode:
+    def expand(self, ctx: SfgContext, visible_params: set[TypedSymbolOrObject]) -> SfgCallTreeNode:
         #    Find field pointer
         ptr = None
         for param in visible_params:

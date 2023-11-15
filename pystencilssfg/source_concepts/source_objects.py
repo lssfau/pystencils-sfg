@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union, Set, TypeAlias
+from typing import TYPE_CHECKING, Optional, Union, TypeAlias
 
 from abc import ABC, abstractmethod
 
@@ -37,13 +37,13 @@ class SrcObject:
         return self._src_type
 
     @property
-    def required_includes(self) -> Set[SfgHeaderInclude]:
+    def required_includes(self) -> set[SfgHeaderInclude]:
         return set()
 
     def __hash__(self) -> int:
         return hash((self._identifier, self._src_type))
 
-    def __eq__(self, other: SrcObject) -> bool:
+    def __eq__(self, other: object) -> bool:
         return (isinstance(other, SrcObject)
                 and self._identifier == other._identifier
                 and self._src_type == other._src_type)

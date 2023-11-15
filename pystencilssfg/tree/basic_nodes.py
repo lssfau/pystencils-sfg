@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Sequence, Set, Tuple
+from typing import TYPE_CHECKING, Sequence
 
 from abc import ABC, abstractmethod
 from itertools import chain
@@ -15,20 +15,20 @@ if TYPE_CHECKING:
 class SfgCallTreeNode(ABC):
     """Base class for all nodes comprising SFG call trees. """
     def __init__(self, *children: SfgCallTreeNode):
-        self._children = children
+        self._children = list(children)
 
     @property
-    def children(self) -> Tuple[SfgCallTreeNode]:
-        return self._children
-
-    def child(self, idx: int) -> SfgCallTreeNode:
-        return self._children[idx]
+    def children(self) -> tuple[SfgCallTreeNode, ...]:
+        return tuple(self._children)
 
     @children.setter
     def children(self, cs: Sequence[SfgCallTreeNode]) -> None:
         if len(cs) != len(self._children):
             raise ValueError("The number of child nodes must remain the same!")
         self._children = list(cs)
+
+    def child(self, idx: int) -> SfgCallTreeNode:
+        return self._children[idx]
 
     def __getitem__(self, idx: int) -> SfgCallTreeNode:
         return self._children[idx]
@@ -44,7 +44,7 @@ class SfgCallTreeNode(ABC):
         """
 
     @property
-    def required_includes(self) -> Set[SfgHeaderInclude]:
+    def required_includes(self) -> set[SfgHeaderInclude]:
         return set()
 
 
@@ -52,7 +52,7 @@ class SfgCallTreeLeaf(SfgCallTreeNode, ABC):
 
     @property
     @abstractmethod
-    def required_parameters(self) -> Set[TypedSymbolOrObject]:
+    def required_parameters(self) -> set[TypedSymbolOrObject]:
         pass
 
 
@@ -90,15 +90,15 @@ class SfgStatements(SfgCallTreeLeaf):
                 self._required_includes |= obj.required_includes
 
     @property
-    def required_parameters(self) -> Set[TypedSymbolOrObject]:
+    def required_parameters(self) -> set[TypedSymbolOrObject]:
         return self._required_params
 
     @property
-    def defined_parameters(self) -> Set[TypedSymbolOrObject]:
+    def defined_parameters(self) -> set[TypedSymbolOrObject]:
         return self._defined_params
 
     @property
-    def required_includes(self) -> Set[SfgHeaderInclude]:
+    def required_includes(self) -> set[SfgHeaderInclude]:
         return self._required_includes
 
     def get_code(self, ctx: SfgContext) -> str:
@@ -122,7 +122,7 @@ class SfgBlock(SfgCallTreeNode):
         return self._children[0]
 
     def get_code(self, ctx: SfgContext) -> str:
-        subtree_code = ctx.codestyle.indent(self._subtree.get_code(ctx))
+        subtree_code = ctx.codestyle.indent(self.subtree.get_code(ctx))
 
         return "{\n" + subtree_code + "\n}"
 
@@ -133,7 +133,7 @@ class SfgKernelCallNode(SfgCallTreeLeaf):
         self._kernel_handle = kernel_handle
 
     @property
-    def required_parameters(self) -> Set[TypedSymbolOrObject]:
+    def required_parameters(self) -> set[TypedSymbolOrObject]:
         return set(p.symbol for p in self._kernel_handle.parameters)
 
     def get_code(self, ctx: SfgContext) -> str:

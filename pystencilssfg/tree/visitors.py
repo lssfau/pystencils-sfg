@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Set
+from typing import TYPE_CHECKING
 
 from functools import reduce
 
@@ -9,6 +9,7 @@ from pystencils.typing import TypedSymbol
 from .basic_nodes import SfgCallTreeNode, SfgCallTreeLeaf, SfgSequence, SfgStatements
 from .deferred_nodes import SfgParamCollectionDeferredNode
 from .dispatcher import visitor
+from ..source_concepts.source_objects import TypedSymbolOrObject
 
 if TYPE_CHECKING:
     from ..context import SfgContext
@@ -61,28 +62,28 @@ class ExpandingParameterCollector():
         self._flattener = FlattenSequences()
 
     @visitor
-    def visit(self, node: SfgCallTreeNode) -> Set[TypedSymbol]:
+    def visit(self, node: SfgCallTreeNode) -> set[TypedSymbolOrObject]:
         return self.branching_node(node)
 
     @visit.case(SfgCallTreeLeaf)
-    def leaf(self, leaf: SfgCallTreeLeaf) -> Set[TypedSymbol]:
+    def leaf(self, leaf: SfgCallTreeLeaf) -> set[TypedSymbolOrObject]:
         return leaf.required_parameters
 
     @visit.case(SfgSequence)
-    def sequence(self, sequence: SfgSequence) -> Set[TypedSymbol]:
+    def sequence(self, sequence: SfgSequence) -> set[TypedSymbolOrObject]:
         """
             Only in a sequence may parameters be defined and visible to subsequent nodes.
         """
 
-        params = set()
+        params: set[TypedSymbolOrObject] = set()
 
-        def iter_nested_sequences(seq: SfgSequence, visible_params: Set[TypedSymbol]):
+        def iter_nested_sequences(seq: SfgSequence, visible_params: set[TypedSymbolOrObject]):
             for i in range(len(seq.children) - 1, -1, -1):
                 c = seq.children[i]
 
                 if isinstance(c, SfgParamCollectionDeferredNode):
                     c = c.expand(self._ctx, visible_params=visible_params)
-                    seq.replace_child(i, c)
+                    seq[i] = c
 
                 if isinstance(c, SfgSequence):
                     iter_nested_sequences(c, visible_params)
@@ -96,7 +97,7 @@ class ExpandingParameterCollector():
 
         return params
 
-    def branching_node(self, node: SfgCallTreeNode):
+    def branching_node(self, node: SfgCallTreeNode) -> set[TypedSymbolOrObject]:
         """
             Each interior node that is not a sequence simply requires the union of all parameters
             required by its children.
@@ -111,20 +112,20 @@ class ParameterCollector():
     """
 
     @visitor
-    def visit(self, node: SfgCallTreeNode) -> Set[TypedSymbol]:
+    def visit(self, node: SfgCallTreeNode) -> set[TypedSymbolOrObject]:
         return self.branching_node(node)
 
     @visit.case(SfgCallTreeLeaf)
-    def leaf(self, leaf: SfgCallTreeLeaf) -> Set[TypedSymbol]:
+    def leaf(self, leaf: SfgCallTreeLeaf) -> set[TypedSymbolOrObject]:
         return leaf.required_parameters
 
     @visit.case(SfgSequence)
-    def sequence(self, sequence: SfgSequence) -> Set[TypedSymbol]:
+    def sequence(self, sequence: SfgSequence) -> set[TypedSymbolOrObject]:
         """
             Only in a sequence may parameters be defined and visible to subsequent nodes.
         """
 
-        params = set()
+        params: set[TypedSymbolOrObject] = set()
         for c in sequence.children[::-1]:
             if isinstance(c, SfgStatements):
                 params -= c.defined_parameters
@@ -133,7 +134,7 @@ class ParameterCollector():
             params |= self.visit(c)
         return params
 
-    def branching_node(self, node: SfgCallTreeNode):
+    def branching_node(self, node: SfgCallTreeNode) -> set[TypedSymbolOrObject]:
         """
             Each interior node that is not a sequence simply requires the union of all parameters
             required by its children.

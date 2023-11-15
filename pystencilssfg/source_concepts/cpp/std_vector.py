@@ -1,4 +1,4 @@
-from typing import Set, Union
+from typing import Union
 
 from pystencils.typing import FieldPointerSymbol, FieldStrideSymbol, FieldShapeSymbol
 
@@ -13,13 +13,13 @@ from ...exceptions import SfgException
 class std_vector(SrcVector, SrcField):
     def __init__(self, identifer: str, T: Union[SrcType, PsType], unsafe: bool = False):
         typestring = f"std::vector< {cpp_typename(T)} >"
-        super(SrcObject, self).__init__(identifer, typestring)
+        super(std_vector, self).__init__(SrcType(typestring), identifer)
 
         self._element_type = T
         self._unsafe = unsafe
 
     @property
-    def required_includes(self) -> Set[SfgHeaderInclude]:
+    def required_includes(self) -> set[SfgHeaderInclude]:
         return {SfgHeaderInclude("vector", system_header=True)}
 
     def extract_ptr(self, ptr_symbol: FieldPointerSymbol):
@@ -71,4 +71,4 @@ class std_vector(SrcVector, SrcField):
 class std_vector_ref(std_vector):
     def __init__(self, identifer: str, T: Union[SrcType, PsType]):
         typestring = f"std::vector< {T} > &"
-        super(SrcObject, self).__init__(identifer, typestring)
+        super(std_vector_ref, self).__init__(identifer, SrcType(typestring))

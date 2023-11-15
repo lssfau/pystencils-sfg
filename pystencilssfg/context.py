@@ -19,7 +19,7 @@ from .source_components import SfgFunction, SfgHeaderInclude
 
 
 class SourceFileGenerator:
-    def __init__(self, sfg_config: SfgConfiguration = None):
+    def __init__(self, sfg_config: SfgConfiguration | None = None):
         if sfg_config and not isinstance(sfg_config, SfgConfiguration):
             raise TypeError("sfg_config is not an SfgConfiguration.")
 
@@ -60,32 +60,34 @@ class SfgContext:
         self._code_namespace = None
 
         #   Source Components
-        self._includes = set()
+        self._includes: set[SfgHeaderInclude] = set()
         self._kernel_namespaces = {self._default_kernel_namespace.name: self._default_kernel_namespace}
-        self._functions = dict()
+        self._functions: dict[str, SfgFunction] = dict()
 
     @property
     def argv(self) -> Sequence[str]:
         return self._argv
 
     @property
-    def root_namespace(self) -> str:
+    def root_namespace(self) -> str | None:
         return self._config.base_namespace
 
     @property
-    def inner_namespace(self) -> str:
+    def inner_namespace(self) -> str | None:
         return self._code_namespace
 
     @property
-    def fully_qualified_namespace(self) -> str:
+    def fully_qualified_namespace(self) -> str | None:
         match (self.root_namespace, self.inner_namespace):
             case None, None: return None
             case outer, None: return outer
             case None, inner: return inner
             case outer, inner: return f"{outer}::{inner}"
+            case _: assert False
 
     @property
     def codestyle(self) -> SfgCodeStyle:
+        assert self._config.codestyle is not None
         return self._config.codestyle
 
     # ----------------------------------------------------------------------------------------------
@@ -176,7 +178,7 @@ class SfgContext:
     def branch(self) -> SfgBranchBuilder:
         return SfgBranchBuilder()
 
-    def map_field(self, field: Field, src_object: Optional[SrcField] = None) -> SfgSequence:
+    def map_field(self, field: Field, src_object: Optional[SrcField] = None) -> SfgDeferredFieldMapping:
         if src_object is None:
             raise NotImplementedError("Automatic field extraction is not implemented yet.")
         else:

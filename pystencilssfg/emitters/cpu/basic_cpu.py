@@ -1,3 +1,4 @@
+from typing import cast
 from jinja2 import Environment, PackageLoader, StrictUndefined
 
 from os import path
@@ -9,12 +10,12 @@ from ...context import SfgContext
 class BasicCpuEmitter:
     def __init__(self, basename: str, config: SfgConfiguration):
         self._basename = basename
-        self._output_directory = config.output_directory
+        self._output_directory = cast(str, config.output_directory)
         self._header_filename = f"{basename}.{config.header_extension}"
         self._source_filename = f"{basename}.{config.source_extension}"
 
     @property
-    def output_files(self) -> str:
+    def output_files(self) -> tuple[str, str]:
         return (
             path.join(self._output_directory, self._header_filename),
             path.join(self._output_directory, self._source_filename)

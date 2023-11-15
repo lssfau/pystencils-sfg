@@ -24,7 +24,7 @@ class SfgHeaderInclude:
     def __hash__(self) -> int:
         return hash((self._header_file, self._system_header, self._private))
 
-    def __eq__(self, other: SfgHeaderInclude) -> bool:
+    def __eq__(self, other: object) -> bool:
         return (isinstance(other, SfgHeaderInclude)
                 and self._header_file == other._header_file
                 and self._system_header == other._system_header

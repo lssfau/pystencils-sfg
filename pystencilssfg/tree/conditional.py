@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Optional, Set
+from typing import TYPE_CHECKING, Optional, cast
 
 from .basic_nodes import SfgCallTreeNode, SfgCallTreeLeaf
 from ..source_concepts.source_objects import TypedSymbolOrObject
@@ -18,7 +18,7 @@ class SfgCustomCondition(SfgCondition):
         self._cond_text = cond_text
 
     @property
-    def required_parameters(self) -> Set[TypedSymbolOrObject]:
+    def required_parameters(self) -> set[TypedSymbolOrObject]:
         return set()
 
     def get_code(self, ctx: SfgContext) -> str:
@@ -38,7 +38,7 @@ class SfgBranch(SfgCallTreeNode):
 
     @property
     def condition(self) -> SfgCondition:
-        return self._children[0]
+        return cast(SfgCondition, self._children[0])
 
     @property
     def branch_true(self) -> SfgCallTreeNode:

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import List, Sequence, Any
+from typing import Sequence, Any
 from enum import Enum, auto
 from dataclasses import dataclass, replace, asdict, InitVar
 from argparse import ArgumentParser
 from os import path
 
-import importlib
+from importlib import util as iutil
 
 from jinja2.filters import do_indent
 
@@ -24,7 +24,7 @@ class SfgConfigSource(Enum):
 
 
 class SfgConfigException(Exception):
-    def __init__(self, cfg_src: SfgConfigSource, message: str):
+    def __init__(self, cfg_src: SfgConfigSource | None, message: str):
         assert cfg_src != SfgConfigSource.DEFAULT, "Invalid default config. Contact a developer."
 
         super().__init__(cfg_src, message)
@@ -44,29 +44,29 @@ class SfgCodeStyle:
 class SfgConfiguration:
     config_source: InitVar[SfgConfigSource | None] = None
 
-    header_extension: str = None
+    header_extension: str | None = None
     """File extension for generated header files."""
 
-    source_extension: str = None
+    source_extension: str | None = None
     """File extension for generated source files."""
 
-    header_only: bool = None
+    header_only: bool | None = None
     """If set to `True`, generate only a header file without accompaning source file."""
 
-    base_namespace: str = None
+    base_namespace: str | None = None
     """The outermost namespace in the generated file. May be a valid C++ nested namespace qualifier
     (like `a::b::c`) or `None` if no outer namespace should be generated."""
 
-    codestyle: SfgCodeStyle = None
+    codestyle: SfgCodeStyle | None = None
     """Code style that should be used by the code generator."""
 
-    output_directory: str = None
+    output_directory: str | None = None
     """Directory to which the generated files should be written."""
 
     project_info: Any = None
     """Object for managing project-specific information. To be set by the configurator script."""
 
-    def __post_init__(self, cfg_src: SfgConfigSource = None):
+    def __post_init__(self, cfg_src: SfgConfigSource | None = None):
         if self.header_only:
             raise SfgConfigException(cfg_src, "Header-only code generation is not implemented yet.")
 
@@ -94,12 +94,13 @@ DEFAULT_CONFIG = SfgConfiguration(
 
 
 def run_configurator(configurator_script: str):
-    if not path.exists(configurator_script):
-        raise SfgConfigException(SfgConfigSource.PROJECT,
-                                 f"Configurator script not found: {configurator_script} is not a file.")
+    cfg_spec = iutil.spec_from_file_location(configurator_script)
 
-    cfg_spec = importlib.util.spec_from_file_location(configurator_script)
-    configurator = importlib.util.module_from_spec(cfg_spec)
+    if cfg_spec is None:
+        raise SfgConfigException(SfgConfigSource.PROJECT,
+                                 f"Unable to load configurator script {configurator_script}")
+
+    configurator = iutil.module_from_spec(cfg_spec)
 
     if not hasattr(configurator, "sfg_config"):
         raise SfgConfigException(SfgConfigSource.PROJECT, "Project configurator does not define function `sfg_config`.")
@@ -150,7 +151,7 @@ def config_from_parser_args(args):
     return project_config, cmdline_config
 
 
-def config_from_commandline(argv: List[str]):
+def config_from_commandline(argv: list[str]):
     parser = ArgumentParser("pystencilssfg",
                             description="pystencils Source File Generator",
                             allow_abbrev=False)
@@ -163,9 +164,9 @@ def config_from_commandline(argv: List[str]):
     return project_config, cmdline_config, script_args
 
 
-def merge_configurations(project_config: SfgConfiguration,
-                         cmdline_config: SfgConfiguration,
-                         script_config: SfgConfiguration):
+def merge_configurations(project_config: SfgConfiguration | None,
+                         cmdline_config: SfgConfiguration | None,
+                         script_config: SfgConfiguration | None):
     #   Project config completely overrides default config
     config = DEFAULT_CONFIG
 
@@ -197,7 +198,7 @@ def _get_file_extensions(cfgsrc: SfgConfigSource, extensions: Sequence[str]):
     h_ext = None
     src_ext = None
 
-    extensions = ((ext[1:] if ext[0] == '.' else ext) for ext in extensions)
+    extensions = tuple((ext[1:] if ext[0] == '.' else ext) for ext in extensions)
 
     for ext in extensions:
         if ext in HEADER_FILE_EXTENSIONS:

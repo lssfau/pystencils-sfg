@@ -8,7 +8,7 @@ class SfgKernelNamespace:
     def __init__(self, ctx, name: str):
         self._ctx = ctx
         self._name = name
-        self._asts = dict()
+        self._asts: dict[str, KernelFunction] = dict()
 
     @property
     def name(self):

@@ -1,11 +1,11 @@
-from typing import Set, Union, Tuple
+from typing import Union
 
 from pystencils.typing import FieldPointerSymbol, FieldStrideSymbol, FieldShapeSymbol
 
 from ...tree import SfgStatements
 from ..source_objects import SrcField
 from ...source_components.header_include import SfgHeaderInclude
-from ...types import PsType, cpp_typename
+from ...types import PsType, cpp_typename, SrcType
 from ...exceptions import SfgException
 
 
@@ -14,20 +14,20 @@ class std_mdspan(SrcField):
 
     def __init__(self, identifer: str,
                  T: PsType,
-                 extents: Tuple[int, str],
+                 extents: tuple[int, str],
                  extents_type: PsType = int,
                  reference: bool = False):
-        T = cpp_typename(T)
-        extents_type = cpp_typename(extents_type)
+        cpp_typestr = cpp_typename(T)
+        extents_type_str = cpp_typename(extents_type)
 
-        extents_str = f"std::extents< {extents_type}, {', '.join(str(e) for e in extents)} >"
-        typestring = f"std::mdspan< {T}, {extents_str} > {'&' if reference else ''}"
-        super().__init__(typestring, identifer)
+        extents_str = f"std::extents< {extents_type_str}, {', '.join(str(e) for e in extents)} >"
+        typestring = f"std::mdspan< {cpp_typestr}, {extents_str} > {'&' if reference else ''}"
+        super().__init__(SrcType(typestring), identifer)
 
         self._extents = extents
 
     @property
-    def required_includes(self) -> Set[SfgHeaderInclude]:
+    def required_includes(self) -> set[SfgHeaderInclude]:
         return {SfgHeaderInclude("experimental/mdspan", system_header=True)}
 
     def extract_ptr(self, ptr_symbol: FieldPointerSymbol):
