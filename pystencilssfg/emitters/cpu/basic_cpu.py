@@ -10,18 +10,20 @@ class BasicCpuEmitter:
         self._basename = basename
         self._output_directory = config.output_directory
         self._header_filename = f"{basename}.{config.header_extension}"
-        self._cpp_filename = f"{basename}.{config.source_extension}"
+        self._source_filename = f"{basename}.{config.source_extension}"
 
     @property
     def output_files(self) -> str:
         return (
             path.join(self._output_directory, self._header_filename),
-            path.join(self._output_directory, self._cpp_filename)
+            path.join(self._output_directory, self._source_filename)
         )
 
     def write_files(self, ctx: SfgContext):
         jinja_context = {
             'ctx': ctx,
+            'header_filename': self._header_filename,
+            'source_filename': self._source_filename,
             'basename': self._basename,
             'root_namespace': ctx.root_namespace,
             'public_includes': list(incl.get_code() for incl in ctx.includes() if not incl.private),
@@ -43,5 +45,5 @@ class BasicCpuEmitter:
         with open(path.join(self._output_directory, self._header_filename), 'w') as headerfile:
             headerfile.write(header)
 
-        with open(path.join(self._output_directory, self._cpp_filename), 'w') as cppfile:
+        with open(path.join(self._output_directory, self._source_filename), 'w') as cppfile:
             cppfile.write(source)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List, Sequence
 from enum import Enum, auto
-from dataclasses import dataclass, replace, asdict, fields
+from dataclasses import dataclass, replace, asdict, InitVar
 from argparse import ArgumentParser
 
 from jinja2.filters import do_indent
@@ -11,6 +11,22 @@ from .exceptions import SfgException
 
 HEADER_FILE_EXTENSIONS = {'h', 'hpp'}
 SOURCE_FILE_EXTENSIONS = {'c', 'cpp'}
+
+
+class SfgConfigSource(Enum):
+    DEFAULT = auto()
+    PROJECT = auto()
+    COMMANDLINE = auto
+    SCRIPT = auto()
+
+
+class SfgConfigException(Exception):
+    def __init__(self, cfg_src: SfgConfigSource, message: str):
+        assert cfg_src != SfgConfigSource.DEFAULT, "Invalid default config. Contact a developer."
+
+        super().__init__(cfg_src, message)
+        self.message = message
+        self.config_source = cfg_src
 
 
 @dataclass
@@ -23,6 +39,8 @@ class SfgCodeStyle:
 
 @dataclass
 class SfgConfiguration:
+    config_source: InitVar[SfgConfigSource | None] = None
+
     header_extension: str = None
     """File extension for generated header files."""
 
@@ -42,10 +60,9 @@ class SfgConfiguration:
     output_directory: str = None
     """Directory to which the generated files should be written."""
 
-    def __post_init__(self):
+    def __post_init__(self, cfg_src: SfgConfigSource = None):
         if self.header_only:
-            raise SfgException(
-                "Header-only code generation is not implemented yet.")
+            raise SfgConfigException(cfg_src, "Header-only code generation is not implemented yet.")
 
         if self.header_extension and self.header_extension[0] == '.':
             self.header_extension = self.header_extension[1:]
@@ -60,6 +77,7 @@ class SfgConfiguration:
 
 
 DEFAULT_CONFIG = SfgConfiguration(
+    config_source=SfgConfigSource.DEFAULT,
     header_extension='h',
     source_extension='cpp',
     header_only=False,
@@ -73,38 +91,51 @@ def run_configurator(configurator_script: str):
     raise NotImplementedError()
 
 
-def config_from_commandline(argv: List[str]):
-    parser = ArgumentParser("pystencilssfg",
-                            description="pystencils Source File Generator",
-                            allow_abbrev=False)
+def add_config_args_to_parser(parser: ArgumentParser):
+    config_group = parser.add_argument_group("Configuration")
 
-    parser.add_argument("-sfg-d", "--sfg-output-dir",
-                        type=str, default='.', dest='output_directory')
-    parser.add_argument("-sfg-e", "--sfg-file-extensions",
-                        type=str, default=None, nargs='*', dest='file_extensions')
-    parser.add_argument("--sfg-header-only",
-                        type=str, default=None, nargs='*', dest='header_only')
-    parser.add_argument("--sfg-configurator", type=str,
-                        default=None, nargs='*', dest='configurator_script')
+    config_group.add_argument("--sfg-output-dir",
+                        type=str, default=None, dest='output_directory')
+    config_group.add_argument("--sfg-file-extensions",
+                        type=str, default=None, dest='file_extensions', help="Comma-separated list of file extensions")
+    config_group.add_argument("--sfg-header-only", default=None, action='store_true', dest='header_only')
+    config_group.add_argument("--sfg-configurator", type=str, default=None, dest='configurator_script')
+    
+    return parser
 
-    args, script_args = parser.parse_known_args(argv)
 
+def config_from_parser_args(args):
     if args.configurator_script is not None:
         project_config = run_configurator(args.configurator_script)
     else:
         project_config = None
 
     if args.file_extensions is not None:
-        h_ext, src_ext = _get_file_extensions(args.file_extensions)
+        file_extentions = list(args.file_extensions.split(","))
+        h_ext, src_ext = _get_file_extensions(SfgConfigSource.COMMANDLINE, file_extentions)
     else:
         h_ext, src_ext = None, None
 
     cmdline_config = SfgConfiguration(
+        config_source=SfgConfigSource.COMMANDLINE,
         header_extension=h_ext,
         source_extension=src_ext,
         header_only=args.header_only,
         output_directory=args.output_directory
     )
+
+    return project_config, cmdline_config
+
+
+def config_from_commandline(argv: List[str]):
+    parser = ArgumentParser("pystencilssfg",
+                            description="pystencils Source File Generator",
+                            allow_abbrev=False)
+    
+    add_config_args_to_parser(parser)
+
+    args, script_args = parser.parse_known_args(argv)
+    project_config, cmdline_config = config_from_parser_args(args)
 
     return project_config, cmdline_config, script_args
 
@@ -138,7 +169,7 @@ def merge_configurations(project_config: SfgConfiguration,
     return config
 
 
-def _get_file_extensions(extensions: Sequence[str]):
+def _get_file_extensions(cfgsrc: SfgConfigSource, extensions: Sequence[str]):
     h_ext = None
     src_ext = None
 
@@ -147,13 +178,13 @@ def _get_file_extensions(extensions: Sequence[str]):
     for ext in extensions:
         if ext in HEADER_FILE_EXTENSIONS:
             if h_ext is not None:
-                raise ValueError("Multiple header file extensions found.")
+                raise SfgConfigException(cfgsrc, "Multiple header file extensions specified.")
             h_ext = ext
         elif ext in SOURCE_FILE_EXTENSIONS:
             if src_ext is not None:
-                raise ValueError("Multiple source file extensions found.")
+                raise SfgConfigException(cfgsrc, "Multiple source file extensions specified.")
             src_ext = ext
         else:
-            raise ValueError(f"Don't know how to interpret extension '.{ext}'")
+            raise SfgConfigException(cfgsrc, f"Don't know how to interpret file extension '.{ext}'")
 
     return h_ext, src_ext

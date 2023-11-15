@@ -1,4 +1,4 @@
-#include "{{basename}}.h"
+#include "{{header_filename}}"
 
 {% for incl in private_includes -%}
 {{incl}}
