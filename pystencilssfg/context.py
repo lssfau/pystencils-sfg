@@ -5,13 +5,11 @@ import sys
 import os
 from os import path
 
-from argparse import ArgumentParser
-
-from jinja2.filters import do_indent
 
 from pystencils import Field
 from pystencils.astnodes import KernelFunction
 
+from .configuration import SfgConfiguration, config_from_commandline, merge_configurations, SfgCodeStyle
 from .kernel_namespace import SfgKernelNamespace, SfgKernelHandle
 from .tree import SfgCallTreeNode, SfgSequence, SfgKernelCallNode, SfgStatements
 from .tree.deferred_nodes import SfgDeferredFieldMapping
@@ -21,37 +19,22 @@ from .source_concepts import SrcField, TypedSymbolOrObject
 from .source_components import SfgFunction, SfgHeaderInclude
 
 
-@dataclass
-class SfgCodeStyle:
-    indent_width: int = 2
-
-    def indent(self, s: str):
-        return do_indent(s, self.indent_width, first=True)
-
 
 class SourceFileGenerator:
-    def __init__(self,
-                 namespace: str = "pystencils",
-                 codestyle: SfgCodeStyle = SfgCodeStyle()):
-        
-        parser = ArgumentParser(
-            "pystencilssfg",
-            description="pystencils Source File Generator",
-            allow_abbrev=False)
-        
-        parser.add_argument("-d", "--sfg-output-dir", type=str, default='.', dest='output_directory')
-
-        generator_args, script_args = parser.parse_known_args(sys.argv)
-
+    def __init__(self, sfg_config: SfgConfiguration):
         import __main__
         scriptpath = __main__.__file__
         scriptname = path.split(scriptpath)[1]
-        basename = path.splitext(scriptname)[0]        
+        basename = path.splitext(scriptname)[0]
 
-        self._context = SfgContext(script_args, namespace, codestyle)
+        project_config, cmdline_config, script_args = config_from_commandline(sys.argv)
+
+        config = merge_configurations(project_config, cmdline_config, sfg_config)
+
+        self._context = SfgContext(script_args, config)
 
         from .emitters.cpu.basic_cpu import BasicCpuEmitter
-        self._emitter = BasicCpuEmitter(self._context, basename, generator_args.output_directory)
+        self._emitter = BasicCpuEmitter(self._context, basename, config.output_directory)
 
     def clean_files(self):
         for file in self._emitter.output_files:
@@ -68,10 +51,9 @@ class SourceFileGenerator:
 
 
 class SfgContext:
-    def __init__(self, argv, root_namespace: str, codestyle: SfgCodeStyle):
+    def __init__(self, argv, config: SfgConfiguration):
         self._argv = argv
-        self._root_namespace = root_namespace
-        self._codestyle = codestyle
+        self._config = config
         self._default_kernel_namespace = SfgKernelNamespace(self, "kernels")
 
         #   Source Components
@@ -85,11 +67,11 @@ class SfgContext:
 
     @property
     def root_namespace(self) -> str:
-        return self._root_namespace
+        return self._config.base_namespace
     
     @property
     def codestyle(self) -> SfgCodeStyle:
-        return self._codestyle
+        return self._config.codestyle
 
     #----------------------------------------------------------------------------------------------
     #   Source Component Getters
