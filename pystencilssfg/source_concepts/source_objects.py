@@ -1,10 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union, Set, TypeAlias, NewType
-
-if TYPE_CHECKING:
-    from ..source_components import SfgHeaderInclude
-    from ..tree import SfgStatements, SfgSequence
+from typing import TYPE_CHECKING, Optional, Union, Set, TypeAlias
 
 from abc import ABC, abstractmethod
 
@@ -13,15 +9,20 @@ from pystencils.typing import FieldPointerSymbol, FieldStrideSymbol, FieldShapeS
 
 from ..types import SrcType
 
+if TYPE_CHECKING:
+    from ..source_components import SfgHeaderInclude
+    from ..tree import SfgStatements, SfgSequence
+
+
 class SrcObject:
     """C/C++ object of nonprimitive type.
-    
+
     Two objects are identical if they have the same identifier and type string."""
 
     def __init__(self, src_type: SrcType, identifier: Optional[str]):
         self._src_type = src_type
         self._identifier = identifier
-    
+
     @property
     def identifier(self):
         return self._identifier
@@ -38,12 +39,12 @@ class SrcObject:
     @property
     def required_includes(self) -> Set[SfgHeaderInclude]:
         return set()
-    
+
     def __hash__(self) -> int:
         return hash((self._identifier, self._src_type))
-    
+
     def __eq__(self, other: SrcObject) -> bool:
-        return (isinstance(other, SrcObject) 
+        return (isinstance(other, SrcObject)
                 and self._identifier == other._identifier
                 and self._src_type == other._src_type)
 

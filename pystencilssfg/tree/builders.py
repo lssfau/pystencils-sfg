@@ -1,20 +1,16 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, Sequence
-
-if TYPE_CHECKING:
-    from ..context import SfgContext
 
 from abc import ABC, abstractmethod
 
-from pystencils import Field
-
 from .basic_nodes import SfgCallTreeNode, SfgSequence, SfgBlock, SfgStatements
 from .conditional import SfgCondition, SfgCustomCondition, SfgBranch
-    
+
+
 class SfgNodeBuilder(ABC):
     @abstractmethod
     def resolve(self) -> SfgCallTreeNode:
         pass
+
 
 def make_sequence(*args) -> SfgSequence:
     children = []
@@ -27,13 +23,13 @@ def make_sequence(*args) -> SfgSequence:
             children.append(SfgStatements(arg, (), ()))
         elif isinstance(arg, tuple):
             #   Tuples are treated as blocks
-            subseq = self(*arg)
+            subseq = make_sequence(*arg)
             children.append(SfgBlock(subseq))
         else:
             raise TypeError(f"Sequence argument {i} has invalid type.")
-    
+
     return SfgSequence(children)
-    
+
 
 class SfgBranchBuilder(SfgNodeBuilder):
     def __init__(self):
@@ -45,30 +41,30 @@ class SfgBranchBuilder(SfgNodeBuilder):
 
     def __call__(self, *args) -> SfgBranchBuilder:
         match self._phase:
-            case 0: # Condition
+            case 0:  # Condition
                 if len(args) != 1:
                     raise ValueError("Must specify exactly one argument as branch condition!")
-                
+
                 cond = args[0]
-                
+
                 if isinstance(cond, str):
                     cond = SfgCustomCondition(cond)
                 elif not isinstance(cond, SfgCondition):
-                    raise ValueError("Invalid type for branch condition. Must be either `str` or a subclass of `SfgCondition`.")
-                
+                    raise ValueError(
+                        "Invalid type for branch condition. Must be either `str` or a subclass of `SfgCondition`.")
+
                 self._cond = cond
 
-            case 1: # Then-branch
+            case 1:  # Then-branch
                 self._branch_true = make_sequence(*args)
-            case 2: # Else-branch
+            case 2:  # Else-branch
                 self._branch_false = make_sequence(*args)
-            case _: # There's no third branch!
+            case _:  # There's no third branch!
                 raise TypeError("Branch construct already complete.")
 
         self._phase += 1
 
         return self
-        
+
     def resolve(self) -> SfgCallTreeNode:
         return SfgBranch(self._cond, self._branch_true, self._branch_false)
-    

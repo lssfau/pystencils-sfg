@@ -5,6 +5,7 @@ from os import path
 from ...configuration import SfgConfiguration
 from ...context import SfgContext
 
+
 class BasicCpuEmitter:
     def __init__(self, basename: str, config: SfgConfiguration):
         self._basename = basename

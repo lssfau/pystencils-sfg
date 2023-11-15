@@ -1,4 +1,4 @@
-from typing import Set, Union, Tuple
+from typing import Set, Union
 
 from pystencils.typing import FieldPointerSymbol, FieldStrideSymbol, FieldShapeSymbol
 
@@ -8,6 +8,7 @@ from ..source_objects import SrcObject, TypedSymbolOrObject
 from ...types import SrcType, PsType, cpp_typename
 from ...source_components.header_include import SfgHeaderInclude
 from ...exceptions import SfgException
+
 
 class std_vector(SrcVector, SrcField):
     def __init__(self, identifer: str, T: Union[SrcType, PsType], unsafe: bool = False):
@@ -19,39 +20,40 @@ class std_vector(SrcVector, SrcField):
 
     @property
     def required_includes(self) -> Set[SfgHeaderInclude]:
-        return { SfgHeaderInclude("vector", system_header=True) }
-    
+        return {SfgHeaderInclude("vector", system_header=True)}
+
     def extract_ptr(self, ptr_symbol: FieldPointerSymbol):
         if ptr_symbol.dtype != self._element_type:
             if self._unsafe:
                 mapping = f"{ptr_symbol.dtype} {ptr_symbol.name} = ({ptr_symbol.dtype}) {self._identifier}.data();"
             else:
-                raise SfgException("Field type and std::vector element type do not match, and unsafe extraction was not enabled.")
+                raise SfgException(
+                    "Field type and std::vector element type do not match, and unsafe extraction was not enabled.")
         else:
             mapping = f"{ptr_symbol.dtype} {ptr_symbol.name} = {self._identifier}.data();"
 
         return SfgStatements(mapping, (ptr_symbol,), (self,))
-    
+
     def extract_size(self, coordinate: int, size: Union[int, FieldShapeSymbol]) -> SfgStatements:
         if coordinate > 0:
             raise SfgException(f"Cannot extract size in coordinate {coordinate} from std::vector")
 
         if isinstance(size, FieldShapeSymbol):
             return SfgStatements(
-                    f"{size.dtype} {size.name} = {self._identifier}.size();",
-                    (size, ),
-                    (self, )
-                )
+                f"{size.dtype} {size.name} = {self._identifier}.size();",
+                (size, ),
+                (self, )
+            )
         else:
             return SfgStatements(
                 f"assert( {self._identifier}.size() == {size} );",
                 (), (self, )
             )
-        
+
     def extract_stride(self, coordinate: int, stride: Union[int, FieldStrideSymbol]) -> SfgStatements:
         if coordinate > 0:
             raise SfgException(f"Cannot extract stride in coordinate {coordinate} from std::vector")
-        
+
         if isinstance(stride, FieldStrideSymbol):
             return SfgStatements(f"{stride.dtype} {stride.name} = 1;", (stride, ), ())
         else:

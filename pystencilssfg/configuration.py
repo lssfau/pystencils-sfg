@@ -97,17 +97,17 @@ def run_configurator(configurator_script: str):
     if not path.exists(configurator_script):
         raise SfgConfigException(SfgConfigSource.PROJECT,
                                  f"Configurator script not found: {configurator_script} is not a file.")
-    
+
     cfg_spec = importlib.util.spec_from_file_location(configurator_script)
     configurator = importlib.util.module_from_spec(cfg_spec)
 
-    if not hasattr(project_config, "sfg_config"):
+    if not hasattr(configurator, "sfg_config"):
         raise SfgConfigException(SfgConfigSource.PROJECT, "Project configurator does not define function `sfg_config`.")
 
     project_config = configurator.sfg_config()
     if not isinstance(project_config, SfgConfiguration):
         raise SfgConfigException(SfgConfigSource.PROJECT, "sfg_config did not return a SfgConfiguration object.")
-    
+
     return project_config
 
 
@@ -115,12 +115,15 @@ def add_config_args_to_parser(parser: ArgumentParser):
     config_group = parser.add_argument_group("Configuration")
 
     config_group.add_argument("--sfg-output-dir",
-                        type=str, default=None, dest='output_directory')
+                              type=str, default=None, dest='output_directory')
     config_group.add_argument("--sfg-file-extensions",
-                        type=str, default=None, dest='file_extensions', help="Comma-separated list of file extensions")
+                              type=str,
+                              default=None,
+                              dest='file_extensions',
+                              help="Comma-separated list of file extensions")
     config_group.add_argument("--sfg-header-only", default=None, action='store_true', dest='header_only')
     config_group.add_argument("--sfg-configurator", type=str, default=None, dest='configurator_script')
-    
+
     return parser
 
 
@@ -151,7 +154,7 @@ def config_from_commandline(argv: List[str]):
     parser = ArgumentParser("pystencilssfg",
                             description="pystencils Source File Generator",
                             allow_abbrev=False)
-    
+
     add_config_args_to_parser(parser)
 
     args, script_args = parser.parse_known_args(argv)
@@ -182,7 +185,8 @@ def merge_configurations(project_config: SfgConfiguration,
         for key, cmdline_value in cmdline_dict.items():
             if cmdline_value is not None and script_dict[key] is not None:
                 raise SfgException(
-                    f"Conflicting configuration: Parameter {key} was specified both in the script and on the command line.")
+                    "Conflicting configuration:"
+                    + f" Parameter {key} was specified both in the script and on the command line.")
 
         config = config.override(script_config)
 

@@ -35,7 +35,7 @@ def main():
 
 def version(args, argv):
     from . import __version__
-    print(version)
+    print(__version__)
     exit(0)
 
 

@@ -3,6 +3,7 @@ from typing import Sequence
 from pystencils import CreateKernelConfig, create_kernel
 from pystencils.astnodes import KernelFunction
 
+
 class SfgKernelNamespace:
     def __init__(self, ctx, name: str):
         self._ctx = ctx
@@ -59,7 +60,7 @@ class SfgKernelHandle:
     @property
     def fully_qualified_name(self):
         return f"{self._ctx.root_namespace}::{self.kernel_namespace.name}::{self.kernel_name}"
-    
+
     @property
     def parameters(self):
         return self._parameters
@@ -71,4 +72,3 @@ class SfgKernelHandle:
     @property
     def fields(self):
         return self.fields
-    

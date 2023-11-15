@@ -37,4 +37,3 @@ def cpp_typename(type_obj: Union[str, SrcType, PsType]):
         return numpy_name_to_c(np.dtype(type_obj).name)
     else:
         raise ValueError(f"Don't know how to interpret type object {type_obj}.")
-

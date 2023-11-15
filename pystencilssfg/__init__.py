@@ -4,8 +4,8 @@ from .kernel_namespace import SfgKernelNamespace, SfgKernelHandle
 from .types import PsType, SrcType
 
 __all__ = [
-    SourceFileGenerator, SfgContext, SfgKernelNamespace, SfgKernelHandle,
-    PsType, SrcType
+    "SourceFileGenerator", "SfgContext", "SfgKernelNamespace", "SfgKernelHandle",
+    "PsType", "SrcType"
 ]
 
 __version__ = "0.0.0"

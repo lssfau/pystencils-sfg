@@ -3,7 +3,7 @@ from .conditional import SfgBranch, SfgCondition
 from .builders import make_sequence
 
 __all__ = [
-    SfgCallTreeNode, SfgKernelCallNode, SfgSequence, SfgBlock, SfgStatements,
-    SfgCondition, SfgBranch,
-    make_sequence
+    "SfgCallTreeNode", "SfgKernelCallNode", "SfgSequence", "SfgBlock", "SfgStatements",
+    "SfgCondition", "SfgBranch",
+    "make_sequence"
 ]

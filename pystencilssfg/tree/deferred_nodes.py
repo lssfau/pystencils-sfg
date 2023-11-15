@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, Sequence, Set, Union, Iterable
+from typing import TYPE_CHECKING, Sequence, Set
 
 if TYPE_CHECKING:
     from ..context import SfgContext
@@ -18,10 +18,11 @@ from ..source_concepts import SrcField
 
 
 class SfgDeferredNode(SfgCallTreeNode, ABC):
-    """Nodes of this type are inserted as placeholders into the kernel call tree and need to be expanded at a later time.
-    
-    Subclasses of SfgDeferredNode correspond to nodes that cannot be created yet because information required for their
-    construction is not yet known.
+    """Nodes of this type are inserted as placeholders into the kernel call tree
+    and need to be expanded at a later time.
+
+    Subclasses of SfgDeferredNode correspond to nodes that cannot be created yet
+    because information required for their construction is not yet known.
     """
 
     @property
@@ -33,7 +34,7 @@ class SfgDeferredNode(SfgCallTreeNode, ABC):
 
     def get_code(self, ctx: SfgContext) -> str:
         raise SfgException("Deferred nodes can not generate code; they need to be expanded first.")
-    
+
     @abstractmethod
     def expand(self, ctx: SfgContext, *args, **kwargs) -> SfgCallTreeNode:
         pass
@@ -64,7 +65,7 @@ class SfgDeferredFieldMapping(SfgParamCollectionDeferredNode):
         for c, s in enumerate(self._field.shape):
             if isinstance(s, FieldShapeSymbol) and s not in visible_params:
                 continue
-            else:            
+            else:
                 shape.append((c, s))
 
         #   Find required strides
@@ -72,7 +73,7 @@ class SfgDeferredFieldMapping(SfgParamCollectionDeferredNode):
         for c, s in enumerate(self._field.strides):
             if isinstance(s, FieldStrideSymbol) and s not in visible_params:
                 continue
-            else:            
+            else:
                 strides.append((c, s))
 
         return make_sequence(
