@@ -1,0 +1,25 @@
+stages:
+  - pretest
+
+linter:
+  stage: pretest
+  except:
+    variables:
+      - $ENABLE_NIGHTLY_BUILDS
+  image: i10git.cs.fau.de:5005/pycodegen/pycodegen/full
+  script:
+    - flake8 pystencilssfg
+  tags:
+    - docker
+
+typechecker:
+  stage: pretest
+  except:
+    variables:
+      - $ENABLE_NIGHTLY_BUILDS
+  image: i10git.cs.fau.de:5005/pycodegen/pycodegen/full
+  script:
+    - apt-get install pyright
+    - pyright pystencilssfg 
+  tags:
+    - docker
