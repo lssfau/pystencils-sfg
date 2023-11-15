@@ -1,23 +1,10 @@
 
-
 set(PSSFG_CONFIGURATOR_SCRIPT "" CACHE FILEPATH "Configurator script for the pystencils Source File Generator" )
 
 set(PSSFG_GENERATED_SOURCES_DIR "${CMAKE_BINARY_DIR}/pystencils_generated_sources")
 file(MAKE_DIRECTORY "${PSSFG_GENERATED_SOURCES_DIR}")
 include_directories(${PSSFG_GENERATED_SOURCES_DIR})
 
-
-function(_pssfg_config_cmdline_args OUTVAR)
-    set(options HEADER_ONLY)
-    set(oneValueArgs CONFIGURATOR_SCRIPT OUTPUT_DIR)
-    set(multiValueArgs FILE_EXTENSIONS)
-
-    cmake_parse_arguments(_pssfg "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-
-
-    set(${OUTVAR} ${cmdline} PARENT_SCOPE)
-endfunction()
 
 function(_pssfg_add_gen_source target script)
     set(options)
