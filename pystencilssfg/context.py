@@ -57,6 +57,8 @@ class SfgContext:
         self._config = config
         self._default_kernel_namespace = SfgKernelNamespace(self, "kernels")
 
+        self._code_namespace = None
+
         #   Source Components
         self._includes = set()
         self._kernel_namespaces = {self._default_kernel_namespace.name: self._default_kernel_namespace}
@@ -69,6 +71,18 @@ class SfgContext:
     @property
     def root_namespace(self) -> str:
         return self._config.base_namespace
+
+    @property
+    def inner_namespace(self) -> str:
+        return self._code_namespace
+
+    @property
+    def fully_qualified_namespace(self) -> str:
+        match (self.root_namespace, self.inner_namespace):
+            case None, None: return None
+            case outer, None: return outer
+            case None, inner: return inner
+            case outer, inner: return f"{outer}::{inner}"
 
     @property
     def codestyle(self) -> SfgCodeStyle:

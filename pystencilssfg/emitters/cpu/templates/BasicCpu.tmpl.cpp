@@ -1,18 +1,20 @@
 #include "{{header_filename}}"
 
-{% for incl in private_includes -%}
+{% for incl in private_includes %}
 {{incl}}
 {% endfor %}
 
 #define FUNC_PREFIX inline
 
-namespace {{root_namespace}} {
+{% if fq_namespace is not none %}
+namespace {{fq_namespace}} {
+{% endif %}
 
 /*************************************************************************************
  *                                Kernels
 *************************************************************************************/
 
-{% for kns in kernel_namespaces -%}
+{% for kns in kernel_namespaces %}
 namespace {{ kns.name }} {
 
 {% for ast in kns.asts %}
@@ -32,4 +34,6 @@ void {{ function.name }} ( {{ function | generate_function_parameter_list }} ) {
 }
 {% endfor %}
 
-} // namespace {{root_namespace}}
+{% if fq_namespace is not none %}
+} // namespace {{fq_namespace}}
+{% endif %}

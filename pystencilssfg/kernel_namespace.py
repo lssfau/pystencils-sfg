@@ -59,7 +59,9 @@ class SfgKernelHandle:
 
     @property
     def fully_qualified_name(self):
-        return f"{self._ctx.root_namespace}::{self.kernel_namespace.name}::{self.kernel_name}"
+        match self._ctx.fully_qualified_namespace:
+            case None: return f"{self.kernel_namespace.name}::{self.kernel_name}"
+            case fqn: return f"{fqn}::{self.kernel_namespace.name}::{self.kernel_name}"
 
     @property
     def parameters(self):

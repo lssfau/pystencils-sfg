@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Sequence, Optional, Set
+from typing import TYPE_CHECKING, Optional, Set
 
 from .basic_nodes import SfgCallTreeNode, SfgCallTreeLeaf
 from ..source_concepts.source_objects import TypedSymbolOrObject

@@ -6,7 +6,6 @@ from itertools import chain
 
 from ..kernel_namespace import SfgKernelHandle
 from ..source_concepts.source_objects import SrcObject, TypedSymbolOrObject
-from ..exceptions import SfgException
 
 if TYPE_CHECKING:
     from ..context import SfgContext
@@ -43,7 +42,6 @@ class SfgCallTreeNode(ABC):
 
         By convention, the code block emitted by this function should not contain a trailing newline.
         """
-        pass
 
     @property
     def required_includes(self) -> Set[SfgHeaderInclude]:
