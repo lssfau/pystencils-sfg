@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Callable, TypeVar, Generic, Any, ParamSpec, Concatenate
+from typing import Callable, TypeVar, Generic, ParamSpec
 from types import MethodType
 
 from functools import wraps
@@ -9,6 +9,7 @@ from .basic_nodes import SfgCallTreeNode
 V = TypeVar("V")
 R = TypeVar("R")
 P = ParamSpec("P")
+
 
 class VisitorDispatcher(Generic[V, R]):
     def __init__(self, wrapped_method: Callable[..., R]):

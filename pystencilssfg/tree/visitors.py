@@ -4,8 +4,6 @@ from typing import TYPE_CHECKING
 
 from functools import reduce
 
-from pystencils.typing import TypedSymbol
-
 from .basic_nodes import SfgCallTreeNode, SfgCallTreeLeaf, SfgSequence, SfgStatements
 from .deferred_nodes import SfgParamCollectionDeferredNode
 from .dispatcher import visitor

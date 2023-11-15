@@ -10,7 +10,7 @@ from pystencils.astnodes import KernelFunction
 
 from .configuration import SfgConfiguration, config_from_commandline, merge_configurations, SfgCodeStyle
 from .kernel_namespace import SfgKernelNamespace, SfgKernelHandle
-from .tree import SfgCallTreeNode, SfgSequence, SfgKernelCallNode, SfgStatements
+from .tree import SfgCallTreeNode, SfgKernelCallNode, SfgStatements
 from .tree.deferred_nodes import SfgDeferredFieldMapping
 from .tree.builders import SfgBranchBuilder, make_sequence
 from .tree.visitors import CollectIncludes

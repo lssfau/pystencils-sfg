@@ -1,14 +1,9 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from pystencilssfg.context import SfgContext
-
-if TYPE_CHECKING:
-    from ..context import SfgContext
-
 from abc import ABC, abstractmethod
 
-from pystencils import Field, TypedSymbol
+from pystencils import Field
 from pystencils.typing import FieldPointerSymbol, FieldShapeSymbol, FieldStrideSymbol
 
 from ..exceptions import SfgException
@@ -18,6 +13,9 @@ from .builders import make_sequence
 
 from ..source_concepts import SrcField
 from ..source_concepts.source_objects import TypedSymbolOrObject
+
+if TYPE_CHECKING:
+    from ..context import SfgContext
 
 
 class SfgDeferredNode(SfgCallTreeNode, ABC):

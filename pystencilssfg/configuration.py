@@ -4,7 +4,6 @@ from typing import Sequence, Any
 from enum import Enum, auto
 from dataclasses import dataclass, replace, asdict, InitVar
 from argparse import ArgumentParser
-from os import path
 
 from importlib import util as iutil
 
