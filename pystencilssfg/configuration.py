@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from typing import List, Sequence
+from typing import List, Sequence, Any
 from enum import Enum, auto
 from dataclasses import dataclass, replace, asdict, InitVar
 from argparse import ArgumentParser
+from os import path
+
+import importlib
 
 from jinja2.filters import do_indent
 
@@ -60,6 +63,9 @@ class SfgConfiguration:
     output_directory: str = None
     """Directory to which the generated files should be written."""
 
+    project_info: Any = None
+    """Object for managing project-specific information. To be set by the configurator script."""
+
     def __post_init__(self, cfg_src: SfgConfigSource = None):
         if self.header_only:
             raise SfgConfigException(cfg_src, "Header-only code generation is not implemented yet.")
@@ -88,7 +94,21 @@ DEFAULT_CONFIG = SfgConfiguration(
 
 
 def run_configurator(configurator_script: str):
-    raise NotImplementedError()
+    if not path.exists(configurator_script):
+        raise SfgConfigException(SfgConfigSource.PROJECT,
+                                 f"Configurator script not found: {configurator_script} is not a file.")
+    
+    cfg_spec = importlib.util.spec_from_file_location(configurator_script)
+    configurator = importlib.util.module_from_spec(cfg_spec)
+
+    if not hasattr(project_config, "sfg_config"):
+        raise SfgConfigException(SfgConfigSource.PROJECT, "Project configurator does not define function `sfg_config`.")
+
+    project_config = configurator.sfg_config()
+    if not isinstance(project_config, SfgConfiguration):
+        raise SfgConfigException(SfgConfigSource.PROJECT, "sfg_config did not return a SfgConfiguration object.")
+    
+    return project_config
 
 
 def add_config_args_to_parser(parser: ArgumentParser):
