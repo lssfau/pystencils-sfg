@@ -21,7 +21,10 @@ from .source_components import SfgFunction, SfgHeaderInclude
 
 
 class SourceFileGenerator:
-    def __init__(self, sfg_config: SfgConfiguration):
+    def __init__(self, sfg_config: SfgConfiguration = None):
+        if sfg_config and not isinstance(sfg_config, SfgConfiguration):
+            raise TypeError("sfg_config is not an SfgConfiguration.")
+
         import __main__
         scriptpath = __main__.__file__
         scriptname = path.split(scriptpath)[1]
@@ -34,7 +37,7 @@ class SourceFileGenerator:
         self._context = SfgContext(script_args, config)
 
         from .emitters.cpu.basic_cpu import BasicCpuEmitter
-        self._emitter = BasicCpuEmitter(self._context, basename, config.output_directory)
+        self._emitter = BasicCpuEmitter(basename, config)
 
     def clean_files(self):
         for file in self._emitter.output_files:
@@ -47,7 +50,7 @@ class SourceFileGenerator:
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is None:
-            self._emitter.write_files()
+            self._emitter.write_files(self._context)
 
 
 class SfgContext:

@@ -2,15 +2,15 @@ from jinja2 import Environment, PackageLoader, StrictUndefined
 
 from os import path
 
+from ...configuration import SfgConfiguration
 from ...context import SfgContext
 
 class BasicCpuEmitter:
-    def __init__(self, ctx: SfgContext, basename: str, output_directory: str):
-        self._ctx = ctx
+    def __init__(self, basename: str, config: SfgConfiguration):
         self._basename = basename
-        self._output_directory = output_directory
-        self._header_filename = basename + ".h"
-        self._cpp_filename = basename + ".cpp"
+        self._output_directory = config.output_directory
+        self._header_filename = f"{basename}.{config.header_extension}"
+        self._cpp_filename = f"{basename}.{config.source_extension}"
 
     @property
     def output_files(self) -> str:
@@ -19,15 +19,15 @@ class BasicCpuEmitter:
             path.join(self._output_directory, self._cpp_filename)
         )
 
-    def write_files(self):
+    def write_files(self, ctx: SfgContext):
         jinja_context = {
-            'ctx': self._ctx,
+            'ctx': ctx,
             'basename': self._basename,
-            'root_namespace': self._ctx.root_namespace,
-            'public_includes': list(incl.get_code() for incl in self._ctx.includes() if not incl.private),
-            'private_includes': list(incl.get_code() for incl in self._ctx.includes() if incl.private),
-            'kernel_namespaces': list(self._ctx.kernel_namespaces()),
-            'functions': list(self._ctx.functions())
+            'root_namespace': ctx.root_namespace,
+            'public_includes': list(incl.get_code() for incl in ctx.includes() if not incl.private),
+            'private_includes': list(incl.get_code() for incl in ctx.includes() if incl.private),
+            'kernel_namespaces': list(ctx.kernel_namespaces()),
+            'functions': list(ctx.functions())
         }
 
         template_name = "BasicCpu"

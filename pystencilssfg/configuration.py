@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from typing import List, Sequence
 from enum import Enum, auto
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, replace, asdict, fields
 from argparse import ArgumentParser
 
 from jinja2.filters import do_indent
@@ -44,12 +46,17 @@ class SfgConfiguration:
         if self.header_only:
             raise SfgException(
                 "Header-only code generation is not implemented yet.")
-        
-        if self.header_extension[0] == '.':
+
+        if self.header_extension and self.header_extension[0] == '.':
             self.header_extension = self.header_extension[1:]
 
-        if self.source_extension[0] == '.':
+        if self.source_extension and self.source_extension[0] == '.':
             self.source_extension = self.source_extension[1:]
+
+    def override(self, other: SfgConfiguration):
+        other_dict = asdict(other)
+        other_dict = {k: v for k, v in other_dict.items() if v is not None}
+        return replace(self, **other_dict)
 
 
 DEFAULT_CONFIG = SfgConfiguration(
@@ -62,32 +69,11 @@ DEFAULT_CONFIG = SfgConfiguration(
 )
 
 
-def get_file_extensions(self, extensions: Sequence[str]):
-    h_ext = None
-    src_ext = None
-
-    extensions = ((ext[1:] if ext[0] == '.' else ext) for ext in extensions)
-
-    for ext in extensions:
-        if ext in HEADER_FILE_EXTENSIONS:
-            if h_ext is not None:
-                raise ValueError("Multiple header file extensions found.")
-            h_ext = ext
-        elif ext in SOURCE_FILE_EXTENSIONS:
-            if src_ext is not None:
-                raise ValueError("Multiple source file extensions found.")
-            src_ext = ext
-        else:
-            raise ValueError(f"Don't know how to interpret extension '.{ext}'")
-
-    return h_ext, src_ext
-
-
 def run_configurator(configurator_script: str):
     raise NotImplementedError()
 
 
-def config_from_commandline(self, argv: List[str]):
+def config_from_commandline(argv: List[str]):
     parser = ArgumentParser("pystencilssfg",
                             description="pystencils Source File Generator",
                             allow_abbrev=False)
@@ -109,7 +95,7 @@ def config_from_commandline(self, argv: List[str]):
         project_config = None
 
     if args.file_extensions is not None:
-        h_ext, src_ext = get_file_extensions(args.file_extensions)
+        h_ext, src_ext = _get_file_extensions(args.file_extensions)
     else:
         h_ext, src_ext = None, None
 
@@ -130,23 +116,44 @@ def merge_configurations(project_config: SfgConfiguration,
     config = DEFAULT_CONFIG
 
     if project_config is not None:
-        config = replace(DEFAULT_CONFIG, **(project_config.asdict()))
+        config = config.override(project_config)
 
     if cmdline_config is not None:
-        cmdline_dict = cmdline_config.asdict()
+        cmdline_dict = asdict(cmdline_config)
         #   Commandline config completely overrides project and default config
-        config = replace(config, **cmdline_dict)
+        config = config.override(cmdline_config)
     else:
         cmdline_dict = {}
 
     if script_config is not None:
         #   User config may only set values not specified on the command line
-        script_dict = script_config.asdict()
+        script_dict = asdict(script_config)
         for key, cmdline_value in cmdline_dict.items():
             if cmdline_value is not None and script_dict[key] is not None:
                 raise SfgException(
                     f"Conflicting configuration: Parameter {key} was specified both in the script and on the command line.")
 
-        config = replace(config, **script_dict)
+        config = config.override(script_config)
 
     return config
+
+
+def _get_file_extensions(extensions: Sequence[str]):
+    h_ext = None
+    src_ext = None
+
+    extensions = ((ext[1:] if ext[0] == '.' else ext) for ext in extensions)
+
+    for ext in extensions:
+        if ext in HEADER_FILE_EXTENSIONS:
+            if h_ext is not None:
+                raise ValueError("Multiple header file extensions found.")
+            h_ext = ext
+        elif ext in SOURCE_FILE_EXTENSIONS:
+            if src_ext is not None:
+                raise ValueError("Multiple source file extensions found.")
+            src_ext = ext
+        else:
+            raise ValueError(f"Don't know how to interpret extension '.{ext}'")
+
+    return h_ext, src_ext

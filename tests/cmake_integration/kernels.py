@@ -7,7 +7,7 @@ from pystencilssfg import SourceFileGenerator
 from pystencilssfg.source_concepts.cpp import std_mdspan
 
 
-with SourceFileGenerator("poisson") as sfg:
+with SourceFileGenerator() as sfg:
     src, dst = ps.fields("src, dst(1) : double[2D]")
 
     h = sp.Symbol('h')
