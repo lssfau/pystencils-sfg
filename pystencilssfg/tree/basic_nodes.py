@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Sequence, Set
+from typing import TYPE_CHECKING, Sequence, Set, Tuple
 
 from abc import ABC, abstractmethod
 from itertools import chain
@@ -15,15 +15,27 @@ if TYPE_CHECKING:
 
 class SfgCallTreeNode(ABC):
     """Base class for all nodes comprising SFG call trees. """
+    def __init__(self, *children: SfgCallTreeNode):
+        self._children = children
 
     @property
-    @abstractmethod
-    def children(self) -> Sequence[SfgCallTreeNode]:
-        pass
+    def children(self) -> Tuple[SfgCallTreeNode]:
+        return self._children
 
-    @abstractmethod
-    def replace_child(self, child_idx: int, node: SfgCallTreeNode) -> None:
-        pass
+    def child(self, idx: int) -> SfgCallTreeNode:
+        return self._children[idx]
+
+    @children.setter
+    def children(self, cs: Sequence[SfgCallTreeNode]) -> None:
+        if len(cs) != len(self._children):
+            raise ValueError("The number of child nodes must remain the same!")
+        self._children = list(cs)
+
+    def __getitem__(self, idx: int) -> SfgCallTreeNode:
+        return self._children[idx]
+
+    def __setitem__(self, idx: int, c: SfgCallTreeNode) -> None:
+        self._children[idx] = c
 
     @abstractmethod
     def get_code(self, ctx: SfgContext) -> str:
@@ -39,13 +51,6 @@ class SfgCallTreeNode(ABC):
 
 
 class SfgCallTreeLeaf(SfgCallTreeNode, ABC):
-
-    @property
-    def children(self) -> Sequence[SfgCallTreeNode]:
-        return ()
-
-    def replace_child(self, child_idx: int, node: SfgCallTreeNode) -> None:
-        raise SfgException("Leaf nodes have no children.")
 
     @property
     @abstractmethod
@@ -74,6 +79,8 @@ class SfgStatements(SfgCallTreeLeaf):
                  code_string: str,
                  defined_params: Sequence[TypedSymbolOrObject],
                  required_params: Sequence[TypedSymbolOrObject]):
+        super().__init__()
+
         self._code_string = code_string
 
         self._defined_params = set(defined_params)
@@ -102,14 +109,7 @@ class SfgStatements(SfgCallTreeLeaf):
 
 class SfgSequence(SfgCallTreeNode):
     def __init__(self, children: Sequence[SfgCallTreeNode]):
-        self._children = list(children)
-
-    @property
-    def children(self) -> Sequence[SfgCallTreeNode]:
-        return self._children
-
-    def replace_child(self, child_idx: int, node: SfgCallTreeNode) -> None:
-        self._children[child_idx] = node
+        super().__init__(*children)
 
     def get_code(self, ctx: SfgContext) -> str:
         return "\n".join(c.get_code(ctx) for c in self._children)
@@ -117,17 +117,11 @@ class SfgSequence(SfgCallTreeNode):
 
 class SfgBlock(SfgCallTreeNode):
     def __init__(self, subtree: SfgCallTreeNode):
-        super().__init__()
-        self._subtree = subtree
+        super().__init__(subtree)
 
     @property
-    def children(self) -> Sequence[SfgCallTreeNode]:
-        return [self._subtree]
-
-    def replace_child(self, child_idx: int, node: SfgCallTreeNode) -> None:
-        match child_idx:
-            case 0: self._subtree = node
-            case _: raise IndexError(f"Invalid child index: {child_idx}. SfgBlock has only a single child.")
+    def subtree(self) -> SfgCallTreeNode:
+        return self._children[0]
 
     def get_code(self, ctx: SfgContext) -> str:
         subtree_code = ctx.codestyle.indent(self._subtree.get_code(ctx))
@@ -137,6 +131,7 @@ class SfgBlock(SfgCallTreeNode):
 
 class SfgKernelCallNode(SfgCallTreeLeaf):
     def __init__(self, kernel_handle: SfgKernelHandle):
+        super().__init__()
         self._kernel_handle = kernel_handle
 
     @property

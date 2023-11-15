@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Sequence, Set
+from typing import TYPE_CHECKING, Set
 
 if TYPE_CHECKING:
     from ..context import SfgContext
@@ -25,15 +25,14 @@ class SfgDeferredNode(SfgCallTreeNode, ABC):
     because information required for their construction is not yet known.
     """
 
-    @property
-    def children(self) -> Sequence[SfgCallTreeNode]:
-        raise SfgException("Deferred nodes cannot be descended into; expand it first.")
+    class InvalidAccess:
+        def __get__(self):
+            raise SfgException("Invalid access into deferred node; deferred nodes must be expanded first.")
 
-    def replace_child(self, child_idx: int, node: SfgCallTreeNode) -> None:
-        raise SfgException("Deferred nodes do not have children.")
+    def __init__(self):
+        self._children = SfgDeferredNode.InvalidAccess
 
-    def get_code(self, ctx: SfgContext) -> str:
-        raise SfgException("Deferred nodes can not generate code; they need to be expanded first.")
+    get_code = InvalidAccess
 
     @abstractmethod
     def expand(self, ctx: SfgContext, *args, **kwargs) -> SfgCallTreeNode:

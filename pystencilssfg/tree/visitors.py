@@ -8,7 +8,7 @@ from pystencils.typing import TypedSymbol
 
 from .basic_nodes import SfgCallTreeNode, SfgCallTreeLeaf, SfgSequence, SfgStatements
 from .deferred_nodes import SfgParamCollectionDeferredNode
-
+from .dispatcher import visitor
 
 if TYPE_CHECKING:
     from ..context import SfgContext
@@ -17,14 +17,13 @@ if TYPE_CHECKING:
 class FlattenSequences():
     """Flattens any nested sequences occuring in a kernel call tree."""
 
+    @visitor
     def visit(self, node: SfgCallTreeNode) -> None:
-        if isinstance(node, SfgSequence):
-            return self._visit_SfgSequence(node)
-        else:
-            for c in node.children:
-                self.visit(c)
+        for c in node.children:
+            self.visit(c)
 
-    def _visit_SfgSequence(self, sequence: SfgSequence) -> None:
+    @visit.case(SfgSequence)
+    def sequence(self, sequence: SfgSequence) -> None:
         children_flattened = []
 
         def flatten(seq: SfgSequence):
@@ -61,18 +60,16 @@ class ExpandingParameterCollector():
 
         self._flattener = FlattenSequences()
 
+    @visitor
     def visit(self, node: SfgCallTreeNode) -> Set[TypedSymbol]:
-        if isinstance(node, SfgCallTreeLeaf):
-            return self._visit_SfgCallTreeLeaf(node)
-        elif isinstance(node, SfgSequence):
-            return self._visit_SfgSequence(node)
-        else:
-            return self._visit_branchingNode(node)
+        return self.branching_node(node)
 
-    def _visit_SfgCallTreeLeaf(self, leaf: SfgCallTreeLeaf) -> Set[TypedSymbol]:
+    @visit.case(SfgCallTreeLeaf)
+    def leaf(self, leaf: SfgCallTreeLeaf) -> Set[TypedSymbol]:
         return leaf.required_parameters
 
-    def _visit_SfgSequence(self, sequence: SfgSequence) -> Set[TypedSymbol]:
+    @visit.case(SfgSequence)
+    def sequence(self, sequence: SfgSequence) -> Set[TypedSymbol]:
         """
             Only in a sequence may parameters be defined and visible to subsequent nodes.
         """
@@ -99,7 +96,7 @@ class ExpandingParameterCollector():
 
         return params
 
-    def _visit_branchingNode(self, node: SfgCallTreeNode):
+    def branching_node(self, node: SfgCallTreeNode):
         """
             Each interior node that is not a sequence simply requires the union of all parameters
             required by its children.
@@ -113,18 +110,16 @@ class ParameterCollector():
     Requires that all sequences in the tree are flattened.
     """
 
+    @visitor
     def visit(self, node: SfgCallTreeNode) -> Set[TypedSymbol]:
-        if isinstance(node, SfgCallTreeLeaf):
-            return self._visit_SfgCallTreeLeaf(node)
-        elif isinstance(node, SfgSequence):
-            return self._visit_SfgSequence(node)
-        else:
-            return self._visit_branchingNode(node)
+        return self.branching_node(node)
 
-    def _visit_SfgCallTreeLeaf(self, leaf: SfgCallTreeLeaf) -> Set[TypedSymbol]:
+    @visit.case(SfgCallTreeLeaf)
+    def leaf(self, leaf: SfgCallTreeLeaf) -> Set[TypedSymbol]:
         return leaf.required_parameters
 
-    def _visit_SfgSequence(self, sequence: SfgSequence) -> Set[TypedSymbol]:
+    @visit.case(SfgSequence)
+    def sequence(self, sequence: SfgSequence) -> Set[TypedSymbol]:
         """
             Only in a sequence may parameters be defined and visible to subsequent nodes.
         """
@@ -138,7 +133,7 @@ class ParameterCollector():
             params |= self.visit(c)
         return params
 
-    def _visit_branchingNode(self, node: SfgCallTreeNode):
+    def branching_node(self, node: SfgCallTreeNode):
         """
             Each interior node that is not a sequence simply requires the union of all parameters
             required by its children.

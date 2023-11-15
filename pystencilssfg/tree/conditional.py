@@ -14,8 +14,10 @@ class SfgCondition(SfgCallTreeLeaf):
 
 class SfgCustomCondition(SfgCondition):
     def __init__(self, cond_text: str):
+        super().__init__()
         self._cond_text = cond_text
 
+    @property
     def required_parameters(self) -> Set[TypedSymbolOrObject]:
         return set()
 
@@ -32,31 +34,28 @@ class SfgBranch(SfgCallTreeNode):
                  cond: SfgCondition,
                  branch_true: SfgCallTreeNode,
                  branch_false: Optional[SfgCallTreeNode] = None):
-        self._cond = cond
-        self._branch_true = branch_true
-        self._branch_false = branch_false
+        super().__init__(cond, branch_true, *((branch_false,) if branch_false else ()))
 
     @property
-    def children(self) -> Sequence[SfgCallTreeNode]:
-        if self._branch_false is not None:
-            return (self._branch_true, self._branch_false)
-        else:
-            return (self._branch_true,)
+    def condition(self) -> SfgCondition:
+        return self._children[0]
 
-    def replace_child(self, child_idx: int, node: SfgCallTreeNode) -> None:
-        match child_idx:
-            case 0: self._branch_true = node
-            case 1: self._branch_false = node
-            case _: raise IndexError(f"Invalid child index: {child_idx}. SfgBlock has only two children.")
+    @property
+    def branch_true(self) -> SfgCallTreeNode:
+        return self._children[1]
+
+    @property
+    def branch_false(self) -> SfgCallTreeNode:
+        return self._children[2]
 
     def get_code(self, ctx: SfgContext) -> str:
-        code = f"if({self._cond.get_code(ctx)}) {{\n"
-        code += ctx.codestyle.indent(self._branch_true.get_code(ctx))
+        code = f"if({self.condition.get_code(ctx)}) {{\n"
+        code += ctx.codestyle.indent(self.branch_true.get_code(ctx))
         code += "\n}"
 
-        if self._branch_false is not None:
+        if self.branch_false is not None:
             code += "else {\n"
-            code += ctx.codestyle.indent(self._branch_false.get_code(ctx))
+            code += ctx.codestyle.indent(self.branch_false.get_code(ctx))
             code += "\n}"
 
         return code
