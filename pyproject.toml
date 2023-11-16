@@ -24,9 +24,14 @@ build-backend = "setuptools.build_meta"
 interactive = [
     "ipython>=8.17.2",
 ]
-dev = [
+code_quality = [
     "flake8>=6.1.0",
     "mypy>=1.7.0",
+]
+docs = [
+    "mkdocs>=1.5.3",
+    "mkdocs-material>=9.4.8",
+    "mkdocstrings[python]>=0.24.0",
 ]
 
 [tool.versioneer]
