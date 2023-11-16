@@ -16,14 +16,18 @@ if TYPE_CHECKING:
 
 
 class SfgComposer:
+    """Primary interface for constructing source files in pystencils-sfg."""
+    
     def __init__(self, ctx: SfgContext):
         self._ctx = ctx
 
     @property
     def kernels(self) -> SfgKernelNamespace:
+        """The default kernel namespace."""
         return self._ctx._default_kernel_namespace
 
     def kernel_namespace(self, name: str) -> SfgKernelNamespace:
+        """Returns the kernel namespace of the given name, creating it if it does not exist yet."""
         kns = self._ctx.get_kernel_namespace(name)
         if kns is None:
             kns = SfgKernelNamespace(self, name)
