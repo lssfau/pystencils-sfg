@@ -1,5 +1,4 @@
 set( PystencilsSfg_FOUND OFF CACHE BOOL "pystencils source file generator found" )
-set( PystencilsSfg_CONFIGURATOR_SCRIPT "" CACHE STRING "Configurator script for the pystencils source file generator" )
 
 mark_as_advanced( PystencilsSfg_FOUND )
 

@@ -1,9 +1,11 @@
 
-set(PSSFG_CONFIGURATOR_SCRIPT "" CACHE FILEPATH "Configurator script for the pystencils Source File Generator" )
+set(PystencilsSfg_CONFIGURATOR_SCRIPT "" CACHE FILEPATH "Configurator script for the pystencils Source File Generator" )
+set(PystencilsSfg_GENERATED_SOURCES_DIR "${CMAKE_BINARY_DIR}/sfg_sources" CACHE PATH "Output directory for genenerated sources" )
 
-set(PSSFG_GENERATED_SOURCES_DIR "${CMAKE_BINARY_DIR}/pystencils_generated_sources")
-file(MAKE_DIRECTORY "${PSSFG_GENERATED_SOURCES_DIR}")
-include_directories(${PSSFG_GENERATED_SOURCES_DIR})
+mark_as_advanced(PystencilsSfg_GENERATED_SOURCES_DIR)
+
+file(MAKE_DIRECTORY "${PystencilsSfg_GENERATED_SOURCES_DIR}")
+include_directories(${PystencilsSfg_GENERATED_SOURCES_DIR})
 
 
 function(_pssfg_add_gen_source target script)
@@ -13,7 +15,7 @@ function(_pssfg_add_gen_source target script)
 
     cmake_parse_arguments(_pssfg "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    set(generatedSourcesDir ${PSSFG_GENERATED_SOURCES_DIR}/gen/${target})
+    set(generatedSourcesDir ${PystencilsSfg_GENERATED_SOURCES_DIR}/${target})
     get_filename_component(basename ${script} NAME_WLE)
     cmake_path(ABSOLUTE_PATH script OUTPUT_VARIABLE scriptAbsolute)
 
@@ -46,16 +48,14 @@ function(pystencilssfg_generate_target_sources TARGET)
     set(multiValueArgs SCRIPTS DEPENDS FILE_EXTENSIONS)
     cmake_parse_arguments(_pssfg "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    set(generatedSourcesDir ${PSSFG_GENERATED_SOURCES_DIR}/gen/${_pssfg_TARGET})
-
     set(generatorArgs)
 
     if(_pssfg_HEADER_ONLY)
         list(APPEND generatorArgs "--sfg-header-only")
     endif()
 
-    if(NOT (PSSFG_CONFIGURATOR_SCRIPT STREQUAL ""))
-        list(APPEND generatorArgs "--sfg-configurator='${_pssfg_CONFIGURATOR_SCRIPT}'")
+    if(NOT (PystencilsSfg_CONFIGURATOR_SCRIPT STREQUAL ""))
+        list(APPEND generatorArgs "--sfg-configurator='${_PystencilsSfg_CONFIGURATOR_SCRIPT}'")
     endif()
 
     if(DEFINED _pssfg_FILE_EXTENSIONS)

@@ -12,6 +12,7 @@
 .pdm-python
 
 #   build artifacts
+dist
 *.tar.gz
 *.whl
 *.egg-info

@@ -13,6 +13,9 @@ readme = "README.md"
 license = {text = "noneyet"}
 dynamic = ["version"]
 
+[project.scripts]
+sfg-cli = "pystencilssfg.cli:cli_main"
+
 [build-system]
 requires = ["setuptools>=61", "versioneer>=0.29"]
 build-backend = "setuptools.build_meta"
