@@ -8,8 +8,7 @@ from pystencils.typing import FieldPointerSymbol, FieldShapeSymbol, FieldStrideS
 
 from ..exceptions import SfgException
 
-from .basic_nodes import SfgCallTreeNode
-from .builders import make_sequence
+from .basic_nodes import SfgCallTreeNode, SfgSequence
 
 from ..source_concepts import SrcField
 from ..source_concepts.source_objects import TypedSymbolOrObject
@@ -73,8 +72,12 @@ class SfgDeferredFieldMapping(SfgParamCollectionDeferredNode):
             else:
                 strides.append((c, s))
 
-        return make_sequence(
-            self._src_field.extract_ptr(ptr),
-            *(self._src_field.extract_size(c, s) for c, s in shape),
-            *(self._src_field.extract_stride(c, s) for c, s in strides)
-        )
+        nodes = []
+
+        if ptr is not None:
+            nodes += [self._src_field.extract_ptr(ptr)]
+
+        nodes += [self._src_field.extract_size(c, s) for c, s in shape]
+        nodes += [self._src_field.extract_stride(c, s) for c, s in strides]
+
+        return SfgSequence(nodes)

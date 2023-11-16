@@ -9,7 +9,7 @@ with SourceFileGenerator() as sfg:
 
     lb_ast_even = create_lb_ast(lbm_config=lb_config, timestep=Timestep.EVEN)
     lb_ast_even.function_name = "streamCollide_even"
-    
+
     lb_ast_odd = create_lb_ast(lbm_config=lb_config, timestep=Timestep.ODD)
     lb_ast_odd.function_name = "streamCollide_odd"
 

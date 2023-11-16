@@ -14,7 +14,7 @@ def field_t(field: ps.Field):
                       reference=True)
 
 
-with SourceFileGenerator("poisson") as sfg:
+with SourceFileGenerator() as sfg:
     src, dst = ps.fields("src, dst(1) : double[2D]")
 
     h = sp.Symbol('h')

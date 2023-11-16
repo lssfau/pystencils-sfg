@@ -6,7 +6,7 @@ from ...tree import SfgStatements
 from ..source_objects import SrcField, SrcVector
 from ..source_objects import TypedSymbolOrObject
 from ...types import SrcType, PsType, cpp_typename
-from ...source_components.header_include import SfgHeaderInclude
+from ...source_components import SfgHeaderInclude
 from ...exceptions import SfgException
 
 

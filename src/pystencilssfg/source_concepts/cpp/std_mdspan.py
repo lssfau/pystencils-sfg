@@ -4,7 +4,7 @@ from pystencils.typing import FieldPointerSymbol, FieldStrideSymbol, FieldShapeS
 
 from ...tree import SfgStatements
 from ..source_objects import SrcField
-from ...source_components.header_include import SfgHeaderInclude
+from ...source_components import SfgHeaderInclude
 from ...types import PsType, cpp_typename, SrcType
 from ...exceptions import SfgException
 

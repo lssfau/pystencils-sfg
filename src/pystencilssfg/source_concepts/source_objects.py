@@ -71,7 +71,7 @@ class SrcField(SrcObject, ABC):
     def extract_parameters(self, field: Field) -> SfgSequence:
         ptr = FieldPointerSymbol(field.name, field.dtype, False)
 
-        from ..tree import make_sequence
+        from ..composer import make_sequence
 
         return make_sequence(
             self.extract_ptr(ptr),

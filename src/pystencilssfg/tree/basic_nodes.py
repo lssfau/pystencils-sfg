@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Sequence
 from abc import ABC, abstractmethod
 from itertools import chain
 
-from ..kernel_namespace import SfgKernelHandle
+from ..source_components import SfgKernelHandle
 from ..source_concepts.source_objects import SrcObject, TypedSymbolOrObject
 
 if TYPE_CHECKING:

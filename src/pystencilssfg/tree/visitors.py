@@ -23,7 +23,7 @@ class FlattenSequences():
 
     @visit.case(SfgSequence)
     def sequence(self, sequence: SfgSequence) -> None:
-        children_flattened = []
+        children_flattened: list[SfgCallTreeNode] = []
 
         def flatten(seq: SfgSequence):
             for c in seq.children:
