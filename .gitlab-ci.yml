@@ -8,7 +8,7 @@ linter:
       - $ENABLE_NIGHTLY_BUILDS
   image: i10git.cs.fau.de:5005/pycodegen/pycodegen/full
   script:
-    - flake8 pystencilssfg
+    - flake8 src/pystencilssfg
   tags:
     - docker
 
@@ -20,6 +20,6 @@ typechecker:
   image: i10git.cs.fau.de:5005/pycodegen/pycodegen/full
   script:
     - pip install mypy
-    - mypy pystencilssfg 
+    - mypy src/pystencilssfg 
   tags:
     - docker

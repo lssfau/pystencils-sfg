@@ -21,8 +21,9 @@ build-backend = "setuptools.build_meta"
 interactive = [
     "ipython>=8.17.2",
 ]
-build = [
-    "versioneer>=0.29",
+dev = [
+    "flake8>=6.1.0",
+    "mypy>=1.7.0",
 ]
 
 [tool.versioneer]
