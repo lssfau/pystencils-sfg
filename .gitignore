@@ -5,3 +5,13 @@
 **/out
 **/generated_src
 **/build
+
+
+#   pdm dev environment
+**/.venv
+.pdm-python
+
+#   build artifacts
+*.tar.gz
+*.whl
+*.egg-info
