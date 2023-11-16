@@ -14,10 +14,21 @@ license = {text = "noneyet"}
 dynamic = ["version"]
 
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=61", "versioneer>=0.29"]
 build-backend = "setuptools.build_meta"
 
 [tool.pdm.dev-dependencies]
 interactive = [
     "ipython>=8.17.2",
 ]
+build = [
+    "versioneer>=0.29",
+]
+
+[tool.versioneer]
+VCS = "git"
+style = "pep440"
+versionfile_source = "src/pystencilssfg/_version.py"
+versionfile_build = "pystencilssfg/_version.py"
+tag_prefix = ""
+parentdir_prefix = "pystencilssfg-"

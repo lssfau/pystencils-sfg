@@ -2,10 +2,10 @@
 # It is not intended for manual editing.
 
 [metadata]
-groups = ["default", "interactive"]
+groups = ["default", "interactive", "build"]
 strategy = ["cross_platform"]
 lock_version = "4.4"
-content_hash = "sha256:18a18c0f0323d8f364bebbfcfd284e8e04d7bc38bbaea907669131b31192a07e"
+content_hash = "sha256:0dd5c2ad2f2500e295cb6f2740334c0a28068212daf448fd5e622e171bd55298"
 
 [[package]]
 name = "appdirs"
@@ -356,6 +356,16 @@ summary = "Traitlets Python configuration system"
 files = [
     {file = "traitlets-5.13.0-py3-none-any.whl", hash = "sha256:baf991e61542da48fe8aef8b779a9ea0aa38d8a54166ee250d5af5ecf4486619"},
     {file = "traitlets-5.13.0.tar.gz", hash = "sha256:9b232b9430c8f57288c1024b34a8f0251ddcc47268927367a0dd3eeaca40deb5"},
+]
+
+[[package]]
+name = "versioneer"
+version = "0.29"
+requires_python = ">=3.7"
+summary = "Easy VCS-based management of project version strings"
+files = [
+    {file = "versioneer-0.29-py3-none-any.whl", hash = "sha256:0f1a137bb5d6811e96a79bb0486798aeae9b9c6efc24b389659cebb0ee396cb9"},
+    {file = "versioneer-0.29.tar.gz", hash = "sha256:5ab283b9857211d61b53318b7c792cf68e798e765ee17c27ade9f6c924235731"},
 ]
 
 [[package]]
