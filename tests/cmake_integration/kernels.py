@@ -1,20 +1,20 @@
-import sympy as sp
-import numpy as np
+# type: ignore
 
-from pystencils.session import *
+import sympy as sp
+
+from pystencils import fields, kernel
 
 from pystencilssfg import SourceFileGenerator
-from pystencilssfg.source_concepts.cpp import std_mdspan
 
 
 with SourceFileGenerator() as sfg:
-    src, dst = ps.fields("src, dst(1) : double[2D]")
+    src, dst = fields("src, dst(1) : double[2D]")
 
     h = sp.Symbol('h')
 
-    @ps.kernel
+    @kernel
     def poisson_jacobi():
-        dst[0,0] @= (src[1, 0] + src[-1, 0] + src[0, 1] + src[0, -1]) / 4
+        dst[0, 0] @= (src[1, 0] + src[-1, 0] + src[0, 1] + src[0, -1]) / 4
 
     poisson_kernel = sfg.kernels.create(poisson_jacobi)
 
