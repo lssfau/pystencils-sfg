@@ -19,7 +19,7 @@ function(_pssfg_add_gen_source target script)
     get_filename_component(basename ${script} NAME_WLE)
     cmake_path(ABSOLUTE_PATH script OUTPUT_VARIABLE scriptAbsolute)
 
-    execute_process(COMMAND ${Python_EXECUTABLE} -m pystencilssfg list-files --format=cmake ${_pssfg_GENERATOR_ARGS} ${script}
+    execute_process(COMMAND ${Python_EXECUTABLE} -m pystencilssfg list-files "--sep=\;" --no-newline ${_pssfg_GENERATOR_ARGS} ${script}
                     OUTPUT_VARIABLE generatedSources RESULT_VARIABLE _pssfg_result
                     ERROR_VARIABLE _pssfg_stderr)
 

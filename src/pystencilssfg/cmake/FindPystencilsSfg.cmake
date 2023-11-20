@@ -6,7 +6,7 @@ find_package( Python COMPONENTS Interpreter REQUIRED )
 
 #   Try to find pystencils-sfg in the python environment
 
-execute_process(COMMAND ${Python_EXECUTABLE} -c "import pystencilssfg; print(pystencilssfg.__version__, end='')"
+execute_process(COMMAND ${Python_EXECUTABLE} -m pystencilssfg version --no-newline
                 RESULT_VARIABLE _PystencilsSfgFindResult OUTPUT_VARIABLE PystencilsSfg_VERSION )
 
 if(${_PystencilsSfgFindResult} EQUAL 0)
@@ -20,10 +20,10 @@ endif()
 if(${PystencilsSfg_FOUND})
     message( STATUS "Found pystencils Source File Generator (Version ${PystencilsSfg_VERSION})")
     
-    execute_process(COMMAND ${Python_EXECUTABLE} -c "from pystencilssfg.cmake import get_sfg_cmake_modulepath; print(get_sfg_cmake_modulepath(), end='')"
+    execute_process(COMMAND ${Python_EXECUTABLE} -m pystencilssfg cmake modulepath --no-newline
                     OUTPUT_VARIABLE _PystencilsSfg_CMAKE_MODULE_PATH)
 
     set( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${_PystencilsSfg_CMAKE_MODULE_PATH})
-    include( PystencilsSfgFunctions )
+    include( PystencilsSfg )
 endif()
 
