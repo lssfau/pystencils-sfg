@@ -20,7 +20,7 @@ clean:
 
 $(GEN_SRC)/kernels.cpp $(GEN_SRC)/kernels.h &: kernels.py
 	@$(dir_guard)
-	$(PYTHON) $< -d $(@D)
+	$(PYTHON) $< --sfg-output-dir $(@D)
 
 $(OBJ)/kernels.o: $(GEN_SRC)/kernels.cpp $(GEN_SRC)/kernels.h
 	@$(dir_guard)

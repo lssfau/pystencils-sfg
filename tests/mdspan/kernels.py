@@ -1,32 +1,23 @@
 import sympy as sp
-import numpy as np
 
-from pystencils.session import *
+from pystencils import fields, kernel
 
 from pystencilssfg import SourceFileGenerator
-from pystencilssfg.source_concepts.cpp import std_mdspan
-
-def field_t(field: ps.Field):
-    return std_mdspan(field.name,
-                      field.dtype,
-                      (std_mdspan.dynamic_extent, std_mdspan.dynamic_extent),
-                      extents_type=np.uint32,
-                      reference=True)
-
+from pystencilssfg.source_concepts.cpp import mdspan_ref
 
 with SourceFileGenerator() as sfg:
-    src, dst = ps.fields("src, dst(1) : double[2D]")
+    u_src, u_dst, f = fields("u_src, u_dst, f(1) : double[2D]", layout="fzyx")
+    h = sp.Symbol("h")
 
-    h = sp.Symbol('h')
-
-    @ps.kernel
+    @kernel
     def poisson_jacobi():
-        dst[0,0] @= (src[1, 0] + src[-1, 0] + src[0, 1] + src[0, -1]) / 4
+        u_dst[0,0] @= (h**2 * f[0, 0] * u_src[1, 0] + u_src[-1, 0] + u_src[0, 1] + u_src[0, -1]) / 4
 
     poisson_kernel = sfg.kernels.create(poisson_jacobi)
 
     sfg.function("jacobi_smooth")(
-        sfg.map_field(src, field_t(src)),
-        sfg.map_field(dst, field_t(dst)),
+        sfg.map_field(u_src, mdspan_ref(u_src)),
+        sfg.map_field(u_dst, mdspan_ref(u_dst)),
+        sfg.map_field(f, mdspan_ref(f)),
         sfg.call(poisson_kernel)
     )

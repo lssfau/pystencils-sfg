@@ -25,34 +25,38 @@ int main(int argc, char ** argv){
     std::vector< double > data_dst(N*N);
     field_t dst(data_dst.data(), N, N);
 
+    std::vector< double > data_f(N*N);
+    field_t f(data_f.data(), N, N);
+
     for(uint32_t i = 0; i < N; ++i){
         for(uint32_t j = 0; j < N; ++j){
             if(i == 0 || j == 0 || i == N-1 || j == N-1){
                 src[i, j] = boundary(double(i) * h, double(j) * h);
                 dst[i, j] = boundary(double(i) * h, double(j) * h);
+                f[i, j] = 0.0;
             }
         }
     }
     
     for(uint32_t i = 0; i < n_iters; ++i){
-        poisson::jacobi_smooth(dst, src);
+        jacobi_smooth(f, h, dst, src);
         std::swap(src, dst);
     }
 
-    std::ofstream f("data.out", std::ios::trunc | std::ios::out);
+    std::ofstream file("data.out", std::ios::trunc | std::ios::out);
 
-    if(!f.is_open()){
+    if(!file.is_open()){
         std::cerr << "Could not open output file.\n";
     } else {
         for(uint32_t i = 0; i < N; ++i){
             for(uint32_t j = 0; j < N; ++j){
-                f << src[i, j] << " ";
+                file << src[i, j] << " ";
             }
-            f << '\n';
+            file << '\n';
         }
     }
 
-    f.close();
+    file.close();
 
     return 0;
 }

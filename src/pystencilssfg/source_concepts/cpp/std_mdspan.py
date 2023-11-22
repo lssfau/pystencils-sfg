@@ -1,5 +1,8 @@
 from typing import Union
 
+import numpy as np
+
+from pystencils import Field
 from pystencils.typing import FieldPointerSymbol, FieldStrideSymbol, FieldShapeSymbol
 
 from ...tree import SfgStatements
@@ -9,7 +12,7 @@ from ...types import PsType, cpp_typename, SrcType
 from ...exceptions import SfgException
 
 
-class std_mdspan(SrcField):
+class StdMdspan(SrcField):
     dynamic_extent = "std::dynamic_extent"
 
     def __init__(self, identifer: str,
@@ -77,3 +80,25 @@ class std_mdspan(SrcField):
                 f"assert( {self._identifier}.stride({coordinate}) == {stride} );",
                 (), (self, )
             )
+
+
+def mdspan_ref(field: Field, extents_type: type = np.uint32):
+    """Creates a `std::mdspan &` for a given pystencils field."""
+    from pystencils.field import layout_string_to_tuple
+
+    if field.layout != layout_string_to_tuple("soa", field.spatial_dimensions):
+        raise NotImplementedError("mdspan mapping is currently only available for structure-of-arrays fields")
+
+    extents = []
+
+    for s in field.spatial_shape:
+        extents += StdMdspan.dynamic_extent if isinstance(s, FieldShapeSymbol) else s
+
+    if field.index_shape != (1,):
+        for s in field.index_shape:
+            extents += StdMdspan.dynamic_extent if isinstance(s, FieldShapeSymbol) else s
+
+    return StdMdspan(field.name, field.dtype,
+                     (StdMdspan.dynamic_extent, StdMdspan.dynamic_extent),
+                     extents_type=extents_type,
+                     reference=True)

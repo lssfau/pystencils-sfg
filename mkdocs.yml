@@ -1,7 +1,9 @@
 site_name: pystencils Source File Generator Documentation
 theme: 
   name: material
-  features: navigation.tabs
+  features: 
+    - navigation.tabs
+    - content.code.copy
   palette:
     scheme: slate
     primary: deep purple
@@ -27,6 +29,10 @@ plugins:
             show_signature_annotations: True
             signature_crossrefs: True
 
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences 
 
 nav:
   - Home: index.md
