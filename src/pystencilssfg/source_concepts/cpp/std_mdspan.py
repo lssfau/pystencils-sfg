@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, cast
 
 import numpy as np
 
@@ -17,7 +17,7 @@ class StdMdspan(SrcField):
 
     def __init__(self, identifer: str,
                  T: PsType,
-                 extents: tuple[int, str],
+                 extents: tuple[int | str, ...],
                  extents_type: PsType = int,
                  reference: bool = False):
         cpp_typestr = cpp_typename(T)
@@ -89,16 +89,16 @@ def mdspan_ref(field: Field, extents_type: type = np.uint32):
     if field.layout != layout_string_to_tuple("soa", field.spatial_dimensions):
         raise NotImplementedError("mdspan mapping is currently only available for structure-of-arrays fields")
 
-    extents = []
+    extents : list[str | int] = []
 
     for s in field.spatial_shape:
-        extents += StdMdspan.dynamic_extent if isinstance(s, FieldShapeSymbol) else s
+        extents.append(StdMdspan.dynamic_extent if isinstance(s, FieldShapeSymbol) else cast(int, s))
 
     if field.index_shape != (1,):
         for s in field.index_shape:
             extents += StdMdspan.dynamic_extent if isinstance(s, FieldShapeSymbol) else s
 
     return StdMdspan(field.name, field.dtype,
-                     (StdMdspan.dynamic_extent, StdMdspan.dynamic_extent),
+                     tuple(extents),
                      extents_type=extents_type,
                      reference=True)
