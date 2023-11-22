@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 class SfgComposer:
     """Primary interface for constructing source files in pystencils-sfg."""
-    
+
     def __init__(self, ctx: SfgContext):
         self._ctx = ctx
 

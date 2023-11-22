@@ -37,12 +37,14 @@ def cli_main(program='sfg-cli'):
     cmake_parser = subparsers.add_parser("cmake", help="Operations for CMake integation")
     cmake_subparsers = cmake_parser.add_subparsers(required=True)
 
-    modpath = cmake_subparsers.add_parser("modulepath", help="Print the include path for the pystencils-sfg cmake module")
+    modpath = cmake_subparsers.add_parser(
+        "modulepath", help="Print the include path for the pystencils-sfg cmake module")
     add_newline_arg(modpath)
     modpath.set_defaults(func=print_cmake_modulepath)
 
     findmod = cmake_subparsers.add_parser("make-find-module",
-                                          help="Creates the pystencils-sfg CMake find module as 'FindPystencilsSfg.cmake' in the current directory.")
+                                          help="Creates the pystencils-sfg CMake find module as" +
+                                          "'FindPystencilsSfg.cmake' in the current directory.")
     findmod.set_defaults(func=make_cmake_find_module)
 
     args = parser.parse_args()
