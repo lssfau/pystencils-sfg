@@ -89,7 +89,7 @@ def mdspan_ref(field: Field, extents_type: type = np.uint32):
     if field.layout != layout_string_to_tuple("soa", field.spatial_dimensions):
         raise NotImplementedError("mdspan mapping is currently only available for structure-of-arrays fields")
 
-    extents : list[str | int] = []
+    extents: list[str | int] = []
 
     for s in field.spatial_shape:
         extents.append(StdMdspan.dynamic_extent if isinstance(s, FieldShapeSymbol) else cast(int, s))
