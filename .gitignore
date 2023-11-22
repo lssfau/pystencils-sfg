@@ -16,3 +16,7 @@ dist
 *.tar.gz
 *.whl
 *.egg-info
+
+
+#   mkdocs
+site

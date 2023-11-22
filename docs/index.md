@@ -10,10 +10,10 @@ and your C/C++/Cuda/HIP framework.
 Clone the [repository](https://i10git.cs.fau.de/da15siwa/pystencils-sfg) and install the package into your current Python environment
 (usage of virtual environments is strongly encouraged!):
 
-```shell
-$ git clone https://i10git.cs.fau.de/da15siwa/pystencils-sfg.git
-$ cd pystencils-sfg
-$ pip install .
+```bash
+git clone https://i10git.cs.fau.de/da15siwa/pystencils-sfg.git
+cd pystencils-sfg
+pip install .
 ```
 
 ### From PyPI
@@ -55,7 +55,7 @@ with SourceFileGenerator() as sfg:
 Take this code, store it into a file `poisson_smoother.py`, and enter the magic words into a terminal:
 
 ```shell
-$ python poisson_smoother.py
+python poisson_smoother.py
 ```
 
 This command will execute the code generator through the `SourceFileGenerator` context manager.
