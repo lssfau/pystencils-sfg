@@ -2,7 +2,7 @@ from .generator import SourceFileGenerator
 from .composer import SfgComposer
 
 __all__ = [
-    "SourceFileGenerator", "SfgComposer",
+    "SourceFileGenerator", "SfgComposer"
 ]
 
 from . import _version

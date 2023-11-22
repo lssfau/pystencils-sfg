@@ -28,7 +28,7 @@ typechecker:
 
 build-documentation:
   stage: test
-  image: i10git.cs.fau.de:5005/pycodegen/pycodegen/documentation
+  image: i10git.cs.fau.de:5005/pycodegen/pycodegen/full
   script:
     - pip install mkdocs mkdocs-material mkdocstrings[python]
     - mkdocs build -v
