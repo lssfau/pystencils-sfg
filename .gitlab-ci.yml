@@ -31,7 +31,7 @@ build-documentation:
   image: i10git.cs.fau.de:5005/pycodegen/pycodegen/full
   script:
     - pip install mkdocs mkdocs-material mkdocstrings[python]
-    - mkdocs build -v
+    - mkdocs build
   tags:
     - docker
   artifacts:
