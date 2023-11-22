@@ -23,8 +23,8 @@ Not yet available.
 ## Primer
 
 With *pystencils-sfg*, including your *pystencils*-generated kernels with handwritten code becomes straightforward
-and intuitive. To illustrate, generating a Jacobi smoother for the two-dimensional Poisson equation,
-using the awesome C++23 `std::mdspan`, takes just a few lines of code:
+and intuitive. To illustrate, generating a Jacobi smoother for the two-dimensional Poisson equation
+and mapping it onto C++23 `std::mdspan`s takes just a few lines of code:
 
 ```python
 import sympy as sp
@@ -40,7 +40,7 @@ with SourceFileGenerator() as sfg:
 
     @kernel
     def poisson_jacobi():
-        u_dst[0,0] @= (h**2 * f[0, 0] * u_src[1, 0] + u_src[-1, 0] + u_src[0, 1] + u_src[0, -1]) / 4
+        u_dst[0,0] @= (h**2 * f[0, 0] + u_src[1, 0] + u_src[-1, 0] + u_src[0, 1] + u_src[0, -1]) / 4
 
     poisson_kernel = sfg.kernels.create(poisson_jacobi)
 
