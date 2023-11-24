@@ -1,8 +1,9 @@
+from .configuration import SfgConfiguration
 from .generator import SourceFileGenerator
 from .composer import SfgComposer
 
 __all__ = [
-    "SourceFileGenerator", "SfgComposer"
+    "SourceFileGenerator", "SfgComposer", "SfgConfiguration"
 ]
 
 from . import _version

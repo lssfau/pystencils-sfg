@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import sys
 from typing import Sequence, Any
+from os import path
 from enum import Enum, auto
 from dataclasses import dataclass, replace, asdict, InitVar
 from argparse import ArgumentParser
@@ -77,7 +79,7 @@ class SfgConfiguration:
 
     def override(self, other: SfgConfiguration):
         other_dict = asdict(other)
-        other_dict = {k: v for k, v in other_dict.items() if v is not None}
+        other_dict: dict[str, Any] = {k: v for k, v in other_dict.items() if v is not None}
         return replace(self, **other_dict)
 
 
@@ -93,13 +95,16 @@ DEFAULT_CONFIG = SfgConfiguration(
 
 
 def run_configurator(configurator_script: str):
-    cfg_spec = iutil.spec_from_file_location(configurator_script)
+    cfg_modulename = path.splitext(path.split(configurator_script)[1])[0]
+
+    cfg_spec = iutil.spec_from_file_location(cfg_modulename, configurator_script)
 
     if cfg_spec is None:
         raise SfgConfigException(SfgConfigSource.PROJECT,
                                  f"Unable to load configurator script {configurator_script}")
 
     configurator = iutil.module_from_spec(cfg_spec)
+    cfg_spec.loader.exec_module(configurator)
 
     if not hasattr(configurator, "sfg_config"):
         raise SfgConfigException(SfgConfigSource.PROJECT, "Project configurator does not define function `sfg_config`.")

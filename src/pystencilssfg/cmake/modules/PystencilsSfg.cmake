@@ -1,5 +1,4 @@
 
-set(PystencilsSfg_CONFIGURATOR_SCRIPT "" CACHE FILEPATH "Configurator script for the pystencils Source File Generator" )
 set(PystencilsSfg_GENERATED_SOURCES_DIR "${CMAKE_BINARY_DIR}/sfg_sources" CACHE PATH "Output directory for genenerated sources" )
 
 mark_as_advanced(PystencilsSfg_GENERATED_SOURCES_DIR)
@@ -19,7 +18,7 @@ function(_pssfg_add_gen_source target script)
     get_filename_component(basename ${script} NAME_WLE)
     cmake_path(ABSOLUTE_PATH script OUTPUT_VARIABLE scriptAbsolute)
 
-    execute_process(COMMAND ${Python_EXECUTABLE} -m pystencilssfg list-files "--sep=\;" --no-newline ${_pssfg_GENERATOR_ARGS} ${script}
+    execute_process(COMMAND ${Python_EXECUTABLE} -m pystencilssfg list-files "--sep=;" --no-newline ${_pssfg_GENERATOR_ARGS} ${script}
                     OUTPUT_VARIABLE generatedSources RESULT_VARIABLE _pssfg_result
                     ERROR_VARIABLE _pssfg_stderr)
 
@@ -29,7 +28,7 @@ function(_pssfg_add_gen_source target script)
 
     set(generatedSourcesAbsolute)
     foreach (filename ${generatedSources})
-        list(APPEND generatedSourcesAbsolute ${generatedSourcesDir}/${filename})
+        list(APPEND generatedSourcesAbsolute "${generatedSourcesDir}/${filename}")
     endforeach ()
 
     file(MAKE_DIRECTORY "${generatedSourcesDir}")
@@ -54,8 +53,9 @@ function(pystencilssfg_generate_target_sources TARGET)
         list(APPEND generatorArgs "--sfg-header-only")
     endif()
 
-    if(NOT (PystencilsSfg_CONFIGURATOR_SCRIPT STREQUAL ""))
-        list(APPEND generatorArgs "--sfg-configurator='${_PystencilsSfg_CONFIGURATOR_SCRIPT}'")
+    if(DEFINED PystencilsSfg_CONFIGURATOR_SCRIPT)
+        cmake_path(ABSOLUTE_PATH PystencilsSfg_CONFIGURATOR_SCRIPT OUTPUT_VARIABLE configscript)
+        list(APPEND generatorArgs "--sfg-configurator=${configscript}")
     endif()
 
     if(DEFINED _pssfg_FILE_EXTENSIONS)
