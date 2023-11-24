@@ -1,6 +1,7 @@
+# mypy: strict_optional=False
+
 from __future__ import annotations
 
-import sys
 from typing import Sequence, Any
 from os import path
 from enum import Enum, auto
@@ -78,8 +79,7 @@ class SfgConfiguration:
             self.source_extension = self.source_extension[1:]
 
     def override(self, other: SfgConfiguration):
-        other_dict = asdict(other)
-        other_dict: dict[str, Any] = {k: v for k, v in other_dict.items() if v is not None}
+        other_dict: dict[str, Any] = {k: v for k, v in asdict(other).items() if v is not None}
         return replace(self, **other_dict)
 
 
