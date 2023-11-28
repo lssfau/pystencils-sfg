@@ -84,11 +84,13 @@ def list_files(args):
 def print_cmake_modulepath(args):
     from .cmake import get_sfg_cmake_modulepath
     print(get_sfg_cmake_modulepath(), end=os.linesep if args.newline else '')
+    exit(0)
 
 
 def make_cmake_find_module(args):
     from .cmake import make_find_module
     make_find_module()
+    exit(0)
 
 
 def abort_with_config_exception(exception: SfgConfigException):
