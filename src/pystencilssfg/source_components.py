@@ -75,7 +75,7 @@ class SfgKernelNamespace:
     def create(self, assignments, name: str | None = None, config: CreateKernelConfig | None = None):
         if config is None:
             config = CreateKernelConfig()
-        
+
         if name is not None:
             if name in self._asts:
                 raise ValueError(f"Duplicate ASTs: An AST with name {name} already exists in namespace {self._name}")

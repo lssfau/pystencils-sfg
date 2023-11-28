@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Sequence
 from abc import ABC, abstractmethod
 
 from pystencils import Field
@@ -9,7 +9,7 @@ from .tree import SfgCallTreeNode, SfgKernelCallNode, SfgStatements, SfgSequence
 from .tree.deferred_nodes import SfgDeferredFieldMapping
 from .tree.conditional import SfgCondition, SfgCustomCondition, SfgBranch
 from .source_components import SfgFunction, SfgHeaderInclude, SfgKernelNamespace, SfgKernelHandle
-from .source_concepts import SrcField, TypedSymbolOrObject
+from .source_concepts import SrcField, TypedSymbolOrObject, SrcVector
 
 if TYPE_CHECKING:
     from .context import SfgContext
@@ -91,6 +91,11 @@ class SfgComposer:
 
     def map_param(self, lhs: TypedSymbolOrObject, rhs: TypedSymbolOrObject, mapping: str):
         return SfgStatements(mapping, (lhs,), (rhs,))
+
+    def map_vector(self, lhs_components: Sequence[TypedSymbolOrObject], rhs: SrcVector):
+        return make_sequence(*(
+            rhs.extract_component(dest, coord) for coord, dest in enumerate(lhs_components)
+        ))
 
 
 class SfgNodeBuilder(ABC):
