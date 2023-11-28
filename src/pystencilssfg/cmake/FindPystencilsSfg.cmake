@@ -13,8 +13,10 @@ if(${_PystencilsSfgFindResult} EQUAL 0)
     set( PystencilsSfg_FOUND ON )
 endif()
 
-if(${PystencilsSfg_FIND_REQUIRED} AND (NOT ${PystencilsSfg_FOUND}))
-    message( FATAL_ERROR "Could not find pystencils-sfg in current Python environment." )
+if(DEFINED PystencilsSfg_FIND_REQUIRED)
+    if(NOT ${PystencilsSfg_FOUND})
+        message( FATAL_ERROR "Could not find pystencils-sfg in current Python environment." )
+    endif()
 endif()
 
 if(${PystencilsSfg_FOUND})
