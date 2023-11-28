@@ -22,6 +22,10 @@ class SfgComposer:
         self._ctx = ctx
 
     @property
+    def context(self):
+        return self._ctx
+
+    @property
     def kernels(self) -> SfgKernelNamespace:
         """The default kernel namespace."""
         return self._ctx._default_kernel_namespace

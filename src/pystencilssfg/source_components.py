@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Sequence
+from dataclasses import replace
 
 from pystencils import CreateKernelConfig, create_kernel
 from pystencils.astnodes import KernelFunction
@@ -54,17 +55,32 @@ class SfgKernelNamespace:
     def asts(self):
         yield from self._asts.values()
 
-    def add(self, ast: KernelFunction):
+    def add(self, ast: KernelFunction, name: str | None = None):
         """Adds an existing pystencils AST to this namespace."""
-        astname = ast.function_name
+        if name is not None:
+            astname = name
+        else:
+            astname = ast.function_name
+
         if astname in self._asts:
             raise ValueError(f"Duplicate ASTs: An AST with name {astname} already exists in namespace {self._name}")
+
+        if name is not None:
+            ast.function_name = name
 
         self._asts[astname] = ast
 
         return SfgKernelHandle(self._ctx, astname, self, ast.get_parameters())
 
-    def create(self, assignments, config: CreateKernelConfig | None = None):
+    def create(self, assignments, name: str | None = None, config: CreateKernelConfig | None = None):
+        if config is None:
+            config = CreateKernelConfig()
+        
+        if name is not None:
+            if name in self._asts:
+                raise ValueError(f"Duplicate ASTs: An AST with name {name} already exists in namespace {self._name}")
+            config = replace(config, function_name=name)
+
         # type: ignore
         ast = create_kernel(assignments, config=config)
         return self.add(ast)

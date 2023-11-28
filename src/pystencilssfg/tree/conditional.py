@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Optional, cast
 
+from pystencils.typing import TypedSymbol, BasicType
+
 from .basic_nodes import SfgCallTreeNode, SfgCallTreeLeaf
 from ..source_concepts.source_objects import TypedSymbolOrObject
 
@@ -25,8 +27,36 @@ class SfgCustomCondition(SfgCondition):
         return self._cond_text
 
 
-# class IntEven(SfgCondition):
-#     def __init__(self, )
+class IntEven(SfgCondition):
+    def __init__(self, symbol: TypedSymbol):
+        super().__init__()
+        if not isinstance(symbol.dtype, BasicType) or not symbol.dtype.is_int():
+            raise ValueError(f"Symbol {symbol} does not have integer type.")
+
+        self._symbol = symbol
+
+    @property
+    def required_parameters(self) -> set[TypedSymbolOrObject]:
+        return {self._symbol}
+
+    def get_code(self, ctx: SfgContext) -> str:
+        return f"(({self._symbol.name} & 1) ^ 1)"
+
+
+class IntOdd(SfgCondition):
+    def __init__(self, symbol: TypedSymbol):
+        super().__init__()
+        if not isinstance(symbol.dtype, BasicType) or not symbol.dtype.is_int():
+            raise ValueError(f"Symbol {symbol} does not have integer type.")
+
+        self._symbol = symbol
+
+    @property
+    def required_parameters(self) -> set[TypedSymbolOrObject]:
+        return {self._symbol}
+
+    def get_code(self, ctx: SfgContext) -> str:
+        return f"({self._symbol.name} & 1)"
 
 
 class SfgBranch(SfgCallTreeNode):
