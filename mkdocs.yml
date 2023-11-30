@@ -36,7 +36,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - 'Usage Guide':
+  - 'User Guides':
     - 'Overview': usage/index.md
     - 'Writing Generator Scripts': usage/generator_scripts.md
     - 'In-Depth: Building Source Files': usage/building.md

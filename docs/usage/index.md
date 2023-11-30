@@ -1,3 +1,5 @@
+# User Guides
+
 These pages provide an overview of how to use the pystencils Source File Generator.
 A basic understanding of [pystencils](https://pycodegen.pages.i10git.cs.fau.de/pystencils/index.html)
 is required.
