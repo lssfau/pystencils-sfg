@@ -15,7 +15,7 @@ class SfgContext:
         self._code_namespace: str | None = None
 
         #   Source Components
-        self._prelude: list[str] = []
+        self._prelude: str = ""
         self._includes: set[SfgHeaderInclude] = set()
         self._definitions: list[str] = []
         self._kernel_namespaces = {self._default_kernel_namespace.name: self._default_kernel_namespace}
@@ -58,12 +58,19 @@ class SfgContext:
     #   Prelude, Includes, Definitions, Namespace
     # ----------------------------------------------------------------------------------------------
 
-    def prelude(self) -> Generator[str, None, None]:
+    @property
+    def prelude_comment(self) -> str:
         """The prelude is a comment block printed at the top of both generated files."""
-        yield from self._prelude
+        return self._prelude
 
     def append_to_prelude(self, code_str: str):
-        self._prelude.append(code_str)
+        if self._prelude:
+            self._prelude += "\n"
+
+        self._prelude += code_str
+
+        if not code_str.endswith("\n"):
+            self._prelude += "\n"
 
     def includes(self) -> Generator[SfgHeaderInclude, None, None]:
         """Includes of headers. Public includes are added to the header file, private includes

@@ -7,10 +7,9 @@ from os import path
 from enum import Enum, auto
 from dataclasses import dataclass, replace, asdict, InitVar
 from argparse import ArgumentParser
+from textwrap import indent
 
 from importlib import util as iutil
-
-from jinja2.filters import do_indent
 
 from .exceptions import SfgException
 
@@ -39,7 +38,8 @@ class SfgCodeStyle:
     indent_width: int = 2
 
     def indent(self, s: str):
-        return do_indent(s, self.indent_width, first=True)
+        prefix = " " * self.indent_width
+        return indent(s, prefix)
 
 
 @dataclass

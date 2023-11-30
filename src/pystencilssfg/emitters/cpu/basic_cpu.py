@@ -1,5 +1,6 @@
 from typing import cast
 from jinja2 import Environment, PackageLoader, StrictUndefined
+from textwrap import indent
 
 from os import path
 
@@ -59,13 +60,7 @@ class BasicCpuEmitter:
 
 
 def get_prelude_comment(ctx: SfgContext):
-    prelude_lines = []
-    for p in ctx.prelude():
-        prelude_lines += p.splitlines()
-        prelude_lines += [""]   # empty line in-between
-    prelude_lines = prelude_lines[:-1]
-
-    if not prelude_lines:
+    if not ctx.prelude_comment:
         return ""
 
-    return "\n".join(["/**"] + [f"* {line}" for line in prelude_lines] + ["*/"])
+    return "/*\n" + indent(ctx.prelude_comment, "* ", predicate=lambda _: True) + "*/\n"
