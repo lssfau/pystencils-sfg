@@ -20,14 +20,12 @@ SOURCE_FILE_EXTENSIONS = {'c', 'cpp'}
 class SfgConfigSource(Enum):
     DEFAULT = auto()
     PROJECT = auto()
-    COMMANDLINE = auto
+    COMMANDLINE = auto()
     SCRIPT = auto()
 
 
 class SfgConfigException(Exception):
     def __init__(self, cfg_src: SfgConfigSource | None, message: str):
-        assert cfg_src != SfgConfigSource.DEFAULT, "Invalid default config. Contact a developer."
-
         super().__init__(cfg_src, message)
         self.message = message
         self.config_source = cfg_src
