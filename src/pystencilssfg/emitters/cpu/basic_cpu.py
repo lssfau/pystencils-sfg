@@ -29,6 +29,8 @@ class BasicCpuEmitter:
             'header_filename': self._header_filename,
             'source_filename': self._source_filename,
             'basename': self._basename,
+            'prelude': get_prelude_comment(ctx),
+            'definitions': list(ctx.definitions()),
             'fq_namespace': fq_namespace,
             'public_includes': list(incl.get_code() for incl in ctx.includes() if not incl.private),
             'private_includes': list(incl.get_code() for incl in ctx.includes() if incl.private),
@@ -54,3 +56,16 @@ class BasicCpuEmitter:
 
         with open(path.join(self._output_directory, self._source_filename), 'w') as cppfile:
             cppfile.write(source)
+
+
+def get_prelude_comment(ctx: SfgContext):
+    prelude_lines = []
+    for p in ctx.prelude():
+        prelude_lines += p.splitlines()
+        prelude_lines += [""]   # empty line in-between
+    prelude_lines = prelude_lines[:-1]
+
+    if not prelude_lines:
+        return ""
+
+    return "\n".join(["/**"] + [f"* {line}" for line in prelude_lines] + ["*/"])

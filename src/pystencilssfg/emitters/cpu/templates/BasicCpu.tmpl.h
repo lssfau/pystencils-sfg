@@ -1,9 +1,15 @@
+{{ prelude }}
+
 #pragma once
 
 #include <cstdint>
 
 {% for incl in public_includes %}
 {{incl}}
+{% endfor %}
+
+{% for definition in definitions %}
+{{ definition }}
 {% endfor %}
 
 #define RESTRICT __restrict__

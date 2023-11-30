@@ -12,7 +12,7 @@ class SfgContext:
         self._config = config
         self._default_kernel_namespace = SfgKernelNamespace(self, "kernels")
 
-        self._code_namespace = None
+        self._code_namespace: str | None = None
 
         #   Source Components
         self._prelude: list[str] = []
@@ -58,10 +58,10 @@ class SfgContext:
     #   Prelude, Includes, Definitions, Namespace
     # ----------------------------------------------------------------------------------------------
 
-    def prelude_comments(self) -> Generator[str, None, None]:
+    def prelude(self) -> Generator[str, None, None]:
         """The prelude is a comment block printed at the top of both generated files."""
         yield from self._prelude
-    
+
     def append_to_prelude(self, code_str: str):
         self._prelude.append(code_str)
 
@@ -83,7 +83,7 @@ class SfgContext:
     def set_namespace(self, namespace: str):
         if self._code_namespace is not None:
             raise SfgException("The code namespace was already set.")
-        
+
         self._code_namespace = namespace
 
     # ----------------------------------------------------------------------------------------------

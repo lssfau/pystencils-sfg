@@ -24,7 +24,17 @@ class SfgComposer:
     @property
     def context(self):
         return self._ctx
-    
+
+    def prelude(self, content: str):
+        """Add a string to the code file's prelude.
+
+        Do not wrap the given string in comment syntax."""
+        self._ctx.append_to_prelude(content)
+
+    def define(self, definition: str):
+        """Add a custom definition to the generated header file."""
+        self._ctx.add_definition(definition)
+
     def namespace(self, namespace: str):
         """Set the inner code namespace. Throws an exception if a namespace was already set."""
         self._ctx.set_namespace(namespace)
