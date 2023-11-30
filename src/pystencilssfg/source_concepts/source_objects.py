@@ -82,5 +82,5 @@ class SrcField(SrcObject, ABC):
 
 class SrcVector(SrcObject, ABC):
     @abstractmethod
-    def extract_component(self, destination: TypedSymbolOrObject, coordinate: int):
+    def extract_component(self, destination: TypedSymbolOrObject, coordinate: int) -> SfgStatements:
         pass

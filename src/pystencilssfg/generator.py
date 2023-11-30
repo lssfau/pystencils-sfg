@@ -21,7 +21,7 @@ class SourceFileGenerator:
 
         config = merge_configurations(project_config, cmdline_config, sfg_config)
 
-        self._context = SfgContext(script_args, config)
+        self._context = SfgContext(config, argv=script_args)
 
         from .emitters.cpu.basic_cpu import BasicCpuEmitter
         self._emitter = BasicCpuEmitter(basename, config)

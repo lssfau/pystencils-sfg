@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Optional, Sequence
+from typing import TYPE_CHECKING, Sequence
 from abc import ABC, abstractmethod
 
 from pystencils import Field
@@ -27,7 +27,11 @@ class SfgComposer:
 
     @property
     def kernels(self) -> SfgKernelNamespace:
-        """The default kernel namespace."""
+        """The default kernel namespace. Add kernels like:
+        ```Python
+        sfg.kernels.add(ast, "kernel_name")
+        sfg.kernels.create(assignments, "kernel_name", config)
+        ```"""
         return self._ctx._default_kernel_namespace
 
     def kernel_namespace(self, name: str) -> SfgKernelNamespace:
@@ -63,6 +67,16 @@ class SfgComposer:
         self._ctx.add_function(func)
 
     def function(self, name: str):
+        """Add a function.
+
+        The syntax of this function adder uses a chain of two calls to mimic C++ syntax:
+
+        ```Python
+        sfg.function("FunctionName")(
+            # Function Body
+        )
+        ```
+        """
         if self._ctx.get_function(name) is not None:
             raise ValueError(f"Function {name} already exists.")
 
@@ -74,6 +88,11 @@ class SfgComposer:
         return sequencer
 
     def call(self, kernel_handle: SfgKernelHandle) -> SfgKernelCallNode:
+        """Use inside a function body to generate a kernel call.
+
+        Args:
+            kernel_handle: Handle to a kernel previously added to some kernel namespace.
+        """
         return SfgKernelCallNode(kernel_handle)
 
     def seq(self, *args: SfgCallTreeNode) -> SfgSequence:
@@ -81,18 +100,36 @@ class SfgComposer:
 
     @property
     def branch(self) -> SfgBranchBuilder:
+        """Use inside a function body to create an if/else conditonal branch.
+
+        The syntax is:
+        ```Python
+        sfg.branch("condition")(
+            # then-body
+        )(
+            # else-body (may be omitted)
+        )
+        ```
+        """
         return SfgBranchBuilder()
 
-    def map_field(self, field: Field, src_object: Optional[SrcField] = None) -> SfgDeferredFieldMapping:
-        if src_object is None:
-            raise NotImplementedError("Automatic field extraction is not implemented yet.")
-        else:
-            return SfgDeferredFieldMapping(field, src_object)
+    def map_field(self, field: Field, src_object: SrcField) -> SfgDeferredFieldMapping:
+        """Map a pystencils field to a field data structure, from which pointers, sizes
+        and strides should be extracted.
+
+        Args:
+            field: The pystencils field to be mapped
+            src_object: A `SrcField` object representing a field data structure.
+        """
+        return SfgDeferredFieldMapping(field, src_object)
 
     def map_param(self, lhs: TypedSymbolOrObject, rhs: TypedSymbolOrObject, mapping: str):
+        """Arbitrary parameter mapping: Add a single line of code to define a left-hand
+        side object from a right-hand side."""
         return SfgStatements(mapping, (lhs,), (rhs,))
 
     def map_vector(self, lhs_components: Sequence[TypedSymbolOrObject], rhs: SrcVector):
+        """Extracts scalar numerical values from a vector data type."""
         return make_sequence(*(
             rhs.extract_component(dest, coord) for coord, dest in enumerate(lhs_components)
         ))

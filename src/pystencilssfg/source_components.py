@@ -56,7 +56,8 @@ class SfgKernelNamespace:
         yield from self._asts.values()
 
     def add(self, ast: KernelFunction, name: str | None = None):
-        """Adds an existing pystencils AST to this namespace."""
+        """Adds an existing pystencils AST to this namespace.
+        If a name is specified, the AST's function name is changed."""
         if name is not None:
             astname = name
         else:
@@ -73,6 +74,14 @@ class SfgKernelNamespace:
         return SfgKernelHandle(self._ctx, astname, self, ast.get_parameters())
 
     def create(self, assignments, name: str | None = None, config: CreateKernelConfig | None = None):
+        """Creates a new pystencils kernel from a list of assignments and a configuration.
+        This is a wrapper around
+        [`pystencils.create_kernel`](
+            https://pycodegen.pages.i10git.cs.fau.de/pystencils/
+            sphinx/kernel_compile_and_call.html#pystencils.create_kernel
+        )
+        with a subsequent call to [`add`][pystencilssfg.source_components.SfgKernelNamespace.add].
+        """
         if config is None:
             config = CreateKernelConfig()
 

@@ -36,6 +36,11 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - 'Usage Guide':
+    - 'Overview': usage/index.md
+    - 'Writing Generator Scripts': usage/generator_scripts.md
+    - 'In-Depth: Building Source Files': usage/building.md
+    - 'CLI and Build System Integration': usage/cli.md
   - 'API Documentation':
     - 'Overview': api/index.md
     - 'Source File Generator Front-End': api/frontend.md

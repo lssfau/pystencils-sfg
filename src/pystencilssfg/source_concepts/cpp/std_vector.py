@@ -59,7 +59,7 @@ class std_vector(SrcVector, SrcField):
         else:
             return SfgStatements(f"assert( 1 == {stride} );", (), ())
 
-    def extract_component(self, destination: TypedSymbolOrObject, coordinate: int):
+    def extract_component(self, destination: TypedSymbolOrObject, coordinate: int) -> SfgStatements:
         if self._unsafe:
             mapping = f"{destination.dtype} {destination.name} = {self._identifier}[{coordinate}];"
         else:

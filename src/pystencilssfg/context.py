@@ -3,10 +3,11 @@ from typing import Generator, Sequence
 from .configuration import SfgConfiguration, SfgCodeStyle
 from .tree.visitors import CollectIncludes
 from .source_components import SfgHeaderInclude, SfgKernelNamespace, SfgFunction
+from .exceptions import SfgException
 
 
 class SfgContext:
-    def __init__(self, argv, config: SfgConfiguration):
+    def __init__(self, config: SfgConfiguration, argv: Sequence[str] | None = None):
         self._argv = argv
         self._config = config
         self._default_kernel_namespace = SfgKernelNamespace(self, "kernels")
@@ -20,6 +21,13 @@ class SfgContext:
 
     @property
     def argv(self) -> Sequence[str]:
+        """If this context was created by a `pystencilssfg.SourceFileGenerator`, provides the command
+        line arguments given to the generator script, with configuration arguments for the code generator
+        stripped away.
+
+        Otherwise, throws an exception."""
+        if self._argv is None:
+            raise SfgException("This context provides no command-line arguments.")
         return self._argv
 
     @property
