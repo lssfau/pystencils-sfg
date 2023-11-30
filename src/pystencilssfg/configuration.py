@@ -55,7 +55,7 @@ class SfgConfiguration:
     header_only: bool | None = None
     """If set to `True`, generate only a header file without accompaning source file."""
 
-    base_namespace: str | None = None
+    outer_namespace: str | None = None
     """The outermost namespace in the generated file. May be a valid C++ nested namespace qualifier
     (like `a::b::c`) or `None` if no outer namespace should be generated."""
 
@@ -88,7 +88,7 @@ DEFAULT_CONFIG = SfgConfiguration(
     header_extension='h',
     source_extension='cpp',
     header_only=False,
-    base_namespace=None,
+    outer_namespace=None,
     codestyle=SfgCodeStyle(),
     output_directory=""
 )

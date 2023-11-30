@@ -24,6 +24,10 @@ class SfgComposer:
     @property
     def context(self):
         return self._ctx
+    
+    def namespace(self, namespace: str):
+        """Set the inner code namespace. Throws an exception if a namespace was already set."""
+        self._ctx.set_namespace(namespace)
 
     @property
     def kernels(self) -> SfgKernelNamespace:

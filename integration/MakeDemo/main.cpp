@@ -39,7 +39,7 @@ int main(int argc, char ** argv){
     }
     
     for(uint32_t i = 0; i < n_iters; ++i){
-        jacobi_smooth(f, h, dst, src);
+        make_demo::jacobi::jacobi_smooth(f, h, dst, src);
         std::swap(src, dst);
     }
 

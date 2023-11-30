@@ -15,7 +15,9 @@ class SfgContext:
         self._code_namespace = None
 
         #   Source Components
+        self._prelude: list[str] = []
         self._includes: set[SfgHeaderInclude] = set()
+        self._definitions: list[str] = []
         self._kernel_namespaces = {self._default_kernel_namespace.name: self._default_kernel_namespace}
         self._functions: dict[str, SfgFunction] = dict()
 
@@ -31,8 +33,8 @@ class SfgContext:
         return self._argv
 
     @property
-    def root_namespace(self) -> str | None:
-        return self._config.base_namespace
+    def outer_namespace(self) -> str | None:
+        return self._config.outer_namespace
 
     @property
     def inner_namespace(self) -> str | None:
@@ -40,7 +42,7 @@ class SfgContext:
 
     @property
     def fully_qualified_namespace(self) -> str | None:
-        match (self.root_namespace, self.inner_namespace):
+        match (self.outer_namespace, self.inner_namespace):
             case None, None: return None
             case outer, None: return outer
             case None, inner: return inner
@@ -53,14 +55,36 @@ class SfgContext:
         return self._config.codestyle
 
     # ----------------------------------------------------------------------------------------------
-    #   Kernel Namespaces
+    #   Prelude, Includes, Definitions, Namespace
     # ----------------------------------------------------------------------------------------------
 
+    def prelude_comments(self) -> Generator[str, None, None]:
+        """The prelude is a comment block printed at the top of both generated files."""
+        yield from self._prelude
+    
+    def append_to_prelude(self, code_str: str):
+        self._prelude.append(code_str)
+
     def includes(self) -> Generator[SfgHeaderInclude, None, None]:
+        """Includes of headers. Public includes are added to the header file, private includes
+        are added to the implementation file."""
         yield from self._includes
 
     def add_include(self, include: SfgHeaderInclude):
         self._includes.add(include)
+
+    def definitions(self) -> Generator[str, None, None]:
+        """Definitions are code lines printed at the top of the header file, after the includes."""
+        yield from self._definitions
+
+    def add_definition(self, definition: str):
+        self._definitions.append(definition)
+
+    def set_namespace(self, namespace: str):
+        if self._code_namespace is not None:
+            raise SfgException("The code namespace was already set.")
+        
+        self._code_namespace = namespace
 
     # ----------------------------------------------------------------------------------------------
     #   Kernel Namespaces

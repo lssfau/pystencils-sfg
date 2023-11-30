@@ -11,6 +11,6 @@ def sfg_config():
     return SfgConfiguration(
         header_extension='hpp',
         source_extension='cpp',
-        base_namespace='cmake_demo',
+        outer_namespace='cmake_demo',
         project_info=project_info
     )

@@ -1,11 +1,19 @@
+# type: ignore
+
 import sympy as sp
 
 from pystencils import fields, kernel
 
-from pystencilssfg import SourceFileGenerator
+from pystencilssfg import SourceFileGenerator, SfgConfiguration
 from pystencilssfg.source_concepts.cpp import mdspan_ref
 
-with SourceFileGenerator() as sfg:
+sfg_config = SfgConfiguration(
+    outer_namespace="make_demo"
+)
+
+with SourceFileGenerator(sfg_config) as sfg:
+    sfg.namespace("jacobi")
+
     u_src, u_dst, f = fields("u_src, u_dst, f(1) : double[2D]", layout="fzyx")
     h = sp.Symbol("h")
 
