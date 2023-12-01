@@ -5,6 +5,8 @@ from os import path, makedirs
 from ..configuration import SfgOutputSpec
 from ..context import SfgContext
 
+from .clang_format import invoke_clang_format
+
 
 class HeaderSourcePairEmitter:
     def __init__(self, output_spec: SfgOutputSpec):
@@ -52,6 +54,9 @@ class HeaderSourcePairEmitter:
 
         header = env.get_template(f"{template_name}.tmpl.h").render(**jinja_context)
         source = env.get_template(f"{template_name}.tmpl.cpp").render(**jinja_context)
+
+        header = invoke_clang_format(header, ctx.codestyle)
+        source = invoke_clang_format(source, ctx.codestyle)
 
         makedirs(self._output_directory, exist_ok=True)
 

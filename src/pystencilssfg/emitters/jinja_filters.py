@@ -6,7 +6,7 @@ from pystencils import Backend
 from pystencils.backends import generate_c
 
 from pystencilssfg.source_components import SfgFunction, SfgClass
-from .classes_printing import ClassDeclarationPrinter
+from .class_declaration import ClassDeclarationPrinter
 
 
 def format_prelude_comment(prelude_comment: str):

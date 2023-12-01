@@ -34,7 +34,7 @@ from __future__ import annotations
 from typing import Sequence, Any
 from os import path
 from enum import Enum, auto
-from dataclasses import dataclass, replace, asdict, InitVar
+from dataclasses import dataclass, replace, fields, InitVar
 from argparse import ArgumentParser
 from textwrap import indent
 
@@ -69,6 +69,9 @@ class SfgCodeStyle:
 
     force_clang_format: bool = False
     """If set to True, abort code generation if `clang-format` binary cannot be found."""
+
+    clang_format_binary: str = "clang-format"
+    """Path to the clang-format executable"""
 
     def indent(self, s: str):
         prefix = " " * self.indent_width
@@ -143,7 +146,7 @@ class SfgConfiguration:
             self.impl_extension = self.impl_extension[1:]
 
     def override(self, other: SfgConfiguration):
-        other_dict: dict[str, Any] = {k: v for k, v in asdict(other).items() if v is not None}
+        other_dict: dict[str, Any] = {k: v for k, v in _shallow_dict(other).items() if v is not None}
         return replace(self, **other_dict)
 
     def get_output_spec(self, basename: str) -> SfgOutputSpec:
@@ -254,7 +257,7 @@ def merge_configurations(project_config: SfgConfiguration | None,
         config = config.override(project_config)
 
     if cmdline_config is not None:
-        cmdline_dict = asdict(cmdline_config)
+        cmdline_dict = _shallow_dict(cmdline_config)
         #   Commandline config completely overrides project and default config
         config = config.override(cmdline_config)
     else:
@@ -262,7 +265,7 @@ def merge_configurations(project_config: SfgConfiguration | None,
 
     if script_config is not None:
         #   User config may only set values not specified on the command line
-        script_dict = asdict(script_config)
+        script_dict = _shallow_dict(script_config)
         for key, cmdline_value in cmdline_dict.items():
             if cmdline_value is not None and script_dict[key] is not None:
                 raise SfgException(
@@ -293,3 +296,9 @@ def _get_file_extensions(cfgsrc: SfgConfigSource, extensions: Sequence[str]):
             raise SfgConfigException(cfgsrc, f"Don't know how to interpret file extension '.{ext}'")
 
     return h_ext, src_ext
+
+
+def _shallow_dict(obj):
+    """Workaround to create a shallow dict of a dataclass object, see
+    https://docs.python.org/3/library/dataclasses.html#dataclasses.asdict."""
+    return dict((field.name, getattr(obj, field.name)) for field in fields(obj))
