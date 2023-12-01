@@ -1,0 +1,20 @@
+#!/bin/bash
+
+echo "[Pre-Commit] Checking code style"
+pdm run flake8 src/pystencilssfg
+status=$?
+
+if [ ${status} != 0 ]; then
+    exit 1
+else
+    echo "[Pre-Commit] Style OK!"
+fi
+
+echo "[Pre-Commit] Checking types"
+pdm run mypy src/pystencilssfg
+status=$?
+if [ ${status} != 0 ]; then
+    exit 1
+else
+    echo "[Pre-Commit] Types OK!"
+fi
