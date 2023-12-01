@@ -72,9 +72,12 @@ def list_files(args):
     _, scriptname = path.split(args.codegen_script)
     basename = path.splitext(scriptname)[0]
 
-    from .emitters.cpu.basic_cpu import BasicCpuEmitter
+    from .emitters import HeaderSourcePairEmitter
 
-    emitter = BasicCpuEmitter(basename, config)
+    emitter = HeaderSourcePairEmitter(basename,
+                                      config.header_extension,
+                                      config.source_extension,
+                                      config.output_directory)
 
     print(args.sep.join(emitter.output_files), end=os.linesep if args.newline else '')
 

@@ -1,18 +1,23 @@
 from typing import Generator, Sequence
 
-from .configuration import SfgConfiguration, SfgCodeStyle
+from .configuration import SfgCodeStyle
 from .tree.visitors import CollectIncludes
 from .source_components import SfgHeaderInclude, SfgKernelNamespace, SfgFunction
 from .exceptions import SfgException
 
 
 class SfgContext:
-    def __init__(self, config: SfgConfiguration, argv: Sequence[str] | None = None):
+    def __init__(self,
+                 outer_namespace: str | None = None,
+                 codestyle: SfgCodeStyle = SfgCodeStyle(),
+                 argv: Sequence[str] | None = None):
         self._argv = argv
-        self._config = config
         self._default_kernel_namespace = SfgKernelNamespace(self, "kernels")
 
-        self._code_namespace: str | None = None
+        self._outer_namespace = outer_namespace
+        self._inner_namespace: str | None = None
+
+        self._codestyle = codestyle
 
         #   Source Components
         self._prelude: str = ""
@@ -34,11 +39,11 @@ class SfgContext:
 
     @property
     def outer_namespace(self) -> str | None:
-        return self._config.outer_namespace
+        return self._outer_namespace
 
     @property
     def inner_namespace(self) -> str | None:
-        return self._code_namespace
+        return self._inner_namespace
 
     @property
     def fully_qualified_namespace(self) -> str | None:
@@ -51,8 +56,7 @@ class SfgContext:
 
     @property
     def codestyle(self) -> SfgCodeStyle:
-        assert self._config.codestyle is not None
-        return self._config.codestyle
+        return self._codestyle
 
     # ----------------------------------------------------------------------------------------------
     #   Prelude, Includes, Definitions, Namespace
@@ -88,10 +92,10 @@ class SfgContext:
         self._definitions.append(definition)
 
     def set_namespace(self, namespace: str):
-        if self._code_namespace is not None:
+        if self._inner_namespace is not None:
             raise SfgException("The code namespace was already set.")
 
-        self._code_namespace = namespace
+        self._inner_namespace = namespace
 
     # ----------------------------------------------------------------------------------------------
     #   Kernel Namespaces

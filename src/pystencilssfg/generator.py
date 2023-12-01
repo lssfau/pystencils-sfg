@@ -1,3 +1,6 @@
+# TODO
+# mypy strict_optional=False
+
 import sys
 import os
 from os import path
@@ -21,10 +24,13 @@ class SourceFileGenerator:
 
         config = merge_configurations(project_config, cmdline_config, sfg_config)
 
-        self._context = SfgContext(config, argv=script_args)
+        self._context = SfgContext(config.outer_namespace, config.codestyle, argv=script_args)
 
-        from .emitters.cpu.basic_cpu import BasicCpuEmitter
-        self._emitter = BasicCpuEmitter(basename, config)
+        from .emitters import HeaderSourcePairEmitter
+        self._emitter = HeaderSourcePairEmitter(basename,
+                                                config.header_extension,
+                                                config.source_extension,
+                                                config.output_directory)
 
     def clean_files(self):
         for file in self._emitter.output_files:

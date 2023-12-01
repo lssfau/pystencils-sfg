@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union, TypeAlias
+from typing import TYPE_CHECKING, Union, TypeAlias
 
 from abc import ABC, abstractmethod
 
@@ -19,7 +19,7 @@ class SrcObject:
 
     Two objects are identical if they have the same identifier and type string."""
 
-    def __init__(self, src_type: SrcType, identifier: Optional[str]):
+    def __init__(self, src_type: SrcType, identifier: str):
         self._src_type = src_type
         self._identifier = identifier
 
@@ -28,7 +28,7 @@ class SrcObject:
         return self._identifier
 
     @property
-    def name(self):
+    def name(self) -> str:
         """For interface compatibility with ps.TypedSymbol"""
         return self._identifier
 
@@ -53,7 +53,7 @@ TypedSymbolOrObject: TypeAlias = Union[TypedSymbol, SrcObject]
 
 
 class SrcField(SrcObject, ABC):
-    def __init__(self, src_type: SrcType, identifier: Optional[str]):
+    def __init__(self, src_type: SrcType, identifier: str):
         super().__init__(src_type, identifier)
 
     @abstractmethod

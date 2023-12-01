@@ -4,16 +4,19 @@ from textwrap import indent
 
 from os import path
 
-from ...configuration import SfgConfiguration
-from ...context import SfgContext
+from ..context import SfgContext
 
 
-class BasicCpuEmitter:
-    def __init__(self, basename: str, config: SfgConfiguration):
+class HeaderSourcePairEmitter:
+    def __init__(self,
+                 basename: str,
+                 header_extension: str,
+                 impl_extension: str,
+                 output_directory: str):
         self._basename = basename
-        self._output_directory = cast(str, config.output_directory)
-        self._header_filename = f"{basename}.{config.header_extension}"
-        self._source_filename = f"{basename}.{config.source_extension}"
+        self._output_directory = cast(str, output_directory)
+        self._header_filename = f"{basename}.{header_extension}"
+        self._source_filename = f"{basename}.{impl_extension}"
 
     @property
     def output_files(self) -> tuple[str, str]:
@@ -39,9 +42,9 @@ class BasicCpuEmitter:
             'functions': list(ctx.functions())
         }
 
-        template_name = "BasicCpu"
+        template_name = "HeaderSourcePair"
 
-        env = Environment(loader=PackageLoader('pystencilssfg.emitters.cpu'),
+        env = Environment(loader=PackageLoader('pystencilssfg.emitters'),
                           undefined=StrictUndefined,
                           trim_blocks=True,
                           lstrip_blocks=True)
