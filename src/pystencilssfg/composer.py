@@ -5,10 +5,22 @@ from abc import ABC, abstractmethod
 from pystencils import Field
 from pystencils.astnodes import KernelFunction
 
-from .tree import SfgCallTreeNode, SfgKernelCallNode, SfgStatements, SfgSequence, SfgBlock
+from .tree import (
+    SfgCallTreeNode,
+    SfgKernelCallNode,
+    SfgStatements,
+    SfgFunctionParams,
+    SfgSequence,
+    SfgBlock,
+)
 from .tree.deferred_nodes import SfgDeferredFieldMapping
 from .tree.conditional import SfgCondition, SfgCustomCondition, SfgBranch
-from .source_components import SfgFunction, SfgHeaderInclude, SfgKernelNamespace, SfgKernelHandle
+from .source_components import (
+    SfgFunction,
+    SfgHeaderInclude,
+    SfgKernelNamespace,
+    SfgKernelHandle,
+)
 from .source_concepts import SrcField, TypedSymbolOrObject, SrcVector
 
 if TYPE_CHECKING:
@@ -63,9 +75,18 @@ class SfgComposer:
             header_file = header_file[1:-1]
             system_header = True
 
-        self._ctx.add_include(SfgHeaderInclude(header_file, system_header=system_header))
+        self._ctx.add_include(
+            SfgHeaderInclude(header_file, system_header=system_header)
+        )
 
-    def kernel_function(self, name: str, ast_or_kernel_handle: KernelFunction | SfgKernelHandle):
+    def kernel_function(
+        self, name: str, ast_or_kernel_handle: KernelFunction | SfgKernelHandle
+    ):
+        """Creates a function comprising just a single kernel call.
+
+        Args:
+            ast_or_kernel_handle: Either a pystencils AST, or a kernel handle for an already registered AST.
+        """
         if self._ctx.get_function(name) is not None:
             raise ValueError(f"Function {name} already exists.")
 
@@ -90,6 +111,9 @@ class SfgComposer:
             # Function Body
         )
         ```
+
+        The function body is constructed via sequencing;
+        refer to [make_sequence][pystencilssfg.composer.make_sequence].
         """
         if self._ctx.get_function(name) is not None:
             raise ValueError(f"Function {name} already exists.")
@@ -110,7 +134,12 @@ class SfgComposer:
         return SfgKernelCallNode(kernel_handle)
 
     def seq(self, *args: SfgCallTreeNode) -> SfgSequence:
+        """Syntax sequencing. For details, refer to [make_sequence][pystencilssfg.composer.make_sequence]"""
         return make_sequence(*args)
+
+    def params(self, *args: TypedSymbolOrObject) -> SfgFunctionParams:
+        """Use inside a function body to add parameters to the function."""
+        return SfgFunctionParams(args)
 
     @property
     def branch(self) -> SfgBranchBuilder:
@@ -137,16 +166,21 @@ class SfgComposer:
         """
         return SfgDeferredFieldMapping(field, src_object)
 
-    def map_param(self, lhs: TypedSymbolOrObject, rhs: TypedSymbolOrObject, mapping: str):
+    def map_param(
+        self, lhs: TypedSymbolOrObject, rhs: TypedSymbolOrObject, mapping: str
+    ):
         """Arbitrary parameter mapping: Add a single line of code to define a left-hand
         side object from a right-hand side."""
         return SfgStatements(mapping, (lhs,), (rhs,))
 
     def map_vector(self, lhs_components: Sequence[TypedSymbolOrObject], rhs: SrcVector):
         """Extracts scalar numerical values from a vector data type."""
-        return make_sequence(*(
-            rhs.extract_component(dest, coord) for coord, dest in enumerate(lhs_components)
-        ))
+        return make_sequence(
+            *(
+                rhs.extract_component(dest, coord)
+                for coord, dest in enumerate(lhs_components)
+            )
+        )
 
 
 class SfgNodeBuilder(ABC):
@@ -156,6 +190,53 @@ class SfgNodeBuilder(ABC):
 
 
 def make_sequence(*args: tuple | str | SfgCallTreeNode | SfgNodeBuilder) -> SfgSequence:
+    """Construct a sequence of C++ code from various kinds of arguments.
+
+    `make_sequence` is ubiquitous throughout the function building front-end;
+    among others, it powers the syntax of
+    [SfgComposer.function][pystencilssfg.SfgComposer.function] and
+    [SfgComposer.branch][pystencilssfg.SfgComposer.branch].
+
+    `make_sequence` constructs an abstract syntax tree for code within a function body, accepting various
+    types of arguments which then get turned into C++ code. These are:
+
+     - Strings (`str`) are printed as-is
+     - Tuples (`tuple`) signify *blocks*, i.e. C++ code regions enclosed in `{ }`
+     - Sub-ASTs and AST builders, which are often produced by the syntactic sugar and
+       factory methods of [SfgComposer][pystencilssfg.SfgComposer].
+
+    Its usage is best shown by example:
+
+    ```Python
+    tree = make_sequence(
+        "int a = 0;",
+        "int b = 1;",
+        (
+            "int tmp = b;",
+            "b = a;",
+            "a = tmp;"
+        ),
+        SfgKernelCall(kernel_handle)
+    )
+
+    sfg.context.add_function("myFunction", tree)
+    ```
+
+    will translate to
+
+    ```C++
+    void myFunction() {
+        int a = 0;
+        int b = 0;
+        {
+            int tmp = b;
+            b = a;
+            a = tmp;
+        }
+        kernels::kernel( ... );
+    }
+    ```
+    """
     children = []
     for i, arg in enumerate(args):
         if isinstance(arg, SfgNodeBuilder):
@@ -186,7 +267,9 @@ class SfgBranchBuilder(SfgNodeBuilder):
         match self._phase:
             case 0:  # Condition
                 if len(args) != 1:
-                    raise ValueError("Must specify exactly one argument as branch condition!")
+                    raise ValueError(
+                        "Must specify exactly one argument as branch condition!"
+                    )
 
                 cond = args[0]
 
@@ -194,7 +277,8 @@ class SfgBranchBuilder(SfgNodeBuilder):
                     cond = SfgCustomCondition(cond)
                 elif not isinstance(cond, SfgCondition):
                     raise ValueError(
-                        "Invalid type for branch condition. Must be either `str` or a subclass of `SfgCondition`.")
+                        "Invalid type for branch condition. Must be either `str` or a subclass of `SfgCondition`."
+                    )
 
                 self._cond = cond
 

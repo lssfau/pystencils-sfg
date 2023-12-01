@@ -13,7 +13,8 @@ if TYPE_CHECKING:
 
 
 class SfgCallTreeNode(ABC):
-    """Base class for all nodes comprising SFG call trees. """
+    """Base class for all nodes comprising SFG call trees."""
+
     def __init__(self, *children: SfgCallTreeNode):
         self._children = list(children)
 
@@ -45,15 +46,15 @@ class SfgCallTreeNode(ABC):
 
     @property
     def required_includes(self) -> set[SfgHeaderInclude]:
+        """Return a set of header includes required by this node"""
         return set()
 
 
 class SfgCallTreeLeaf(SfgCallTreeNode, ABC):
-
     @property
     @abstractmethod
     def required_parameters(self) -> set[TypedSymbolOrObject]:
-        pass
+        ...
 
 
 class SfgStatements(SfgCallTreeLeaf):
@@ -73,10 +74,12 @@ class SfgStatements(SfgCallTreeLeaf):
         required_objects: Objects (as `SrcObject` or `TypedSymbol`) that are required as input to these statements.
     """
 
-    def __init__(self,
-                 code_string: str,
-                 defined_params: Sequence[TypedSymbolOrObject],
-                 required_params: Sequence[TypedSymbolOrObject]):
+    def __init__(
+        self,
+        code_string: str,
+        defined_params: Sequence[TypedSymbolOrObject],
+        required_params: Sequence[TypedSymbolOrObject],
+    ):
         super().__init__()
 
         self._code_string = code_string
@@ -103,6 +106,28 @@ class SfgStatements(SfgCallTreeLeaf):
 
     def get_code(self, ctx: SfgContext) -> str:
         return self._code_string
+
+
+class SfgFunctionParams(SfgCallTreeLeaf):
+    def __init__(self, parameters: Sequence[TypedSymbolOrObject]):
+        super().__init__()
+        self._params = set(parameters)
+
+        self._required_includes = set()
+        for obj in parameters:
+            if isinstance(obj, SrcObject):
+                self._required_includes |= obj.required_includes
+
+    @property
+    def required_parameters(self) -> set[TypedSymbolOrObject]:
+        return self._params
+
+    @property
+    def required_includes(self) -> set[SfgHeaderInclude]:
+        return self._required_includes
+
+    def get_code(self, ctx: SfgContext) -> str:
+        return ""
 
 
 class SfgSequence(SfgCallTreeNode):
