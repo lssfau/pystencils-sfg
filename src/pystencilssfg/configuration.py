@@ -14,7 +14,7 @@ from importlib import util as iutil
 from .exceptions import SfgException
 
 HEADER_FILE_EXTENSIONS = {'h', 'hpp'}
-SOURCE_FILE_EXTENSIONS = {'c', 'cpp'}
+IMPL_FILE_EXTENSIONS = {'c', 'cpp', '.impl.h'}
 
 
 class SfgConfigSource(Enum):
@@ -35,9 +35,46 @@ class SfgConfigException(Exception):
 class SfgCodeStyle:
     indent_width: int = 2
 
+    code_style: str = "LLVM"
+    """Code style to be used by clang-format. Passed verbatim to `--style` argument of the clang-format CLI."""
+
+    force_clang_format: bool = False
+    """If set to True, abort code generation if `clang-format` binary cannot be found."""
+
     def indent(self, s: str):
         prefix = " " * self.indent_width
         return indent(s, prefix)
+
+
+@dataclass
+class SfgOutputSpec:
+    """Name and path specification for files output by the code generator.
+
+    Filenames are constructed as `<output_directory>/<basename>.<extension>`."""
+
+    output_directory: str
+    """Directory to which the generated files should be written."""
+
+    basename: str
+    """Base name for output files."""
+
+    header_extension: str
+    """File extension for generated header file."""
+
+    impl_extension: str
+    """File extension for generated implementation file."""
+
+    def get_header_filename(self):
+        return f"{self.basename}.{self.header_extension}"
+
+    def get_impl_filename(self):
+        return f"{self.basename}.{self.impl_extension}"
+
+    def get_header_filepath(self):
+        return path.join(self.output_directory, self.get_header_filename())
+
+    def get_impl_filepath(self):
+        return path.join(self.output_directory, self.get_impl_filename())
 
 
 @dataclass
@@ -45,10 +82,10 @@ class SfgConfiguration:
     config_source: InitVar[SfgConfigSource | None] = None
 
     header_extension: str | None = None
-    """File extension for generated header files."""
+    """File extension for generated header file."""
 
-    source_extension: str | None = None
-    """File extension for generated source files."""
+    impl_extension: str | None = None
+    """File extension for generated implementation file."""
 
     header_only: bool | None = None
     """If set to `True`, generate only a header file without accompaning source file."""
@@ -73,22 +110,34 @@ class SfgConfiguration:
         if self.header_extension and self.header_extension[0] == '.':
             self.header_extension = self.header_extension[1:]
 
-        if self.source_extension and self.source_extension[0] == '.':
-            self.source_extension = self.source_extension[1:]
+        if self.impl_extension and self.impl_extension[0] == '.':
+            self.impl_extension = self.impl_extension[1:]
 
     def override(self, other: SfgConfiguration):
         other_dict: dict[str, Any] = {k: v for k, v in asdict(other).items() if v is not None}
         return replace(self, **other_dict)
 
+    def get_output_spec(self, basename: str) -> SfgOutputSpec:
+        assert self.header_extension is not None
+        assert self.impl_extension is not None
+        assert self.output_directory is not None
+
+        return SfgOutputSpec(
+            self.output_directory,
+            basename,
+            self.header_extension,
+            self.impl_extension
+        )
+
 
 DEFAULT_CONFIG = SfgConfiguration(
     config_source=SfgConfigSource.DEFAULT,
     header_extension='h',
-    source_extension='cpp',
+    impl_extension='cpp',
     header_only=False,
     outer_namespace=None,
     codestyle=SfgCodeStyle(),
-    output_directory=""
+    output_directory="."
 )
 
 
@@ -145,7 +194,7 @@ def config_from_parser_args(args):
     cmdline_config = SfgConfiguration(
         config_source=SfgConfigSource.COMMANDLINE,
         header_extension=h_ext,
-        source_extension=src_ext,
+        impl_extension=src_ext,
         header_only=args.header_only,
         output_directory=args.output_directory
     )
@@ -207,7 +256,7 @@ def _get_file_extensions(cfgsrc: SfgConfigSource, extensions: Sequence[str]):
             if h_ext is not None:
                 raise SfgConfigException(cfgsrc, "Multiple header file extensions specified.")
             h_ext = ext
-        elif ext in SOURCE_FILE_EXTENSIONS:
+        elif ext in IMPL_FILE_EXTENSIONS:
             if src_ext is not None:
                 raise SfgConfigException(cfgsrc, "Multiple source file extensions specified.")
             src_ext = ext

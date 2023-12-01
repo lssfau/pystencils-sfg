@@ -27,10 +27,7 @@ class SourceFileGenerator:
         self._context = SfgContext(config.outer_namespace, config.codestyle, argv=script_args)
 
         from .emitters import HeaderSourcePairEmitter
-        self._emitter = HeaderSourcePairEmitter(basename,
-                                                config.header_extension,
-                                                config.source_extension,
-                                                config.output_directory)
+        self._emitter = HeaderSourcePairEmitter(config.get_output_spec(basename))
 
     def clean_files(self):
         for file in self._emitter.output_files:

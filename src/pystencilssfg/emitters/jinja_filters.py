@@ -1,10 +1,18 @@
 from jinja2 import pass_context
+from textwrap import indent
 
 from pystencils.astnodes import KernelFunction
 from pystencils import Backend
 from pystencils.backends import generate_c
 
 from pystencilssfg.source_components import SfgFunction
+
+
+def format_prelude_comment(prelude_comment: str):
+    if not prelude_comment:
+        return ""
+
+    return "/*\n" + indent(prelude_comment, "* ", predicate=lambda _: True) + "*/\n"
 
 
 @pass_context
@@ -23,6 +31,7 @@ def generate_function_body(func: SfgFunction):
 
 
 def add_filters_to_jinja(jinja_env):
+    jinja_env.filters['format_prelude_comment'] = format_prelude_comment
     jinja_env.filters['generate_kernel_definition'] = generate_kernel_definition
     jinja_env.filters['generate_function_parameter_list'] = generate_function_parameter_list
     jinja_env.filters['generate_function_body'] = generate_function_body

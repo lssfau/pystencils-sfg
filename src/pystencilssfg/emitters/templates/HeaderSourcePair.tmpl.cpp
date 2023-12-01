@@ -1,4 +1,4 @@
-{{ prelude }}
+{{ prelude_comment | format_prelude_comment }}
 
 #include "{{header_filename}}"
 

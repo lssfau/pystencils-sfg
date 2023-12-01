@@ -1,28 +1,25 @@
-from typing import cast
 from jinja2 import Environment, PackageLoader, StrictUndefined
-from textwrap import indent
 
 from os import path
 
+from ..configuration import SfgOutputSpec
 from ..context import SfgContext
 
 
 class HeaderSourcePairEmitter:
-    def __init__(self,
-                 basename: str,
-                 header_extension: str,
-                 impl_extension: str,
-                 output_directory: str):
-        self._basename = basename
-        self._output_directory = cast(str, output_directory)
-        self._header_filename = f"{basename}.{header_extension}"
-        self._source_filename = f"{basename}.{impl_extension}"
+    def __init__(self, output_spec: SfgOutputSpec):
+        self._basename = output_spec.basename
+        self._output_directory = output_spec.output_directory
+        self._header_filename = output_spec.get_header_filename()
+        self._impl_filename = output_spec.get_impl_filename()
+
+        self._ospec = output_spec
 
     @property
     def output_files(self) -> tuple[str, str]:
         return (
             path.join(self._output_directory, self._header_filename),
-            path.join(self._output_directory, self._source_filename)
+            path.join(self._output_directory, self._impl_filename)
         )
 
     def write_files(self, ctx: SfgContext):
@@ -31,9 +28,9 @@ class HeaderSourcePairEmitter:
         jinja_context = {
             'ctx': ctx,
             'header_filename': self._header_filename,
-            'source_filename': self._source_filename,
+            'source_filename': self._impl_filename,
             'basename': self._basename,
-            'prelude': get_prelude_comment(ctx),
+            'prelude_comment': ctx.prelude_comment,
             'definitions': list(ctx.definitions()),
             'fq_namespace': fq_namespace,
             'public_includes': list(incl.get_code() for incl in ctx.includes() if not incl.private),
@@ -55,15 +52,8 @@ class HeaderSourcePairEmitter:
         header = env.get_template(f"{template_name}.tmpl.h").render(**jinja_context)
         source = env.get_template(f"{template_name}.tmpl.cpp").render(**jinja_context)
 
-        with open(path.join(self._output_directory, self._header_filename), 'w') as headerfile:
+        with open(self._ospec.get_header_filepath(), 'w') as headerfile:
             headerfile.write(header)
 
-        with open(path.join(self._output_directory, self._source_filename), 'w') as cppfile:
+        with open(self._ospec.get_impl_filepath(), 'w') as cppfile:
             cppfile.write(source)
-
-
-def get_prelude_comment(ctx: SfgContext):
-    if not ctx.prelude_comment:
-        return ""
-
-    return "/*\n" + indent(ctx.prelude_comment, "* ", predicate=lambda _: True) + "*/\n"
