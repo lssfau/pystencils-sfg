@@ -232,7 +232,7 @@ class SfgMemberVariable(SrcObject, SfgClassMember):
         self,
         name: str,
         type: SrcType,
-        visibility: SfgVisibility = SfgVisibility.DEFAULT,
+        visibility: SfgVisibility = SfgVisibility.PRIVATE,
     ):
         SrcObject.__init__(self, type, name)
         SfgClassMember.__init__(self, visibility)
@@ -243,7 +243,7 @@ class SfgMethod(SfgFunction, SfgClassMember):
         self,
         name: str,
         tree: SfgCallTreeNode,
-        visibility: SfgVisibility = SfgVisibility.DEFAULT,
+        visibility: SfgVisibility = SfgVisibility.PUBLIC,
     ):
         SfgFunction.__init__(self, name, tree)
         SfgClassMember.__init__(self, visibility)
@@ -255,7 +255,7 @@ class SfgConstructor(SfgClassMember):
         parameters: Sequence[SrcObject] = (),
         initializers: Sequence[str] = (),
         body: str = "",
-        visibility: SfgVisibility = SfgVisibility.DEFAULT,
+        visibility: SfgVisibility = SfgVisibility.PUBLIC,
     ):
         SfgClassMember.__init__(self, visibility)
         self._parameters = tuple(parameters)

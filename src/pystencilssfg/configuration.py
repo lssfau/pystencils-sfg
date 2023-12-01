@@ -10,7 +10,8 @@ They take precedence in the following way:
 
  - Project configuration overrides the default configuration
  - Command line arguments override the project configuration
- - User configuration overrides all, but must not conflict with command-line arguments; otherwise, an error is thrown.
+ - User configuration overrides default and project configuration,
+   and must not conflict with command-line arguments; otherwise, an error is thrown.
 
 ### Project Configuration via Configurator Script
 
@@ -21,7 +22,10 @@ A configurator module is a Python file defining the following function at the to
 from pystencilssfg import SfgConfiguration
 
 def sfg_config() -> SfgConfiguration:
-    ...
+    # ...
+    return SfgConfiguration(
+        # ...
+    )
 ```
 
 The configuration module is passed to the code generation script via the command-line argument
