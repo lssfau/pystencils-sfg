@@ -38,8 +38,8 @@ class SfgDeferredNode(SfgCallTreeNode, ABC):
 
 class SfgParamCollectionDeferredNode(SfgDeferredNode, ABC):
     @abstractmethod
-    def expand(self, ctx: SfgContext, visible_params: set[TypedSymbolOrObject]) -> SfgCallTreeNode:
-        pass
+    def expand(self, visible_params: set[TypedSymbolOrObject]) -> SfgCallTreeNode:
+        ...
 
 
 class SfgDeferredFieldMapping(SfgParamCollectionDeferredNode):
@@ -47,7 +47,7 @@ class SfgDeferredFieldMapping(SfgParamCollectionDeferredNode):
         self._field = field
         self._src_field = src_field
 
-    def expand(self, ctx: SfgContext, visible_params: set[TypedSymbolOrObject]) -> SfgCallTreeNode:
+    def expand(self, visible_params: set[TypedSymbolOrObject]) -> SfgCallTreeNode:
         #    Find field pointer
         ptr = None
         for param in visible_params:

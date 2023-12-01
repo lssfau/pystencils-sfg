@@ -1,6 +1,6 @@
 from jinja2 import Environment, PackageLoader, StrictUndefined
 
-from os import path
+from os import path, makedirs
 
 from ..configuration import SfgOutputSpec
 from ..context import SfgContext
@@ -31,12 +31,13 @@ class HeaderSourcePairEmitter:
             'source_filename': self._impl_filename,
             'basename': self._basename,
             'prelude_comment': ctx.prelude_comment,
-            'definitions': list(ctx.definitions()),
+            'definitions': tuple(ctx.definitions()),
             'fq_namespace': fq_namespace,
-            'public_includes': list(incl.get_code() for incl in ctx.includes() if not incl.private),
-            'private_includes': list(incl.get_code() for incl in ctx.includes() if incl.private),
-            'kernel_namespaces': list(ctx.kernel_namespaces()),
-            'functions': list(ctx.functions())
+            'public_includes': tuple(incl.get_code() for incl in ctx.includes() if not incl.private),
+            'private_includes': tuple(incl.get_code() for incl in ctx.includes() if incl.private),
+            'kernel_namespaces': tuple(ctx.kernel_namespaces()),
+            'functions': tuple(ctx.functions()),
+            'classes': tuple(ctx.classes())
         }
 
         template_name = "HeaderSourcePair"
@@ -51,6 +52,8 @@ class HeaderSourcePairEmitter:
 
         header = env.get_template(f"{template_name}.tmpl.h").render(**jinja_context)
         source = env.get_template(f"{template_name}.tmpl.cpp").render(**jinja_context)
+
+        makedirs(self._output_directory, exist_ok=True)
 
         with open(self._ospec.get_header_filepath(), 'w') as headerfile:
             headerfile.write(header)

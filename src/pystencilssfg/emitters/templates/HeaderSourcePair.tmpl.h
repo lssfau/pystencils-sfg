@@ -18,6 +18,10 @@
 namespace {{fq_namespace}} {
 {% endif %}
 
+{% for cls in classes %}
+{{ cls | print_class_declaration }}
+{% endfor %}
+
 {% for function in functions %}
 void {{ function.name }} ( {{ function | generate_function_parameter_list }} );
 {% endfor %}

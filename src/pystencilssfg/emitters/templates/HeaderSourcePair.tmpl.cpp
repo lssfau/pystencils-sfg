@@ -31,12 +31,26 @@ namespace {{ kns.name }} {
 *************************************************************************************/
 
 {% for function in functions %}
-
 void {{ function.name }} ( {{ function | generate_function_parameter_list }} ) { 
-  {{ function | generate_function_body | indent(2) }}
+  {{ function | generate_function_body | indent(ctx.codestyle.indent_width) }}
 }
 
+
+{% endfor -%}
+
+/*************************************************************************************
+ *                                Class Methods
+*************************************************************************************/
+
+{% for cls in classes %}
+{% for method in cls.methods() %}
+void {{ cls.class_name }}::{{ method.name }} ( {{ method | generate_function_parameter_list }} ) { 
+  {{ method | generate_function_body | indent(ctx.codestyle.indent_width) }}
+}
+
+
 {% endfor %}
+{% endfor -%}
 
 {% if fq_namespace is not none %}
 } // namespace {{fq_namespace}}

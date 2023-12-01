@@ -77,7 +77,7 @@ class SfgComposer:
         else:
             raise TypeError("Invalid type of argument `ast_or_kernel_handle`!")
 
-        func = SfgFunction(self._ctx, name, tree)
+        func = SfgFunction(name, tree)
         self._ctx.add_function(func)
 
     def function(self, name: str):
@@ -96,7 +96,7 @@ class SfgComposer:
 
         def sequencer(*args: str | tuple | SfgCallTreeNode | SfgNodeBuilder):
             tree = make_sequence(*args)
-            func = SfgFunction(self._ctx, name, tree)
+            func = SfgFunction(name, tree)
             self._ctx.add_function(func)
 
         return sequencer

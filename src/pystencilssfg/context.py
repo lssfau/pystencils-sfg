@@ -1,16 +1,23 @@
 from typing import Generator, Sequence
 
 from .configuration import SfgCodeStyle
-from .tree.visitors import CollectIncludes
-from .source_components import SfgHeaderInclude, SfgKernelNamespace, SfgFunction
+from .visitors import CollectIncludes
+from .source_components import (
+    SfgHeaderInclude,
+    SfgKernelNamespace,
+    SfgFunction,
+    SfgClass,
+)
 from .exceptions import SfgException
 
 
 class SfgContext:
-    def __init__(self,
-                 outer_namespace: str | None = None,
-                 codestyle: SfgCodeStyle = SfgCodeStyle(),
-                 argv: Sequence[str] | None = None):
+    def __init__(
+        self,
+        outer_namespace: str | None = None,
+        codestyle: SfgCodeStyle = SfgCodeStyle(),
+        argv: Sequence[str] | None = None,
+    ):
         self._argv = argv
         self._default_kernel_namespace = SfgKernelNamespace(self, "kernels")
 
@@ -23,8 +30,11 @@ class SfgContext:
         self._prelude: str = ""
         self._includes: set[SfgHeaderInclude] = set()
         self._definitions: list[str] = []
-        self._kernel_namespaces = {self._default_kernel_namespace.name: self._default_kernel_namespace}
+        self._kernel_namespaces = {
+            self._default_kernel_namespace.name: self._default_kernel_namespace
+        }
         self._functions: dict[str, SfgFunction] = dict()
+        self._classes: dict[str, SfgClass] = dict()
 
     @property
     def argv(self) -> Sequence[str]:
@@ -48,11 +58,16 @@ class SfgContext:
     @property
     def fully_qualified_namespace(self) -> str | None:
         match (self.outer_namespace, self.inner_namespace):
-            case None, None: return None
-            case outer, None: return outer
-            case None, inner: return inner
-            case outer, inner: return f"{outer}::{inner}"
-            case _: assert False
+            case None, None:
+                return None
+            case outer, None:
+                return outer
+            case None, inner:
+                return inner
+            case outer, inner:
+                return f"{outer}::{inner}"
+            case _:
+                assert False
 
     @property
     def codestyle(self) -> SfgCodeStyle:
@@ -127,10 +142,29 @@ class SfgContext:
     def get_function(self, name: str) -> SfgFunction | None:
         return self._functions.get(name, None)
 
-    def add_function(self, func: SfgFunction) -> None:
+    def add_function(self, func: SfgFunction):
         if func.name in self._functions:
-            raise ValueError(f"Duplicate function: {func.name}")
+            raise SfgException(f"Duplicate function: {func.name}")
 
         self._functions[func.name] = func
-        for incl in CollectIncludes().visit(func._tree):
+        for incl in CollectIncludes().visit(func):
+            self.add_include(incl)
+
+    # ----------------------------------------------------------------------------------------------
+    #   Classes
+    # ----------------------------------------------------------------------------------------------
+
+    def classes(self) -> Generator[SfgClass, None, None]:
+        yield from self._classes.values()
+
+    def get_class(self, name: str) -> SfgClass | None:
+        return self._classes.get(name, None)
+
+    def add_class(self, cls: SfgClass):
+        if cls.class_name in self._classes:
+            raise SfgException(f"Duplicate class: {cls.class_name}")
+
+        self._classes[cls.class_name] = cls
+
+        for incl in CollectIncludes().visit(cls):
             self.add_include(incl)
