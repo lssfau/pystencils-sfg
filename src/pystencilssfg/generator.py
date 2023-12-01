@@ -11,6 +11,7 @@ from .composer import SfgComposer
 
 
 class SourceFileGenerator:
+    """Context manager that controls the code generation process in generator scripts."""
     def __init__(self, sfg_config: SfgConfiguration | None = None):
         if sfg_config and not isinstance(sfg_config, SfgConfiguration):
             raise TypeError("sfg_config is not an SfgConfiguration.")

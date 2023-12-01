@@ -74,10 +74,7 @@ def list_files(args):
 
     from .emitters import HeaderSourcePairEmitter
 
-    emitter = HeaderSourcePairEmitter(basename,
-                                      config.header_extension,
-                                      config.impl_extension,
-                                      config.output_directory)
+    emitter = HeaderSourcePairEmitter(config.get_output_spec(basename))
 
     print(args.sep.join(emitter.output_files), end=os.linesep if args.newline else '')
 

@@ -55,7 +55,7 @@ function(pystencilssfg_generate_target_sources TARGET)
 
     if(DEFINED PystencilsSfg_CONFIGURATOR_SCRIPT)
         cmake_path(ABSOLUTE_PATH PystencilsSfg_CONFIGURATOR_SCRIPT OUTPUT_VARIABLE configscript)
-        list(APPEND generatorArgs "--sfg-configurator=${configscript}")
+        list(APPEND generatorArgs "--sfg-config-module=${configscript}")
     endif()
 
     if(DEFINED _pssfg_FILE_EXTENSIONS)

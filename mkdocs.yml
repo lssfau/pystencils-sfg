@@ -43,5 +43,6 @@ nav:
     - 'CLI and Build System Integration': usage/cli.md
   - 'API Documentation':
     - 'Overview': api/index.md
-    - 'Source File Generator Front-End': api/frontend.md
+    - 'Source File Generator': api/generator.md
+    - 'Composer and Source File Components': api/composition.md
     - 'Kernel Call Tree': api/tree.md

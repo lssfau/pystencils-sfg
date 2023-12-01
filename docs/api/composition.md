@@ -1,8 +1,4 @@
 
-::: pystencilssfg.generator.SourceFileGenerator
-
-::: pystencilssfg.configuration.SfgConfiguration
-
 ::: pystencilssfg.context.SfgContext
 
 ::: pystencilssfg.composer.SfgComposer
