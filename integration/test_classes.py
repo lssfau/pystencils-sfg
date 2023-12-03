@@ -29,18 +29,21 @@ with SourceFileGenerator(sfg_config) as sfg:
     cls.add_method(SfgMethod(
         "callKernel",
         sfg.call(khandle),
+        cls,
         visibility=SfgVisibility.PUBLIC
     ))
 
     cls.add_member_variable(
         SfgMemberVariable(
             "stuff", "std::vector< int >",
+            cls,
             SfgVisibility.PRIVATE
         )
     )
 
     cls.add_constructor(
         SfgConstructor(
+            cls,
             [SrcObject("std::vector< int > &", "stuff")],
             ["stuff_(stuff)"],
             visibility=SfgVisibility.PUBLIC
