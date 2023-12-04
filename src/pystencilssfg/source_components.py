@@ -13,7 +13,6 @@ from .source_concepts import SrcObject
 from .exceptions import SfgException
 
 if TYPE_CHECKING:
-    from .context import SfgContext
     from .tree import SfgCallTreeNode
 
 
@@ -173,9 +172,10 @@ class SfgKernelHandle:
 
 
 class SfgFunction:
-    def __init__(self, name: str, tree: SfgCallTreeNode):
+    def __init__(self, name: str, tree: SfgCallTreeNode, return_type: SrcType = SrcType("void")):
         self._name = name
         self._tree = tree
+        self._return_type = return_type
 
         from .visitors.tree_visitors import ExpandingParameterCollector
 
@@ -194,8 +194,9 @@ class SfgFunction:
     def tree(self):
         return self._tree
 
-    def get_code(self, ctx: SfgContext):
-        return self._tree.get_code(ctx)
+    @property
+    def return_type(self) -> SrcType:
+        return self._return_type
 
 
 class SfgVisibility(Enum):
@@ -258,9 +259,23 @@ class SfgMethod(SfgFunction, SfgClassMember):
         tree: SfgCallTreeNode,
         cls: SfgClass,
         visibility: SfgVisibility = SfgVisibility.PUBLIC,
+        return_type: SrcType = SrcType("void"),
+        inline: bool = False,
+        const: bool = False
     ):
-        SfgFunction.__init__(self, name, tree)
+        SfgFunction.__init__(self, name, tree, return_type=return_type)
         SfgClassMember.__init__(self, cls, visibility)
+
+        self._inline = inline
+        self._const = const
+
+    @property
+    def inline(self) -> bool:
+        return self._inline
+
+    @property
+    def const(self) -> bool:
+        return self._const
 
 
 class SfgConstructor(SfgClassMember):

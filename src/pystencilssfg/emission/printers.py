@@ -60,6 +60,10 @@ class SfgGeneralPrinter:
         else:
             return ""
 
+    def param_list(self, func: SfgFunction) -> str:
+        params = sorted(list(func.parameters), key=lambda p: p.name)
+        return ", ".join(f"{param.dtype} {param.name}" for param in params)
+
 
 class SfgHeaderPrinter(SfgGeneralPrinter):
 
@@ -108,7 +112,7 @@ class SfgHeaderPrinter(SfgGeneralPrinter):
     def function(self, func: SfgFunction):
         params = sorted(list(func.parameters), key=lambda p: p.name)
         param_list = ", ".join(f"{param.dtype} {param.name}" for param in params)
-        return f"void {func.name} ( {param_list} );"
+        return f"{func.return_type} {func.name} ( {param_list} );"
 
     @visit.case(SfgClass)
     def sfg_class(self, cls: SfgClass):
@@ -150,9 +154,12 @@ class SfgHeaderPrinter(SfgGeneralPrinter):
 
     @visit.case(SfgMethod)
     def sfg_method(self, method: SfgMethod):
-        code = f"void {method.name} ("
-        code += ", ".join(f"{param.dtype} {param.name}" for param in method.parameters)
-        code += ");"
+        code = f"{method.return_type} {method.name} ({self.param_list(method)})"
+        code += "const" if method.const else ")"
+        if method.inline:
+            code += " {\n" + self._ctx.codestyle.indent(method.tree.get_code(self._ctx)) + "}\n"
+        else:
+            code += ";"
         return code
 
 
@@ -223,20 +230,19 @@ class SfgImplPrinter(SfgGeneralPrinter):
 
     @visit.case(SfgFunction)
     def function(self, func: SfgFunction) -> str:
-        return self.method_or_func(func, func.name)
+        code = f"{func.return_type} {func.name} ({self.param_list(func)})"
+        code += "{\n" + self._ctx.codestyle.indent(func.tree.get_code(self._ctx)) + "}\n"
+        return code
 
     @visit.case(SfgClass)
     def sfg_class(self, cls: SfgClass) -> str:
-        return "\n".join(self.visit(m) for m in cls.methods())
+        methods = filter(lambda m: not m.inline, cls.methods())
+        return "\n".join(self.visit(m) for m in methods)
 
     @visit.case(SfgMethod)
     def sfg_method(self, method: SfgMethod) -> str:
-        return self.method_or_func(method, f"{method.owning_class.class_name}::{method.name}")
-
-    def method_or_func(self, func: SfgFunction, fully_qualified_name: str) -> str:
-        params = sorted(list(func.parameters), key=lambda p: p.name)
-        param_list = ", ".join(f"{param.dtype} {param.name}" for param in params)
-        code = f"void {fully_qualified_name} ({param_list}) {{\n"
-        code += self._ctx.codestyle.indent(func.tree.get_code(self._ctx))
-        code += "}\n"
+        const_qual = "const" if method.const else ""
+        code = f"{method.return_type} {method.owning_class.class_name}::{method.name}"
+        code += f"({self.param_list(method)}) {const_qual}"
+        code += " {\n" + self._ctx.codestyle.indent(method.tree.get_code(self._ctx)) + "}\n"
         return code
