@@ -1,0 +1,242 @@
+from __future__ import annotations
+
+from textwrap import indent
+from itertools import chain, repeat, cycle
+
+from pystencils.astnodes import KernelFunction
+from pystencils import Backend
+from pystencils.backends import generate_c
+
+from ..context import SfgContext
+from ..configuration import SfgOutputSpec
+from ..visitors import visitor
+from ..exceptions import SfgException
+
+from ..source_components import (
+    SfgEmptyLines,
+    SfgHeaderInclude,
+    SfgKernelNamespace,
+    SfgFunction,
+    SfgClass,
+    SfgConstructor,
+    SfgMemberVariable,
+    SfgMethod,
+    SfgVisibility,
+)
+
+
+def interleave(*iters):
+    try:
+        for iter in cycle(iters):
+            yield next(iter)
+    except StopIteration:
+        pass
+
+
+class SfgGeneralPrinter:
+
+    @visitor
+    def visit(self, obj: object) -> str:
+        raise SfgException(f"Can't print object of type {type(obj)}")
+
+    @visit.case(SfgEmptyLines)
+    def emptylines(self, el: SfgEmptyLines) -> str:
+        return "\n" * el.lines
+
+    @visit.case(str)
+    def string(self, s: str) -> str:
+        return s
+
+    @visit.case(SfgHeaderInclude)
+    def include(self, incl: SfgHeaderInclude) -> str:
+        if incl.system_header:
+            return f"#include <{incl.file}>"
+        else:
+            return f'#include "{incl.file}"'
+
+    def prelude(self, ctx: SfgContext) -> str:
+        if ctx.prelude_comment:
+            return "/*\n" + indent(ctx.prelude_comment, "* ", predicate=lambda _: True) + "*/\n"
+        else:
+            return ""
+
+
+class SfgHeaderPrinter(SfgGeneralPrinter):
+
+    def __init__(self, ctx: SfgContext, output_spec: SfgOutputSpec):
+        self._output_spec = output_spec
+        self._ctx = ctx
+
+    def get_code(self) -> str:
+        return self.visit(self._ctx)
+
+    @visitor
+    def visit(self, obj: object) -> str:
+        return super().visit(obj)
+
+    @visit.case(SfgContext)
+    def frame(self, ctx: SfgContext) -> str:
+        code = super().prelude(ctx)
+
+        code += "\n#pragma once\n\n"
+
+        includes = filter(lambda incl: not incl.private, ctx.includes())
+        code += "\n".join(self.visit(incl) for incl in includes)
+        code += "\n\n"
+
+        fq_namespace = ctx.fully_qualified_namespace
+        if fq_namespace is not None:
+            code += f"namespace {fq_namespace} {{\n\n"
+
+        parts = interleave(
+            chain(
+                ctx.definitions(),
+                ctx.classes(),
+                ctx.functions()
+            ),
+            repeat(SfgEmptyLines(1))
+        )
+
+        code += "\n".join(self.visit(p) for p in parts)
+
+        if fq_namespace is not None:
+            code += f"}} // namespace {fq_namespace}\n"
+
+        return code
+
+    @visit.case(SfgFunction)
+    def function(self, func: SfgFunction):
+        params = sorted(list(func.parameters), key=lambda p: p.name)
+        param_list = ", ".join(f"{param.dtype} {param.name}" for param in params)
+        return f"void {func.name} ( {param_list} );"
+
+    @visit.case(SfgClass)
+    def sfg_class(self, cls: SfgClass):
+        code = f"{cls.class_keyword} {cls.class_name} \n"
+
+        if cls.base_classes:
+            code += f" : {','.join(cls.base_classes)}\n"
+
+        code += "{\n"
+        for visibility in (
+            SfgVisibility.DEFAULT,
+            SfgVisibility.PUBLIC,
+            SfgVisibility.PRIVATE,
+        ):
+            if visibility != SfgVisibility.DEFAULT:
+                code += f"\n{visibility}:\n"
+            for member in cls.members(visibility):
+                code += self._ctx.codestyle.indent(self.visit(member)) + "\n"
+        code += "};\n"
+
+        return code
+
+    @visit.case(SfgConstructor)
+    def sfg_constructor(self, constr: SfgConstructor):
+        code = f"{constr.owning_class.class_name} ("
+        code += ", ".join(f"{param.dtype} {param.name}" for param in constr.parameters)
+        code += ")\n"
+        if constr.initializers:
+            code += "  : " + ", ".join(constr.initializers) + "\n"
+        if constr.body:
+            code += "{\n" + self._ctx.codestyle.indent(constr.body) + "\n}\n"
+        else:
+            code += "{ }\n"
+        return code
+
+    @visit.case(SfgMemberVariable)
+    def sfg_member_var(self, var: SfgMemberVariable):
+        return f"{var.dtype} {var.name};"
+
+    @visit.case(SfgMethod)
+    def sfg_method(self, method: SfgMethod):
+        code = f"void {method.name} ("
+        code += ", ".join(f"{param.dtype} {param.name}" for param in method.parameters)
+        code += ");"
+        return code
+
+
+def delimiter(content):
+    return f"""\
+/*************************************************************************************
+ *                                {content}
+*************************************************************************************/
+"""
+
+
+class SfgImplPrinter(SfgGeneralPrinter):
+    def __init__(self, ctx: SfgContext, output_spec: SfgOutputSpec):
+        self._output_spec = output_spec
+        self._ctx = ctx
+
+    def get_code(self) -> str:
+        return self.visit(self._ctx)
+
+    @visitor
+    def visit(self, obj: object) -> str:
+        return super().visit(obj)
+
+    @visit.case(SfgContext)
+    def frame(self, ctx: SfgContext) -> str:
+        code = super().prelude(ctx)
+
+        code += f'\n#include "{self._output_spec.get_header_filename()}"\n\n'
+
+        includes = filter(lambda incl: incl.private, ctx.includes())
+        code += "\n".join(self.visit(incl) for incl in includes)
+
+        code += "\n\n#define FUNC_PREFIX inline\n\n"
+
+        fq_namespace = ctx.fully_qualified_namespace
+        if fq_namespace is not None:
+            code += f"namespace {fq_namespace} {{\n\n"
+
+        parts = interleave(
+            chain(
+                [delimiter("Kernels")],
+                ctx.kernel_namespaces(),
+                [delimiter("Functions")],
+                ctx.functions(),
+                [delimiter("Class Methods")],
+                ctx.classes()
+            ),
+            repeat(SfgEmptyLines(1))
+        )
+
+        code += "\n".join(self.visit(p) for p in parts)
+
+        if fq_namespace is not None:
+            code += f"}} // namespace {fq_namespace}\n"
+
+        return code
+
+    @visit.case(SfgKernelNamespace)
+    def kernel_namespace(self, kns: SfgKernelNamespace) -> str:
+        code = f"namespace {kns.name} {{\n\n"
+        code += "\n\n".join(self.visit(ast) for ast in kns.asts)
+        code += f"\n}} // namespace {kns.name}\n"
+        return code
+
+    @visit.case(KernelFunction)
+    def kernel(self, kfunc: KernelFunction) -> str:
+        return generate_c(kfunc, dialect=Backend.C)
+
+    @visit.case(SfgFunction)
+    def function(self, func: SfgFunction) -> str:
+        return self.method_or_func(func, func.name)
+
+    @visit.case(SfgClass)
+    def sfg_class(self, cls: SfgClass) -> str:
+        return "\n".join(self.visit(m) for m in cls.methods())
+
+    @visit.case(SfgMethod)
+    def sfg_method(self, method: SfgMethod) -> str:
+        return self.method_or_func(method, f"{method.owning_class.class_name}::{method.name}")
+
+    def method_or_func(self, func: SfgFunction, fully_qualified_name: str) -> str:
+        params = sorted(list(func.parameters), key=lambda p: p.name)
+        param_list = ", ".join(f"{param.dtype} {param.name}" for param in params)
+        code = f"void {fully_qualified_name} ({param_list}) {{\n"
+        code += self._ctx.codestyle.indent(func.tree.get_code(self._ctx))
+        code += "}\n"
+        return code

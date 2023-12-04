@@ -2,10 +2,10 @@
 # It is not intended for manual editing.
 
 [metadata]
-groups = ["default", "docs", "interactive", "code_quality"]
+groups = ["default", "code_quality", "docs", "interactive"]
 strategy = ["cross_platform"]
 lock_version = "4.4"
-content_hash = "sha256:f9e6e0eed785eecd687dfee3afe479681a2082cee5c00285e1975fbf8b7d50df"
+content_hash = "sha256:2c854f8da4b29c3080cd89c774409f95c47d3532c953cf10ecaa67d0b77ff9cf"
 
 [[package]]
 name = "appdirs"
@@ -14,15 +14,6 @@ summary = "A small Python module for determining appropriate platform-specific d
 files = [
     {file = "appdirs-1.4.4-py2.py3-none-any.whl", hash = "sha256:a841dacd6b99318a741b166adb07e19ee71a274450e68237b4650ca1055ab128"},
     {file = "appdirs-1.4.4.tar.gz", hash = "sha256:7d5d0167b2b1ba821647616af46a749d1c653740dd0d2415100fe26e27afdf41"},
-]
-
-[[package]]
-name = "appnope"
-version = "0.1.3"
-summary = "Disable App Nap on macOS >= 10.9"
-files = [
-    {file = "appnope-0.1.3-py2.py3-none-any.whl", hash = "sha256:265a455292d0bd8a72453494fa24df5a11eb18373a60c7c0430889f22548605e"},
-    {file = "appnope-0.1.3.tar.gz", hash = "sha256:02bd91c4de869fbb1e1c50aafc4098827a7a54ab2f39d9dcba6c9547ed920e24"},
 ]
 
 [[package]]
@@ -210,35 +201,34 @@ files = [
 
 [[package]]
 name = "idna"
-version = "3.4"
+version = "3.6"
 requires_python = ">=3.5"
 summary = "Internationalized Domain Names in Applications (IDNA)"
 files = [
-    {file = "idna-3.4-py3-none-any.whl", hash = "sha256:90b77e79eaa3eba6de819a0c442c0b4ceefc341a7a2ab77d7562bf49f425c5c2"},
-    {file = "idna-3.4.tar.gz", hash = "sha256:814f528e8dead7d329833b91c5faa87d60bf71824cd12a7530b5526063d02cb4"},
+    {file = "idna-3.6-py3-none-any.whl", hash = "sha256:c05567e9c24a6b9faaa835c4821bad0590fbb9d5779e7caa6e1cc4978e7eb24f"},
+    {file = "idna-3.6.tar.gz", hash = "sha256:9ecdbbd083b06798ae1e86adcbfe8ab1479cf864e4ee30fe4e46a003d12491ca"},
 ]
 
 [[package]]
 name = "ipython"
-version = "8.17.2"
+version = "8.18.1"
 requires_python = ">=3.9"
 summary = "IPython: Productive Interactive Computing"
 dependencies = [
-    "appnope; sys_platform == \"darwin\"",
     "colorama; sys_platform == \"win32\"",
     "decorator",
     "exceptiongroup; python_version < \"3.11\"",
     "jedi>=0.16",
     "matplotlib-inline",
     "pexpect>4.3; sys_platform != \"win32\"",
-    "prompt-toolkit!=3.0.37,<3.1.0,>=3.0.30",
+    "prompt-toolkit<3.1.0,>=3.0.41",
     "pygments>=2.4.0",
     "stack-data",
     "traitlets>=5",
 ]
 files = [
-    {file = "ipython-8.17.2-py3-none-any.whl", hash = "sha256:1e4d1d666a023e3c93585ba0d8e962867f7a111af322efff6b9c58062b3e5444"},
-    {file = "ipython-8.17.2.tar.gz", hash = "sha256:126bb57e1895594bb0d91ea3090bbd39384f6fe87c3d57fd558d0670f50339bb"},
+    {file = "ipython-8.18.1-py3-none-any.whl", hash = "sha256:e8267419d72d81955ec1177f8a29aaa90ac80ad647499201119e2f05e99aa397"},
+    {file = "ipython-8.18.1.tar.gz", hash = "sha256:ca6f079bb33457c66e233e4580ebfc4128855b4cf6370dddd73842a9563e8a27"},
 ]
 
 [[package]]
@@ -400,7 +390,7 @@ files = [
 
 [[package]]
 name = "mkdocs-material"
-version = "9.4.11"
+version = "9.4.14"
 requires_python = ">=3.8"
 summary = "Documentation that simply works"
 dependencies = [
@@ -417,18 +407,18 @@ dependencies = [
     "requests~=2.26",
 ]
 files = [
-    {file = "mkdocs_material-9.4.11-py3-none-any.whl", hash = "sha256:794b81d74df4fd7dee952dd4502f7b6a7913a1fc56021e5f36f8e96eb20ffb25"},
-    {file = "mkdocs_material-9.4.11.tar.gz", hash = "sha256:82c2bdbdc8445854f400d12831a8b0f7602efaaead7b264ac3c45aa3aa240755"},
+    {file = "mkdocs_material-9.4.14-py3-none-any.whl", hash = "sha256:dbc78a4fea97b74319a6aa9a2f0be575a6028be6958f813ba367188f7b8428f6"},
+    {file = "mkdocs_material-9.4.14.tar.gz", hash = "sha256:a511d3ff48fa8718b033e7e37d17abd9cc1de0fdf0244a625ca2ae2387e2416d"},
 ]
 
 [[package]]
 name = "mkdocs-material-extensions"
-version = "1.3"
+version = "1.3.1"
 requires_python = ">=3.8"
 summary = "Extension pack for Python Markdown and MkDocs Material."
 files = [
-    {file = "mkdocs_material_extensions-1.3-py3-none-any.whl", hash = "sha256:0297cc48ba68a9fdd1ef3780a3b41b534b0d0df1d1181a44676fda5f464eeadc"},
-    {file = "mkdocs_material_extensions-1.3.tar.gz", hash = "sha256:f0446091503acb110a7cab9349cbc90eeac51b58d1caa92a704a81ca1e24ddbd"},
+    {file = "mkdocs_material_extensions-1.3.1-py3-none-any.whl", hash = "sha256:adff8b62700b25cb77b53358dad940f3ef973dd6db797907c49e3c2ef3ab4e31"},
+    {file = "mkdocs_material_extensions-1.3.1.tar.gz", hash = "sha256:10c9511cea88f568257f960358a467d12b970e1f7b2c0e5fb2bb48cab1928443"},
 ]
 
 [[package]]
@@ -605,14 +595,14 @@ files = [
 
 [[package]]
 name = "pexpect"
-version = "4.8.0"
+version = "4.9.0"
 summary = "Pexpect allows easy control of interactive console applications."
 dependencies = [
     "ptyprocess>=0.5",
 ]
 files = [
-    {file = "pexpect-4.8.0-py2.py3-none-any.whl", hash = "sha256:0b48a55dcb3c05f3329815901ea4fc1537514d6ba867a152b581d69ae3710937"},
-    {file = "pexpect-4.8.0.tar.gz", hash = "sha256:fc65a43959d153d0114afe13997d439c22823a27cefceb5ff35c2178c6784c0c"},
+    {file = "pexpect-4.9.0-py2.py3-none-any.whl", hash = "sha256:7236d1e080e4936be2dc3e326cec0af72acf9212a7e1d060210e70a47e253523"},
+    {file = "pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f"},
 ]
 
 [[package]]
@@ -688,16 +678,16 @@ files = [
 
 [[package]]
 name = "pymdown-extensions"
-version = "10.4"
+version = "10.5"
 requires_python = ">=3.8"
 summary = "Extension pack for Python Markdown."
 dependencies = [
-    "markdown>=3.2",
+    "markdown>=3.5",
     "pyyaml",
 ]
 files = [
-    {file = "pymdown_extensions-10.4-py3-none-any.whl", hash = "sha256:cfc28d6a09d19448bcbf8eee3ce098c7d17ff99f7bd3069db4819af181212037"},
-    {file = "pymdown_extensions-10.4.tar.gz", hash = "sha256:bc46f11749ecd4d6b71cf62396104b4a200bad3498cb0f5dad1b8502fe461a35"},
+    {file = "pymdown_extensions-10.5-py3-none-any.whl", hash = "sha256:1f0ca8bb5beff091315f793ee17683bc1390731f6ac4c5eb01e27464b80fe879"},
+    {file = "pymdown_extensions-10.5.tar.gz", hash = "sha256:1b60f1e462adbec5a1ed79dac91f666c9c0d241fa294de1989f29d20096cfd0b"},
 ]
 
 [[package]]
@@ -899,12 +889,12 @@ files = [
 
 [[package]]
 name = "traitlets"
-version = "5.13.0"
+version = "5.14.0"
 requires_python = ">=3.8"
 summary = "Traitlets Python configuration system"
 files = [
-    {file = "traitlets-5.13.0-py3-none-any.whl", hash = "sha256:baf991e61542da48fe8aef8b779a9ea0aa38d8a54166ee250d5af5ecf4486619"},
-    {file = "traitlets-5.13.0.tar.gz", hash = "sha256:9b232b9430c8f57288c1024b34a8f0251ddcc47268927367a0dd3eeaca40deb5"},
+    {file = "traitlets-5.14.0-py3-none-any.whl", hash = "sha256:f14949d23829023013c47df20b4a76ccd1a85effb786dc060f34de7948361b33"},
+    {file = "traitlets-5.14.0.tar.gz", hash = "sha256:fcdaa8ac49c04dfa0ed3ee3384ef6dfdb5d6f3741502be247279407679296772"},
 ]
 
 [[package]]
