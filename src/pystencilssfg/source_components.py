@@ -13,8 +13,16 @@ from .source_concepts import SrcObject
 from .exceptions import SfgException
 
 if TYPE_CHECKING:
-    from .context import SfgContext
     from .tree import SfgCallTreeNode
+
+
+class SfgEmptyLines:
+    def __init__(self, lines: int):
+        self._lines = lines
+
+    @property
+    def lines(self) -> int:
+        return self._lines
 
 
 class SfgHeaderInclude:
@@ -26,18 +34,16 @@ class SfgHeaderInclude:
         self._private = private
 
     @property
+    def file(self) -> str:
+        return self._header_file
+
+    @property
     def system_header(self):
         return self._system_header
 
     @property
     def private(self):
         return self._private
-
-    def get_code(self):
-        if self._system_header:
-            return f"#include <{self._header_file}>"
-        else:
-            return f'#include "{self._header_file}"'
 
     def __hash__(self) -> int:
         return hash((self._header_file, self._system_header, self._private))
@@ -166,9 +172,10 @@ class SfgKernelHandle:
 
 
 class SfgFunction:
-    def __init__(self, name: str, tree: SfgCallTreeNode):
+    def __init__(self, name: str, tree: SfgCallTreeNode, return_type: SrcType = SrcType("void")):
         self._name = name
         self._tree = tree
+        self._return_type = return_type
 
         from .visitors.tree_visitors import ExpandingParameterCollector
 
@@ -187,8 +194,9 @@ class SfgFunction:
     def tree(self):
         return self._tree
 
-    def get_code(self, ctx: SfgContext):
-        return self._tree.get_code(ctx)
+    @property
+    def return_type(self) -> SrcType:
+        return self._return_type
 
 
 class SfgVisibility(Enum):
@@ -219,8 +227,13 @@ class SfgClassKeyword(Enum):
 
 
 class SfgClassMember(ABC):
-    def __init__(self, visibility: SfgVisibility):
+    def __init__(self, cls: SfgClass, visibility: SfgVisibility):
+        self._cls = cls
         self._visibility = visibility
+
+    @property
+    def owning_class(self) -> SfgClass:
+        return self._cls
 
     @property
     def visibility(self) -> SfgVisibility:
@@ -232,10 +245,11 @@ class SfgMemberVariable(SrcObject, SfgClassMember):
         self,
         name: str,
         type: SrcType,
+        cls: SfgClass,
         visibility: SfgVisibility = SfgVisibility.PRIVATE,
     ):
         SrcObject.__init__(self, type, name)
-        SfgClassMember.__init__(self, visibility)
+        SfgClassMember.__init__(self, cls, visibility)
 
 
 class SfgMethod(SfgFunction, SfgClassMember):
@@ -243,21 +257,37 @@ class SfgMethod(SfgFunction, SfgClassMember):
         self,
         name: str,
         tree: SfgCallTreeNode,
+        cls: SfgClass,
         visibility: SfgVisibility = SfgVisibility.PUBLIC,
+        return_type: SrcType = SrcType("void"),
+        inline: bool = False,
+        const: bool = False
     ):
-        SfgFunction.__init__(self, name, tree)
-        SfgClassMember.__init__(self, visibility)
+        SfgFunction.__init__(self, name, tree, return_type=return_type)
+        SfgClassMember.__init__(self, cls, visibility)
+
+        self._inline = inline
+        self._const = const
+
+    @property
+    def inline(self) -> bool:
+        return self._inline
+
+    @property
+    def const(self) -> bool:
+        return self._const
 
 
 class SfgConstructor(SfgClassMember):
     def __init__(
         self,
+        cls: SfgClass,
         parameters: Sequence[SrcObject] = (),
         initializers: Sequence[str] = (),
         body: str = "",
         visibility: SfgVisibility = SfgVisibility.PUBLIC,
     ):
-        SfgClassMember.__init__(self, visibility)
+        SfgClassMember.__init__(self, cls, visibility)
         self._parameters = tuple(parameters)
         self._initializers = tuple(initializers)
         self._body = body

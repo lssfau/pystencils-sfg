@@ -36,6 +36,10 @@ class SfgContext:
         self._functions: dict[str, SfgFunction] = dict()
         self._classes: dict[str, SfgClass] = dict()
 
+        #   Standard stuff
+        self.add_include(SfgHeaderInclude("cstdint", system_header=True))
+        self.add_definition("#define RESTRICT __restrict__")
+
     @property
     def argv(self) -> Sequence[str]:
         """If this context was created by a `pystencilssfg.SourceFileGenerator`, provides the command

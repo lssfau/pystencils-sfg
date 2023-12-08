@@ -1,6 +1,7 @@
 # type: ignore
 from pystencilssfg import SourceFileGenerator, SfgConfiguration, SfgComposer
 from pystencilssfg.configuration import SfgCodeStyle
+from pystencilssfg.types import SrcType
 from pystencilssfg.source_concepts import SrcObject
 from pystencilssfg.source_components import SfgClass, SfgMemberVariable, SfgConstructor, SfgMethod, SfgVisibility
 
@@ -30,18 +31,45 @@ with SourceFileGenerator(sfg_config) as ctx:
     cls.add_method(SfgMethod(
         "callKernel",
         sfg.call(khandle),
+        cls,
         visibility=SfgVisibility.PUBLIC
+    ))
+
+    cls.add_method(SfgMethod(
+        "inlineConst",
+        sfg.seq(
+            "return -1.0;"
+        ),
+        cls,
+        visibility=SfgVisibility.PUBLIC,
+        return_type=SrcType("double"),
+        inline=True,
+        const=True
+    ))
+
+    cls.add_method(SfgMethod(
+        "awesomeMethod",
+        sfg.seq(
+            "return 2.0f;"
+        ),
+        cls,
+        visibility=SfgVisibility.PRIVATE,
+        return_type=SrcType("float"),
+        inline=False,
+        const=True
     ))
 
     cls.add_member_variable(
         SfgMemberVariable(
             "stuff", "std::vector< int >",
+            cls,
             SfgVisibility.PRIVATE
         )
     )
 
     cls.add_constructor(
         SfgConstructor(
+            cls,
             [SrcObject("std::vector< int > &", "stuff")],
             ["stuff_(stuff)"],
             visibility=SfgVisibility.PUBLIC
