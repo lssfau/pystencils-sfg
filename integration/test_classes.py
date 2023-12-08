@@ -1,5 +1,5 @@
 # type: ignore
-from pystencilssfg import SourceFileGenerator, SfgConfiguration
+from pystencilssfg import SourceFileGenerator, SfgConfiguration, SfgComposer
 from pystencilssfg.configuration import SfgCodeStyle
 from pystencilssfg.source_concepts import SrcObject
 from pystencilssfg.source_components import SfgClass, SfgMemberVariable, SfgConstructor, SfgMethod, SfgVisibility
@@ -17,7 +17,8 @@ sfg_config = SfgConfiguration(
 
 f, g = fields("f, g(1): double[2D]")
 
-with SourceFileGenerator(sfg_config) as sfg:
+with SourceFileGenerator(sfg_config) as ctx:
+    sfg = SfgComposer(ctx)
 
     @kernel
     def assignments():

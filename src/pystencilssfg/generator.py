@@ -7,7 +7,6 @@ from os import path
 
 from .configuration import SfgConfiguration, config_from_commandline, merge_configurations
 from .context import SfgContext
-from .composer import SfgComposer
 
 
 class SourceFileGenerator:
@@ -35,9 +34,9 @@ class SourceFileGenerator:
             if path.exists(file):
                 os.remove(file)
 
-    def __enter__(self):
+    def __enter__(self) -> SfgContext:
         self.clean_files()
-        return SfgComposer(self._context)
+        return self._context
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is None:

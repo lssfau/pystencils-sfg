@@ -1,9 +1,10 @@
-from pystencilssfg import SourceFileGenerator
+from pystencilssfg import SourceFileGenerator, SfgComposer
 
 from lbmpy.advanced_streaming import Timestep
 from lbmpy import LBMConfig, create_lb_ast
 
-with SourceFileGenerator() as sfg:
+with SourceFileGenerator() as ctx:
+    sfg = SfgComposer(ctx)
 
     lb_config = LBMConfig(streaming_pattern='esotwist')
 

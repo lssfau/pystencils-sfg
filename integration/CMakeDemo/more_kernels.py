@@ -4,10 +4,11 @@ import sympy as sp
 
 from pystencils import fields, kernel, Field
 
-from pystencilssfg import SourceFileGenerator
+from pystencilssfg import SourceFileGenerator, SfgComposer
 
+with SourceFileGenerator() as ctx:
+    sfg = SfgComposer(ctx)
 
-with SourceFileGenerator() as sfg:
     src: Field = fields("src: double[2D]")
 
     h = sp.Symbol('h')

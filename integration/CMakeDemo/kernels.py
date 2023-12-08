@@ -4,10 +4,12 @@ import sympy as sp
 
 from pystencils import fields, kernel
 
-from pystencilssfg import SourceFileGenerator
+from pystencilssfg import SourceFileGenerator, SfgComposer
 
 
-with SourceFileGenerator() as sfg:
+with SourceFileGenerator() as ctx:
+    sfg = SfgComposer(ctx)
+
     src, dst = fields("src, dst(1) : double[2D]")
 
     @kernel
