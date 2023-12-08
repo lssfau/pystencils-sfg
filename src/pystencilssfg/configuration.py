@@ -46,8 +46,8 @@ from importlib import util as iutil
 
 from .exceptions import SfgException
 
-HEADER_FILE_EXTENSIONS = {'h', 'hpp'}
-IMPL_FILE_EXTENSIONS = {'c', 'cpp', '.impl.h'}
+HEADER_FILE_EXTENSIONS = {"h", "hpp"}
+IMPL_FILE_EXTENSIONS = {"c", "cpp", ".impl.h"}
 
 
 class SfgConfigSource(Enum):
@@ -68,8 +68,12 @@ class SfgConfigException(Exception):
 class SfgCodeStyle:
     indent_width: int = 2
 
-    code_style: str = "LLVM"
-    """Code style to be used by clang-format. Passed verbatim to `--style` argument of the clang-format CLI."""
+    code_style: str = "file"
+    """Code style to be used by clang-format. Passed verbatim to `--style` argument of the clang-format CLI.
+
+    Similar to clang-format itself, the default value is `file`, such that a `.clang-format` file found in the build
+    tree will automatically be used.
+    """
 
     force_clang_format: bool = False
     """If set to True, abort code generation if `clang-format` binary cannot be found."""
@@ -141,16 +145,20 @@ class SfgConfiguration:
 
     def __post_init__(self, cfg_src: SfgConfigSource | None = None):
         if self.header_only:
-            raise SfgConfigException(cfg_src, "Header-only code generation is not implemented yet.")
+            raise SfgConfigException(
+                cfg_src, "Header-only code generation is not implemented yet."
+            )
 
-        if self.header_extension and self.header_extension[0] == '.':
+        if self.header_extension and self.header_extension[0] == ".":
             self.header_extension = self.header_extension[1:]
 
-        if self.impl_extension and self.impl_extension[0] == '.':
+        if self.impl_extension and self.impl_extension[0] == ".":
             self.impl_extension = self.impl_extension[1:]
 
     def override(self, other: SfgConfiguration):
-        other_dict: dict[str, Any] = {k: v for k, v in _shallow_dict(other).items() if v is not None}
+        other_dict: dict[str, Any] = {
+            k: v for k, v in _shallow_dict(other).items() if v is not None
+        }
         return replace(self, **other_dict)
 
     def get_output_spec(self, basename: str) -> SfgOutputSpec:
@@ -159,21 +167,18 @@ class SfgConfiguration:
         assert self.output_directory is not None
 
         return SfgOutputSpec(
-            self.output_directory,
-            basename,
-            self.header_extension,
-            self.impl_extension
+            self.output_directory, basename, self.header_extension, self.impl_extension
         )
 
 
 DEFAULT_CONFIG = SfgConfiguration(
     config_source=SfgConfigSource.DEFAULT,
-    header_extension='h',
-    impl_extension='cpp',
+    header_extension="h",
+    impl_extension="cpp",
     header_only=False,
     outer_namespace=None,
     codestyle=SfgCodeStyle(),
-    output_directory="."
+    output_directory=".",
 )
 
 
@@ -183,18 +188,26 @@ def run_configurator(configurator_script: str):
     cfg_spec = iutil.spec_from_file_location(cfg_modulename, configurator_script)
 
     if cfg_spec is None:
-        raise SfgConfigException(SfgConfigSource.PROJECT,
-                                 f"Unable to load configurator script {configurator_script}")
+        raise SfgConfigException(
+            SfgConfigSource.PROJECT,
+            f"Unable to load configurator script {configurator_script}",
+        )
 
     configurator = iutil.module_from_spec(cfg_spec)
     cfg_spec.loader.exec_module(configurator)
 
     if not hasattr(configurator, "sfg_config"):
-        raise SfgConfigException(SfgConfigSource.PROJECT, "Project configurator does not define function `sfg_config`.")
+        raise SfgConfigException(
+            SfgConfigSource.PROJECT,
+            "Project configurator does not define function `sfg_config`.",
+        )
 
     project_config = configurator.sfg_config()
     if not isinstance(project_config, SfgConfiguration):
-        raise SfgConfigException(SfgConfigSource.PROJECT, "sfg_config did not return a SfgConfiguration object.")
+        raise SfgConfigException(
+            SfgConfigSource.PROJECT,
+            "sfg_config did not return a SfgConfiguration object.",
+        )
 
     return project_config
 
@@ -202,15 +215,22 @@ def run_configurator(configurator_script: str):
 def add_config_args_to_parser(parser: ArgumentParser):
     config_group = parser.add_argument_group("Configuration")
 
-    config_group.add_argument("--sfg-output-dir",
-                              type=str, default=None, dest='output_directory')
-    config_group.add_argument("--sfg-file-extensions",
-                              type=str,
-                              default=None,
-                              dest='file_extensions',
-                              help="Comma-separated list of file extensions")
-    config_group.add_argument("--sfg-header-only", default=None, action='store_true', dest='header_only')
-    config_group.add_argument("--sfg-config-module", type=str, default=None, dest='configurator_script')
+    config_group.add_argument(
+        "--sfg-output-dir", type=str, default=None, dest="output_directory"
+    )
+    config_group.add_argument(
+        "--sfg-file-extensions",
+        type=str,
+        default=None,
+        dest="file_extensions",
+        help="Comma-separated list of file extensions",
+    )
+    config_group.add_argument(
+        "--sfg-header-only", default=None, action="store_true", dest="header_only"
+    )
+    config_group.add_argument(
+        "--sfg-config-module", type=str, default=None, dest="configurator_script"
+    )
 
     return parser
 
@@ -223,7 +243,9 @@ def config_from_parser_args(args):
 
     if args.file_extensions is not None:
         file_extentions = list(args.file_extensions.split(","))
-        h_ext, src_ext = _get_file_extensions(SfgConfigSource.COMMANDLINE, file_extentions)
+        h_ext, src_ext = _get_file_extensions(
+            SfgConfigSource.COMMANDLINE, file_extentions
+        )
     else:
         h_ext, src_ext = None, None
 
@@ -232,16 +254,18 @@ def config_from_parser_args(args):
         header_extension=h_ext,
         impl_extension=src_ext,
         header_only=args.header_only,
-        output_directory=args.output_directory
+        output_directory=args.output_directory,
     )
 
     return project_config, cmdline_config
 
 
 def config_from_commandline(argv: list[str]):
-    parser = ArgumentParser("pystencilssfg",
-                            description="pystencils Source File Generator",
-                            allow_abbrev=False)
+    parser = ArgumentParser(
+        "pystencilssfg",
+        description="pystencils Source File Generator",
+        allow_abbrev=False,
+    )
 
     add_config_args_to_parser(parser)
 
@@ -251,9 +275,11 @@ def config_from_commandline(argv: list[str]):
     return project_config, cmdline_config, script_args
 
 
-def merge_configurations(project_config: SfgConfiguration | None,
-                         cmdline_config: SfgConfiguration | None,
-                         script_config: SfgConfiguration | None):
+def merge_configurations(
+    project_config: SfgConfiguration | None,
+    cmdline_config: SfgConfiguration | None,
+    script_config: SfgConfiguration | None,
+):
     #   Project config completely overrides default config
     config = DEFAULT_CONFIG
 
@@ -274,7 +300,8 @@ def merge_configurations(project_config: SfgConfiguration | None,
             if cmdline_value is not None and script_dict[key] is not None:
                 raise SfgException(
                     "Conflicting configuration:"
-                    + f" Parameter {key} was specified both in the script and on the command line.")
+                    + f" Parameter {key} was specified both in the script and on the command line."
+                )
 
         config = config.override(script_config)
 
@@ -285,19 +312,25 @@ def _get_file_extensions(cfgsrc: SfgConfigSource, extensions: Sequence[str]):
     h_ext = None
     src_ext = None
 
-    extensions = tuple((ext[1:] if ext[0] == '.' else ext) for ext in extensions)
+    extensions = tuple((ext[1:] if ext[0] == "." else ext) for ext in extensions)
 
     for ext in extensions:
         if ext in HEADER_FILE_EXTENSIONS:
             if h_ext is not None:
-                raise SfgConfigException(cfgsrc, "Multiple header file extensions specified.")
+                raise SfgConfigException(
+                    cfgsrc, "Multiple header file extensions specified."
+                )
             h_ext = ext
         elif ext in IMPL_FILE_EXTENSIONS:
             if src_ext is not None:
-                raise SfgConfigException(cfgsrc, "Multiple source file extensions specified.")
+                raise SfgConfigException(
+                    cfgsrc, "Multiple source file extensions specified."
+                )
             src_ext = ext
         else:
-            raise SfgConfigException(cfgsrc, f"Don't know how to interpret file extension '.{ext}'")
+            raise SfgConfigException(
+                cfgsrc, f"Don't know how to interpret file extension '.{ext}'"
+            )
 
     return h_ext, src_ext
 
