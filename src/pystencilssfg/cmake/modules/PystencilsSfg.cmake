@@ -14,7 +14,7 @@ function(_pssfg_add_gen_source target script)
 
     cmake_parse_arguments(_pssfg "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    set(generatedSourcesDir ${PystencilsSfg_GENERATED_SOURCES_DIR}/${target})
+    set(generatedSourcesDir ${PystencilsSfg_GENERATED_SOURCES_DIR}/gen/${target})
     get_filename_component(basename ${script} NAME_WLE)
     cmake_path(ABSOLUTE_PATH script OUTPUT_VARIABLE scriptAbsolute)
 
@@ -56,6 +56,7 @@ function(pystencilssfg_generate_target_sources TARGET)
     if(DEFINED PystencilsSfg_CONFIGURATOR_SCRIPT)
         cmake_path(ABSOLUTE_PATH PystencilsSfg_CONFIGURATOR_SCRIPT OUTPUT_VARIABLE configscript)
         list(APPEND generatorArgs "--sfg-config-module=${configscript}")
+        list(APPEND _pssfg_DEPENDS ${configscript})
     endif()
 
     if(DEFINED _pssfg_FILE_EXTENSIONS)
