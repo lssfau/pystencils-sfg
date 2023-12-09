@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Sequence
 from abc import ABC, abstractmethod
+import numpy as np
 
 from pystencils import Field
 from pystencils.astnodes import KernelFunction
@@ -10,6 +11,7 @@ from .tree import (
     SfgKernelCallNode,
     SfgStatements,
     SfgFunctionParams,
+    SfgRequireIncludes,
     SfgSequence,
     SfgBlock,
 )
@@ -20,8 +22,15 @@ from .source_components import (
     SfgHeaderInclude,
     SfgKernelNamespace,
     SfgKernelHandle,
+    SfgClass,
+    SfgConstructor,
+    SfgMemberVariable,
+    SfgClassKeyword,
+    SfgVisibility,
 )
-from .source_concepts import SrcField, TypedSymbolOrObject, SrcVector
+from .source_concepts import SrcObject, SrcField, TypedSymbolOrObject, SrcVector
+from .types import cpp_typename, SrcType
+from .exceptions import SfgException
 
 if TYPE_CHECKING:
     from .context import SfgContext
@@ -70,14 +79,22 @@ class SfgComposer:
         return kns
 
     def include(self, header_file: str):
-        system_header = False
-        if header_file.startswith("<") and header_file.endswith(">"):
-            header_file = header_file[1:-1]
-            system_header = True
+        self._ctx.add_include(parse_include(header_file))
 
-        self._ctx.add_include(
-            SfgHeaderInclude(header_file, system_header=system_header)
-        )
+    def numpy_struct(
+        self, name: str, dtype: np.dtype, add_constructor: bool = True
+    ) -> SfgClass:
+        """Add a numpy structured data type as a C++ struct
+
+        Returns:
+            The created class object
+        """
+        if self._ctx.get_class(name) is not None:
+            raise SfgException(f"Class with name {name} already exists.")
+
+        cls = struct_from_numpy_dtype(name, dtype, add_constructor=add_constructor)
+        self._ctx.add_class(cls)
+        return cls
 
     def kernel_function(
         self, name: str, ast_or_kernel_handle: KernelFunction | SfgKernelHandle
@@ -140,6 +157,9 @@ class SfgComposer:
     def params(self, *args: TypedSymbolOrObject) -> SfgFunctionParams:
         """Use inside a function body to add parameters to the function."""
         return SfgFunctionParams(args)
+
+    def require(self, *includes: str | SfgHeaderInclude) -> SfgRequireIncludes:
+        return SfgRequireIncludes(list(parse_include(incl) for incl in includes))
 
     @property
     def branch(self) -> SfgBranchBuilder:
@@ -296,3 +316,51 @@ class SfgBranchBuilder(SfgNodeBuilder):
     def resolve(self) -> SfgCallTreeNode:
         assert self._cond is not None
         return SfgBranch(self._cond, self._branch_true, self._branch_false)
+
+
+def parse_include(incl: str | SfgHeaderInclude):
+    if isinstance(incl, SfgHeaderInclude):
+        return incl
+
+    system_header = False
+    if incl.startswith("<") and incl.endswith(">"):
+        incl = incl[1:-1]
+        system_header = True
+
+    return SfgHeaderInclude(incl, system_header=system_header)
+
+
+def struct_from_numpy_dtype(
+    struct_name: str, dtype: np.dtype, add_constructor: bool = True
+):
+    cls = SfgClass(struct_name, class_keyword=SfgClassKeyword.STRUCT)
+
+    fields = dtype.fields
+    if fields is None:
+        raise SfgException(f"Numpy dtype {dtype} is not a structured type.")
+
+    constr_params = []
+    constr_inits = []
+
+    for member_name, type_info in fields.items():
+        member_type = SrcType(cpp_typename(type_info[0]))
+
+        member = SfgMemberVariable(
+            member_name, member_type, cls, visibility=SfgVisibility.DEFAULT
+        )
+
+        arg = SrcObject(f"{member_name}_", member_type)
+
+        cls.add_member_variable(member)
+
+        constr_params.append(arg)
+        constr_inits.append(f"{member}({arg})")
+
+    if add_constructor:
+        cls.add_constructor(
+            SfgConstructor(
+                cls, constr_params, constr_inits, visibility=SfgVisibility.DEFAULT
+            )
+        )
+
+    return cls

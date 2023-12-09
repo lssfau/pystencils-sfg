@@ -4,12 +4,11 @@ from typing import TYPE_CHECKING, Sequence
 from abc import ABC, abstractmethod
 from itertools import chain
 
-from ..source_components import SfgKernelHandle
+from ..source_components import SfgHeaderInclude, SfgKernelHandle
 from ..source_concepts.source_objects import SrcObject, TypedSymbolOrObject
 
 if TYPE_CHECKING:
     from ..context import SfgContext
-    from ..source_components import SfgHeaderInclude
 
 
 class SfgCallTreeNode(ABC):
@@ -55,6 +54,14 @@ class SfgCallTreeLeaf(SfgCallTreeNode, ABC):
     @abstractmethod
     def required_parameters(self) -> set[TypedSymbolOrObject]:
         ...
+
+
+class SfgEmptyNode(SfgCallTreeLeaf):
+    def __init__(self):
+        super().__init__()
+
+    def get_code(self, ctx: SfgContext) -> str:
+        return ""
 
 
 class SfgStatements(SfgCallTreeLeaf):
@@ -108,7 +115,7 @@ class SfgStatements(SfgCallTreeLeaf):
         return self._code_string
 
 
-class SfgFunctionParams(SfgCallTreeLeaf):
+class SfgFunctionParams(SfgEmptyNode):
     def __init__(self, parameters: Sequence[TypedSymbolOrObject]):
         super().__init__()
         self._params = set(parameters)
@@ -126,8 +133,19 @@ class SfgFunctionParams(SfgCallTreeLeaf):
     def required_includes(self) -> set[SfgHeaderInclude]:
         return self._required_includes
 
-    def get_code(self, ctx: SfgContext) -> str:
-        return ""
+
+class SfgRequireIncludes(SfgEmptyNode):
+    def __init__(self, includes: Sequence[SfgHeaderInclude]):
+        super().__init__()
+        self._required_includes = set(includes)
+
+    @property
+    def required_parameters(self) -> set[TypedSymbolOrObject]:
+        return set()
+
+    @property
+    def required_includes(self) -> set[SfgHeaderInclude]:
+        return self._required_includes
 
 
 class SfgSequence(SfgCallTreeNode):

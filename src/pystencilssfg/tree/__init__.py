@@ -5,6 +5,7 @@ from .basic_nodes import (
     SfgSequence,
     SfgStatements,
     SfgFunctionParams,
+    SfgRequireIncludes
 )
 from .conditional import SfgBranch, SfgCondition, IntEven, IntOdd
 
@@ -15,6 +16,7 @@ __all__ = [
     "SfgBlock",
     "SfgStatements",
     "SfgFunctionParams",
+    "SfgRequireIncludes",
     "SfgCondition",
     "SfgBranch",
     "IntEven",

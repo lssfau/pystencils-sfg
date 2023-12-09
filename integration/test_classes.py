@@ -70,7 +70,7 @@ with SourceFileGenerator(sfg_config) as ctx:
     cls.add_constructor(
         SfgConstructor(
             cls,
-            [SrcObject("std::vector< int > &", "stuff")],
+            [SrcObject("stuff", "std::vector< int > &")],
             ["stuff_(stuff)"],
             visibility=SfgVisibility.PUBLIC
         )

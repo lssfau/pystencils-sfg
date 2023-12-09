@@ -19,9 +19,9 @@ class SrcObject:
 
     Two objects are identical if they have the same identifier and type string."""
 
-    def __init__(self, src_type: SrcType, identifier: str):
-        self._src_type = src_type
+    def __init__(self, identifier: str, src_type: SrcType):
         self._identifier = identifier
+        self._src_type = src_type
 
     @property
     def identifier(self):
@@ -44,28 +44,37 @@ class SrcObject:
         return hash((self._identifier, self._src_type))
 
     def __eq__(self, other: object) -> bool:
-        return (isinstance(other, SrcObject)
-                and self._identifier == other._identifier
-                and self._src_type == other._src_type)
+        return (
+            isinstance(other, SrcObject)
+            and self._identifier == other._identifier
+            and self._src_type == other._src_type
+        )
+
+    def __str__(self) -> str:
+        return self.name
 
 
 TypedSymbolOrObject: TypeAlias = Union[TypedSymbol, SrcObject]
 
 
 class SrcField(SrcObject, ABC):
-    def __init__(self, src_type: SrcType, identifier: str):
-        super().__init__(src_type, identifier)
+    def __init__(self, identifier: str, src_type: SrcType):
+        super().__init__(identifier, src_type)
 
     @abstractmethod
     def extract_ptr(self, ptr_symbol: FieldPointerSymbol) -> SfgStatements:
         pass
 
     @abstractmethod
-    def extract_size(self, coordinate: int, size: Union[int, FieldShapeSymbol]) -> SfgStatements:
+    def extract_size(
+        self, coordinate: int, size: Union[int, FieldShapeSymbol]
+    ) -> SfgStatements:
         pass
 
     @abstractmethod
-    def extract_stride(self, coordinate: int, stride: Union[int, FieldStrideSymbol]) -> SfgStatements:
+    def extract_stride(
+        self, coordinate: int, stride: Union[int, FieldStrideSymbol]
+    ) -> SfgStatements:
         pass
 
     def extract_parameters(self, field: Field) -> SfgSequence:
@@ -76,11 +85,13 @@ class SrcField(SrcObject, ABC):
         return make_sequence(
             self.extract_ptr(ptr),
             *(self.extract_size(c, s) for c, s in enumerate(field.shape)),
-            *(self.extract_stride(c, s) for c, s in enumerate(field.strides))
+            *(self.extract_stride(c, s) for c, s in enumerate(field.strides)),
         )
 
 
 class SrcVector(SrcObject, ABC):
     @abstractmethod
-    def extract_component(self, destination: TypedSymbolOrObject, coordinate: int) -> SfgStatements:
+    def extract_component(
+        self, destination: TypedSymbolOrObject, coordinate: int
+    ) -> SfgStatements:
         pass

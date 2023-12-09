@@ -172,7 +172,9 @@ class SfgKernelHandle:
 
 
 class SfgFunction:
-    def __init__(self, name: str, tree: SfgCallTreeNode, return_type: SrcType = SrcType("void")):
+    def __init__(
+        self, name: str, tree: SfgCallTreeNode, return_type: SrcType = SrcType("void")
+    ):
         self._name = name
         self._tree = tree
         self._return_type = return_type
@@ -248,7 +250,7 @@ class SfgMemberVariable(SrcObject, SfgClassMember):
         cls: SfgClass,
         visibility: SfgVisibility = SfgVisibility.PRIVATE,
     ):
-        SrcObject.__init__(self, type, name)
+        SrcObject.__init__(self, name, type)
         SfgClassMember.__init__(self, cls, visibility)
 
 
@@ -261,7 +263,7 @@ class SfgMethod(SfgFunction, SfgClassMember):
         visibility: SfgVisibility = SfgVisibility.PUBLIC,
         return_type: SrcType = SrcType("void"),
         inline: bool = False,
-        const: bool = False
+        const: bool = False,
     ):
         SfgFunction.__init__(self, name, tree, return_type=return_type)
         SfgClassMember.__init__(self, cls, visibility)
@@ -323,6 +325,10 @@ class SfgClass:
     @property
     def class_name(self) -> str:
         return self._class_name
+
+    @property
+    def src_type(self) -> SrcType:
+        return SrcType(self._class_name)
 
     @property
     def base_classes(self) -> tuple[str, ...]:

@@ -4,8 +4,6 @@ from types import MethodType
 
 from functools import wraps
 
-from ..tree.basic_nodes import SfgCallTreeNode
-
 V = TypeVar("V")
 R = TypeVar("R")
 P = ParamSpec("P")
@@ -27,7 +25,7 @@ class VisitorDispatcher(Generic[V, R]):
 
         return decorate
 
-    def __call__(self, instance: V, node: SfgCallTreeNode, *args, **kwargs) -> R:
+    def __call__(self, instance: V, node: object, *args, **kwargs) -> R:
         for cls in node.__class__.mro():
             if cls in self._dispatch_dict:
                 return self._dispatch_dict[cls](instance, node, *args, **kwargs)

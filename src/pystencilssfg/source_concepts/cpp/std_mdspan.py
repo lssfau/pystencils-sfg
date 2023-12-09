@@ -25,7 +25,7 @@ class StdMdspan(SrcField):
 
         extents_str = f"std::extents< {extents_type_str}, {', '.join(str(e) for e in extents)} >"
         typestring = f"std::mdspan< {cpp_typestr}, {extents_str} > {'&' if reference else ''}"
-        super().__init__(SrcType(typestring), identifer)
+        super().__init__(identifer, SrcType(typestring))
 
         self._extents = extents
 

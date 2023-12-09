@@ -14,14 +14,19 @@ for example via `create_type`.
 (Note that, while `create_type` does accept strings, they are excluded here for
 reasons of safety. It is discouraged to use strings for type specifications when working
 with pystencils!)
+
+PsType is a temporary solution and will be removed in the future
+in favor of the consolidated pystencils backend typing system.
 """
 
 SrcType = NewType('SrcType', str)
-"""Nonprimitive C/C++-Types occuring during source file generation.
+"""C/C++-Types occuring during source file generation.
 
-Nonprimitive C/C++ types are represented by their names.
-When necessary, the SFG package checks equality of types by these name strings; it does
+When necessary, the SFG package checks equality of types by their name strings; it does
 not care about typedefs, aliases, namespaces, etc!
+
+SrcType is a temporary solution and will be removed in the future
+in favor of the consolidated pystencils backend typing system.
 """
 
 
