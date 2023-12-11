@@ -36,6 +36,8 @@ class SfgContext:
         self._functions: dict[str, SfgFunction] = dict()
         self._classes: dict[str, SfgClass] = dict()
 
+        self._declarations_ordered: list[str | SfgFunction | SfgClass] = list()
+
         #   Standard stuff
         self.add_include(SfgHeaderInclude("cstdint", system_header=True))
         self.add_definition("#define RESTRICT __restrict__")
@@ -109,6 +111,7 @@ class SfgContext:
 
     def add_definition(self, definition: str):
         self._definitions.append(definition)
+        self._declarations_ordered.append(definition)
 
     def set_namespace(self, namespace: str):
         if self._inner_namespace is not None:
@@ -151,6 +154,8 @@ class SfgContext:
             raise SfgException(f"Duplicate function: {func.name}")
 
         self._functions[func.name] = func
+        self._declarations_ordered.append(func)
+
         for incl in CollectIncludes().visit(func):
             self.add_include(incl)
 
@@ -169,6 +174,17 @@ class SfgContext:
             raise SfgException(f"Duplicate class: {cls.class_name}")
 
         self._classes[cls.class_name] = cls
+        self._declarations_ordered.append(cls)
 
         for incl in CollectIncludes().visit(cls):
             self.add_include(incl)
+
+    # ----------------------------------------------------------------------------------------------
+    #   Declarations in order of addition
+    # ----------------------------------------------------------------------------------------------
+
+    def declarations_ordered(self) -> Generator[str | SfgFunction | SfgClass, None, None]:
+        """All declared definitions, classes and functions in the order they were added.
+
+        Awareness about order is necessary due to the C++ declare-before-use rules."""
+        yield from self._declarations_ordered

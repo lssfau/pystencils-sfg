@@ -93,11 +93,7 @@ class SfgHeaderPrinter(SfgGeneralPrinter):
             code += f"namespace {fq_namespace} {{\n\n"
 
         parts = interleave(
-            chain(
-                ctx.definitions(),
-                ctx.classes(),
-                ctx.functions()
-            ),
+            ctx.declarations_ordered(),
             repeat(SfgEmptyLines(1))
         )
 
