@@ -246,11 +246,11 @@ class SfgMemberVariable(SrcObject, SfgClassMember):
     def __init__(
         self,
         name: str,
-        type: SrcType,
+        dtype: SrcType,
         cls: SfgClass,
         visibility: SfgVisibility = SfgVisibility.PRIVATE,
     ):
-        SrcObject.__init__(self, name, type)
+        SrcObject.__init__(self, name, dtype)
         SfgClassMember.__init__(self, cls, visibility)
 
 
@@ -314,6 +314,9 @@ class SfgClass:
         class_keyword: SfgClassKeyword = SfgClassKeyword.CLASS,
         bases: Sequence[str] = (),
     ):
+        if isinstance(bases, str):
+            raise ValueError("Base classes must be given as a sequence.")
+
         self._class_name = class_name
         self._class_keyword = class_keyword
         self._bases_classes = tuple(bases)
@@ -344,6 +347,16 @@ class SfgClass:
         yield from self.member_variables(visibility)
         yield from self.constructors(visibility)
         yield from self.methods(visibility)
+
+    def add_member(self, member: SfgClassMember):
+        if isinstance(member, SfgConstructor):
+            self.add_constructor(member)
+        elif isinstance(member, SfgMemberVariable):
+            self.add_member_variable(member)
+        elif isinstance(member, SfgMethod):
+            self.add_method(member)
+        else:
+            raise SfgException(f"{member} is not a valid class member.")
 
     def constructors(
         self, visibility: SfgVisibility | None = None

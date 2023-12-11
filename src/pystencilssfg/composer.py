@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Sequence
 from abc import ABC, abstractmethod
 import numpy as np
+from functools import partial
 
 from pystencils import Field
 from pystencils.astnodes import KernelFunction
@@ -23,7 +24,9 @@ from .source_components import (
     SfgKernelNamespace,
     SfgKernelHandle,
     SfgClass,
+    SfgClassMember,
     SfgConstructor,
+    SfgMethod,
     SfgMemberVariable,
     SfgClassKeyword,
     SfgVisibility,
@@ -328,6 +331,131 @@ def parse_include(incl: str | SfgHeaderInclude):
         system_header = True
 
     return SfgHeaderInclude(incl, system_header=system_header)
+
+
+class SfgClassComposer:
+    def __init__(self, ctx: SfgContext):
+        self._ctx = ctx
+
+    class PartialMember:
+        def __init__(self, member_type: type[SfgClassMember], *args, **kwargs):
+            assert issubclass(member_type, SfgClassMember)
+
+            self._type = member_type
+            self._partial = partial(member_type, *args, **kwargs)
+
+        @property
+        def member_type(self):
+            return self._type
+
+        def resolve(self, cls: SfgClass, visibility: SfgVisibility) -> SfgClassMember:
+            return self._partial(cls=cls, visibility=visibility)
+
+    class VisibilityContext:
+        def __init__(self, visibility: SfgVisibility):
+            self._vis = visibility
+            self._partial_members: list[SfgClassComposer.PartialMember] = []
+
+        def members(self):
+            yield from self._partial_members
+
+        def __call__(self, *args: SfgClassComposer.PartialMember | SrcObject):
+            for arg in args:
+                if isinstance(arg, SrcObject):
+                    self._partial_members.append(SfgClassComposer.PartialMember(
+                        SfgMemberVariable,
+                        name=arg.name,
+                        dtype=arg.dtype
+                    ))
+                else:
+                    self._partial_members.append(arg)
+
+            return self
+
+        def resolve(self, cls: SfgClass) -> list[SfgClassMember]:
+            return [part.resolve(cls=cls, visibility=self._vis) for part in self._partial_members]
+
+    class ConstructorBuilder:
+        def __init__(self, *params: SrcObject):
+            self._params = params
+            self._initializers: list[str] = []
+
+        def init(self, initializer: str) -> SfgClassComposer.ConstructorBuilder:
+            self._initializers.append(initializer)
+            return self
+
+        def body(self, body: str):
+            return SfgClassComposer.PartialMember(
+                SfgConstructor,
+                parameters=self._params,
+                initializers=self._initializers,
+                body=body
+            )
+
+    def klass(self, class_name: str, bases: Sequence[str] = ()):
+        return self._class(class_name, SfgClassKeyword.CLASS, bases)
+
+    def struct(self, class_name: str, bases: Sequence[str] = ()):
+        return self._class(class_name, SfgClassKeyword.STRUCT, bases)
+
+    @property
+    def public(self) -> SfgClassComposer.VisibilityContext:
+        return SfgClassComposer.VisibilityContext(SfgVisibility.PUBLIC)
+
+    @property
+    def private(self) -> SfgClassComposer.VisibilityContext:
+        return SfgClassComposer.VisibilityContext(SfgVisibility.PRIVATE)
+
+    def var(self, name: str, dtype: SrcType):
+        return SfgClassComposer.PartialMember(SfgMemberVariable, name=name, dtype=dtype)
+
+    def constructor(self, *params):
+        return SfgClassComposer.ConstructorBuilder(*params)
+
+    def method(
+            self,
+            name: str,
+            returns: SrcType = SrcType("void"),
+            inline: bool = False,
+            const: bool = False):
+
+        def sequencer(*args: str | tuple | SfgCallTreeNode | SfgNodeBuilder):
+            tree = make_sequence(*args)
+            return SfgClassComposer.PartialMember(
+                SfgMethod,
+                name=name,
+                tree=tree,
+                return_type=returns,
+                inline=inline,
+                const=const
+            )
+
+        return sequencer
+
+    #   INTERNALS
+
+    def _class(self, class_name: str, keyword: SfgClassKeyword, bases: Sequence[str]):
+        if self._ctx.get_class(class_name) is not None:
+            raise ValueError(f"Class or struct {class_name} already exists.")
+
+        cls = SfgClass(class_name, class_keyword=keyword, bases=bases)
+        self._ctx.add_class(cls)
+
+        def sequencer(*args):
+            default_context = SfgClassComposer.VisibilityContext(SfgVisibility.DEFAULT)
+            for arg in args:
+                if isinstance(arg, SfgClassComposer.VisibilityContext):
+                    for member in arg.resolve(cls):
+                        cls.add_member(member)
+                elif isinstance(arg, (SfgClassComposer.PartialMember, SrcObject)):
+                    default_context(arg)
+                else:
+                    raise SfgException(f"{arg} is not a valid class member.")
+
+            for member in default_context.resolve(cls):
+                cls.add_member(member)
+
+        return sequencer
 
 
 def struct_from_numpy_dtype(
