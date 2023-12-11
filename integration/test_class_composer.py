@@ -50,6 +50,6 @@ with SourceFileGenerator(sfg_config) as ctx:
         ),
 
         c.public(
-
+            "using xtype = uint8_t;"
         )
     )

@@ -242,6 +242,19 @@ class SfgClassMember(ABC):
         return self._visibility
 
 
+class SfgInClassDefinition(SfgClassMember):
+    def __init__(self, text: str, cls: SfgClass, visibility: SfgVisibility):
+        SfgClassMember.__init__(self, cls, visibility)
+        self._text = text
+
+    @property
+    def text(self) -> str:
+        return self._text
+
+    def __str__(self) -> str:
+        return self._text
+
+
 class SfgMemberVariable(SrcObject, SfgClassMember):
     def __init__(
         self,
@@ -321,6 +334,7 @@ class SfgClass:
         self._class_keyword = class_keyword
         self._bases_classes = tuple(bases)
 
+        self._definitions: list[SfgInClassDefinition] = []
         self._constructors: list[SfgConstructor] = []
         self._methods: dict[str, SfgMethod] = dict()
         self._member_vars: dict[str, SfgMemberVariable] = dict()
@@ -344,6 +358,7 @@ class SfgClass:
     def members(
         self, visibility: SfgVisibility | None = None
     ) -> Generator[SfgClassMember, None, None]:
+        yield from self.definitions(visibility)
         yield from self.member_variables(visibility)
         yield from self.constructors(visibility)
         yield from self.methods(visibility)
@@ -355,8 +370,21 @@ class SfgClass:
             self.add_member_variable(member)
         elif isinstance(member, SfgMethod):
             self.add_method(member)
+        elif isinstance(member, SfgInClassDefinition):
+            self.add_definition(member)
         else:
             raise SfgException(f"{member} is not a valid class member.")
+
+    def definitions(
+        self, visibility: SfgVisibility | None = None
+    ) -> Generator[SfgInClassDefinition, None, None]:
+        if visibility is not None:
+            yield from filter(lambda m: m.visibility == visibility, self._definitions)
+        else:
+            yield from self._definitions
+
+    def add_definition(self, definition: SfgInClassDefinition):
+        self._definitions.append(definition)
 
     def constructors(
         self, visibility: SfgVisibility | None = None

@@ -25,6 +25,7 @@ from .source_components import (
     SfgKernelHandle,
     SfgClass,
     SfgClassMember,
+    SfgInClassDefinition,
     SfgConstructor,
     SfgMethod,
     SfgMemberVariable,
@@ -359,21 +360,28 @@ class SfgClassComposer:
         def members(self):
             yield from self._partial_members
 
-        def __call__(self, *args: SfgClassComposer.PartialMember | SrcObject):
+        def __call__(self, *args: SfgClassComposer.PartialMember | SrcObject | str):
             for arg in args:
                 if isinstance(arg, SrcObject):
-                    self._partial_members.append(SfgClassComposer.PartialMember(
-                        SfgMemberVariable,
-                        name=arg.name,
-                        dtype=arg.dtype
-                    ))
+                    self._partial_members.append(
+                        SfgClassComposer.PartialMember(
+                            SfgMemberVariable, name=arg.name, dtype=arg.dtype
+                        )
+                    )
+                elif isinstance(arg, str):
+                    self._partial_members.append(
+                        SfgClassComposer.PartialMember(SfgInClassDefinition, text=arg)
+                    )
                 else:
                     self._partial_members.append(arg)
 
             return self
 
         def resolve(self, cls: SfgClass) -> list[SfgClassMember]:
-            return [part.resolve(cls=cls, visibility=self._vis) for part in self._partial_members]
+            return [
+                part.resolve(cls=cls, visibility=self._vis)
+                for part in self._partial_members
+            ]
 
     class ConstructorBuilder:
         def __init__(self, *params: SrcObject):
@@ -389,7 +397,7 @@ class SfgClassComposer:
                 SfgConstructor,
                 parameters=self._params,
                 initializers=self._initializers,
-                body=body
+                body=body,
             )
 
     def klass(self, class_name: str, bases: Sequence[str] = ()):
@@ -413,12 +421,12 @@ class SfgClassComposer:
         return SfgClassComposer.ConstructorBuilder(*params)
 
     def method(
-            self,
-            name: str,
-            returns: SrcType = SrcType("void"),
-            inline: bool = False,
-            const: bool = False):
-
+        self,
+        name: str,
+        returns: SrcType = SrcType("void"),
+        inline: bool = False,
+        const: bool = False,
+    ):
         def sequencer(*args: str | tuple | SfgCallTreeNode | SfgNodeBuilder):
             tree = make_sequence(*args)
             return SfgClassComposer.PartialMember(
@@ -427,7 +435,7 @@ class SfgClassComposer:
                 tree=tree,
                 return_type=returns,
                 inline=inline,
-                const=const
+                const=const,
             )
 
         return sequencer
@@ -447,7 +455,7 @@ class SfgClassComposer:
                 if isinstance(arg, SfgClassComposer.VisibilityContext):
                     for member in arg.resolve(cls):
                         cls.add_member(member)
-                elif isinstance(arg, (SfgClassComposer.PartialMember, SrcObject)):
+                elif isinstance(arg, (SfgClassComposer.PartialMember, SrcObject, str)):
                     default_context(arg)
                 else:
                     raise SfgException(f"{arg} is not a valid class member.")

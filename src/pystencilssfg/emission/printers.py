@@ -18,6 +18,7 @@ from ..source_components import (
     SfgKernelNamespace,
     SfgFunction,
     SfgClass,
+    SfgInClassDefinition,
     SfgConstructor,
     SfgMemberVariable,
     SfgMethod,
@@ -34,7 +35,6 @@ def interleave(*iters):
 
 
 class SfgGeneralPrinter:
-
     @visitor
     def visit(self, obj: object) -> str:
         raise SfgException(f"Can't print object of type {type(obj)}")
@@ -56,7 +56,11 @@ class SfgGeneralPrinter:
 
     def prelude(self, ctx: SfgContext) -> str:
         if ctx.prelude_comment:
-            return "/*\n" + indent(ctx.prelude_comment, "* ", predicate=lambda _: True) + "*/\n"
+            return (
+                "/*\n"
+                + indent(ctx.prelude_comment, "* ", predicate=lambda _: True)
+                + "*/\n"
+            )
         else:
             return ""
 
@@ -66,7 +70,6 @@ class SfgGeneralPrinter:
 
 
 class SfgHeaderPrinter(SfgGeneralPrinter):
-
     def __init__(self, ctx: SfgContext, output_spec: SfgOutputSpec):
         self._output_spec = output_spec
         self._ctx = ctx
@@ -92,10 +95,7 @@ class SfgHeaderPrinter(SfgGeneralPrinter):
         if fq_namespace is not None:
             code += f"namespace {fq_namespace} {{\n\n"
 
-        parts = interleave(
-            ctx.declarations_ordered(),
-            repeat(SfgEmptyLines(1))
-        )
+        parts = interleave(ctx.declarations_ordered(), repeat(SfgEmptyLines(1)))
 
         code += "\n".join(self.visit(p) for p in parts)
 
@@ -131,6 +131,10 @@ class SfgHeaderPrinter(SfgGeneralPrinter):
 
         return code
 
+    @visit.case(SfgInClassDefinition)
+    def sfg_inclassdef(self, definition: SfgInClassDefinition):
+        return definition.text
+
     @visit.case(SfgConstructor)
     def sfg_constructor(self, constr: SfgConstructor):
         code = f"{constr.owning_class.class_name} ("
@@ -153,7 +157,11 @@ class SfgHeaderPrinter(SfgGeneralPrinter):
         code = f"{method.return_type} {method.name} ({self.param_list(method)})"
         code += "const" if method.const else ""
         if method.inline:
-            code += " {\n" + self._ctx.codestyle.indent(method.tree.get_code(self._ctx)) + "}\n"
+            code += (
+                " {\n"
+                + self._ctx.codestyle.indent(method.tree.get_code(self._ctx))
+                + "}\n"
+            )
         else:
             code += ";"
         return code
@@ -201,9 +209,9 @@ class SfgImplPrinter(SfgGeneralPrinter):
                 [delimiter("Functions")],
                 ctx.functions(),
                 [delimiter("Class Methods")],
-                ctx.classes()
+                ctx.classes(),
             ),
-            repeat(SfgEmptyLines(1))
+            repeat(SfgEmptyLines(1)),
         )
 
         code += "\n".join(self.visit(p) for p in parts)
@@ -227,7 +235,9 @@ class SfgImplPrinter(SfgGeneralPrinter):
     @visit.case(SfgFunction)
     def function(self, func: SfgFunction) -> str:
         code = f"{func.return_type} {func.name} ({self.param_list(func)})"
-        code += "{\n" + self._ctx.codestyle.indent(func.tree.get_code(self._ctx)) + "}\n"
+        code += (
+            "{\n" + self._ctx.codestyle.indent(func.tree.get_code(self._ctx)) + "}\n"
+        )
         return code
 
     @visit.case(SfgClass)
@@ -240,5 +250,7 @@ class SfgImplPrinter(SfgGeneralPrinter):
         const_qual = "const" if method.const else ""
         code = f"{method.return_type} {method.owning_class.class_name}::{method.name}"
         code += f"({self.param_list(method)}) {const_qual}"
-        code += " {\n" + self._ctx.codestyle.indent(method.tree.get_code(self._ctx)) + "}\n"
+        code += (
+            " {\n" + self._ctx.codestyle.indent(method.tree.get_code(self._ctx)) + "}\n"
+        )
         return code
