@@ -487,13 +487,13 @@ def struct_from_numpy_dtype(
 
         arg = SrcObject(f"{member_name}_", member_type)
 
-        cls.add_member_variable(member)
+        cls._add_member_variable(member)
 
         constr_params.append(arg)
         constr_inits.append(f"{member}({arg})")
 
     if add_constructor:
-        cls.add_constructor(
+        cls._add_constructor(
             SfgConstructor(
                 cls, constr_params, constr_inits, visibility=SfgVisibility.DEFAULT
             )

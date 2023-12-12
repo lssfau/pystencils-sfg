@@ -28,51 +28,41 @@ with SourceFileGenerator(sfg_config) as ctx:
     khandle = sfg.kernels.create(assignments)
 
     cls = SfgClass("MyClass")
-    cls.add_method(SfgMethod(
+    cls.default.append_member(SfgMethod(
         "callKernel",
-        sfg.call(khandle),
-        cls,
-        visibility=SfgVisibility.PUBLIC
+        sfg.call(khandle)
     ))
 
-    cls.add_method(SfgMethod(
+    cls.default.append_member(SfgMethod(
         "inlineConst",
         sfg.seq(
             "return -1.0;"
         ),
-        cls,
-        visibility=SfgVisibility.PUBLIC,
         return_type=SrcType("double"),
         inline=True,
         const=True
     ))
 
-    cls.add_method(SfgMethod(
+    cls.default.append_member(SfgMethod(
         "awesomeMethod",
         sfg.seq(
             "return 2.0f;"
         ),
-        cls,
-        visibility=SfgVisibility.PRIVATE,
         return_type=SrcType("float"),
         inline=False,
         const=True
     ))
 
-    cls.add_member_variable(
+    cls.default.append_member(
         SfgMemberVariable(
-            "stuff", "std::vector< int >",
-            cls,
-            SfgVisibility.PRIVATE
+            "stuff", "std::vector< int >"
         )
     )
 
-    cls.add_constructor(
+    cls.default.append_member(
         SfgConstructor(
-            cls,
             [SrcObject("stuff", "std::vector< int > &")],
-            ["stuff_(stuff)"],
-            visibility=SfgVisibility.PUBLIC
+            ["stuff_(stuff)"]
         )
     )
 

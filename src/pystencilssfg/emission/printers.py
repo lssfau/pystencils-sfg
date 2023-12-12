@@ -23,6 +23,7 @@ from ..source_components import (
     SfgMemberVariable,
     SfgMethod,
     SfgVisibility,
+    SfgVisibilityBlock
 )
 
 
@@ -118,17 +119,22 @@ class SfgHeaderPrinter(SfgGeneralPrinter):
             code += f" : {','.join(cls.base_classes)}\n"
 
         code += "{\n"
-        for visibility in (
-            SfgVisibility.DEFAULT,
-            SfgVisibility.PUBLIC,
-            SfgVisibility.PRIVATE,
-        ):
-            if visibility != SfgVisibility.DEFAULT:
-                code += f"\n{visibility}:\n"
-            for member in cls.members(visibility):
-                code += self._ctx.codestyle.indent(self.visit(member)) + "\n"
+
+        for block in cls.visibility_blocks():
+            code += self.visit(block) + "\n"
+
         code += "};\n"
 
+        return code
+
+    @visit.case(SfgVisibilityBlock)
+    def vis_block(self, block: SfgVisibilityBlock) -> str:
+        code = ""
+        if block.visibility != SfgVisibility.DEFAULT:
+            code += f"{block.visibility}:\n"
+        code += self._ctx.codestyle.indent(
+            "\n".join(self.visit(m) for m in block.members())
+        )
         return code
 
     @visit.case(SfgInClassDefinition)
