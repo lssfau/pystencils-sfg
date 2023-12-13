@@ -233,7 +233,7 @@ class SfgClassKeyword(Enum):
 
 
 class SfgClassMember(ABC):
-    def __init__(self):
+    def __init__(self) -> None:
         self._cls: SfgClass | None = None
         self._visibility: SfgVisibility | None = None
 
@@ -372,8 +372,8 @@ class SfgClass:
     ### Adding members to classes
 
     Members are never added directly to a class. Instead, they are added to
-    a SfgVisibilityBlock which defines their syntactic position and visibility modifier
-    in the code.
+    an [SfgVisibilityBlock][pystencilssfg.source_components.SfgVisibilityBlock]
+    which defines their syntactic position and visibility modifier in the code.
     At the top of every class, there is a default visibility block
     accessible through the `default` property.
     To add members with custom visibility, create a new SfgVisibilityBlock,
@@ -425,6 +425,10 @@ class SfgClass:
         return self._default_block
 
     def append_visibility_block(self, block: SfgVisibilityBlock):
+        if block.visibility == SfgVisibility.DEFAULT:
+            raise SfgException(
+                "Can't add another block with DEFAULT visibility to a class. Use `.default` instead.")
+
         block._bind(self)
         for m in block.members():
             self._add_member(m, block.visibility)

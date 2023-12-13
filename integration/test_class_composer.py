@@ -35,18 +35,18 @@ with SourceFileGenerator(sfg_config) as ctx:
     c.klass("MyClass", bases=("MyBaseClass",))(
         # class body sequencer
 
+        c.constructor(SrcObject("a", "int"))
+        .init("a_(a)")
+        .body(
+            'cout << "Hi!" << endl;'
+        ),
+
         c.private(
             c.var("a_", "int"),
 
             c.method("getX", returns="int")(
                 "return 2.0;"
             )
-        ),
-
-        c.constructor(SrcObject("a", "int"))
-        .init("a_(a)")
-        .body(
-            'cout << "Hi!" << endl;'
         ),
 
         c.public(
