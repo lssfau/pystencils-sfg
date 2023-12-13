@@ -440,9 +440,14 @@ class SfgClass:
     def members(
         self, visibility: SfgVisibility | None = None
     ) -> Generator[SfgClassMember, None, None]:
-        yield from chain.from_iterable(
-            b.members() for b in filter(lambda b: b.visibility == visibility, self._blocks)
-        )
+        if visibility is None:
+            yield from chain.from_iterable(
+                b.members() for b in self._blocks
+            )
+        else:
+            yield from chain.from_iterable(
+                b.members() for b in filter(lambda b: b.visibility == visibility, self._blocks)
+            )
 
     def definitions(
         self, visibility: SfgVisibility | None = None

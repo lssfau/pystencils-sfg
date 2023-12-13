@@ -1,7 +1,6 @@
 from typing import Generator, Sequence
 
 from .configuration import SfgCodeStyle
-from .visitors import CollectIncludes
 from .source_components import (
     SfgHeaderInclude,
     SfgKernelNamespace,
@@ -156,9 +155,6 @@ class SfgContext:
         self._functions[func.name] = func
         self._declarations_ordered.append(func)
 
-        for incl in CollectIncludes().visit(func):
-            self.add_include(incl)
-
     # ----------------------------------------------------------------------------------------------
     #   Classes
     # ----------------------------------------------------------------------------------------------
@@ -175,9 +171,6 @@ class SfgContext:
 
         self._classes[cls.class_name] = cls
         self._declarations_ordered.append(cls)
-
-        for incl in CollectIncludes().visit(cls):
-            self.add_include(incl)
 
     # ----------------------------------------------------------------------------------------------
     #   Declarations in order of addition
