@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, Optional, cast, Generator
 
 from pystencils.typing import TypedSymbol, BasicType
 
@@ -60,10 +60,12 @@ class IntOdd(SfgCondition):
 
 
 class SfgBranch(SfgCallTreeNode):
-    def __init__(self,
-                 cond: SfgCondition,
-                 branch_true: SfgCallTreeNode,
-                 branch_false: Optional[SfgCallTreeNode] = None):
+    def __init__(
+        self,
+        cond: SfgCondition,
+        branch_true: SfgCallTreeNode,
+        branch_false: Optional[SfgCallTreeNode] = None,
+    ):
         super().__init__(cond, branch_true, *((branch_false,) if branch_false else ()))
 
     @property
@@ -88,4 +90,46 @@ class SfgBranch(SfgCallTreeNode):
             code += ctx.codestyle.indent(self.branch_false.get_code(ctx))
             code += "\n}"
 
+        return code
+
+
+class SfgSwitch(SfgCallTreeNode):
+    def __init__(
+        self,
+        switch_arg: str | TypedSymbolOrObject,
+        cases_dict: dict[str, SfgCallTreeNode],
+        default: SfgCallTreeNode | None = None,
+    ):
+        children = tuple(cases_dict.values()) + (
+            (default,) if default is not None else ()
+        )
+        super().__init__(*children)
+        self._switch_arg = switch_arg
+        self._cases_dict = cases_dict
+        self._default = default
+
+    @property
+    def switch_arg(self) -> str | TypedSymbolOrObject:
+        return self._switch_arg
+
+    def cases(self) -> Generator[tuple[str, SfgCallTreeNode], None, None]:
+        yield from self._cases_dict.items()
+
+    @property
+    def default(self) -> SfgCallTreeNode | None:
+        return self._default
+
+    def get_code(self, ctx: SfgContext) -> str:
+        code = f"switch({self._switch_arg}) {{\n"
+        for label, subtree in self._cases_dict.items():
+            code += f"case {label}: {{\n"
+            code += ctx.codestyle.indent(subtree.get_code(ctx))
+            code += "\nbreak;\n}\n"
+
+        if self._default is not None:
+            code += "default: {\n"
+            code += ctx.codestyle.indent(self._default.get_code(ctx))
+            code += "\nbreak;\n}\n"
+
+        code += "}"
         return code
