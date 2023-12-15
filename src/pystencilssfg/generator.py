@@ -15,40 +15,6 @@ from .context import SfgContext
 
 class SourceFileGenerator:
     """Context manager that controls the code generation process in generator scripts.
-
-    ## Configuration
-
-    The [source file generator][pystencilssfg.SourceFileGenerator] draws configuration from a total of four sources:
-
-     - The [default configuration][pystencilssfg.configuration.DEFAULT_CONFIG];
-     - The project configuration;
-     - Command-line arguments;
-     - The user configuration passed to the constructor of `SourceFileGenerator`.
-
-    They take precedence in the following way:
-
-     - Project configuration overrides the default configuration
-     - Command line arguments override the project configuration
-     - User configuration overrides default and project configuration,
-       and must not conflict with command-line arguments; otherwise, an error is thrown.
-
-    ### Project Configuration via Configurator Script
-
-    Currently, the only way to define the project configuration is via a configuration module.
-    A configurator module is a Python file defining the following function at the top-level:
-
-    ```Python
-    from pystencilssfg import SfgConfiguration
-
-    def sfg_config() -> SfgConfiguration:
-        # ...
-        return SfgConfiguration(
-            # ...
-        )
-    ```
-
-    The configuration module is passed to the code generation script via the command-line argument
-    `--sfg-config-module`.
     """
 
     def __init__(self, sfg_config: SfgConfiguration | None = None):

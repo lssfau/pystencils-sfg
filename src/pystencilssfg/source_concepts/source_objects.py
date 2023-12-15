@@ -58,6 +58,19 @@ TypedSymbolOrObject: TypeAlias = Union[TypedSymbol, SrcObject]
 
 
 class SrcField(SrcObject, ABC):
+    """Represents a C++ data structure that can be mapped to a *pystencils* field.
+
+    Subclasses of `SrcField` are meant to be used in [SfgComposer.map_field][pystencilssfg.SfgComposer.map_field]
+    to produce the necessary mapping code from a high-level C++ field data structure to a pystencils field.
+
+    Subclasses of `SrcField` must implement `extract_ptr`, `extract_size` and `extract_stride`
+    to emit code extracting field pointers and indexing information from the high-level concept.
+
+    Currently, *pystencils-sfg* provides an implementation for the C++ `std::vector` and `std::mdspan` classes via
+    [StdVector][pystencilssfg.source_concepts.cpp.StdVector] and
+    [StdMdspan][pystencilssfg.source_concepts.cpp.StdMdspan].
+    """
+
     def __init__(self, identifier: str, src_type: SrcType):
         super().__init__(identifier, src_type)
 
@@ -90,6 +103,18 @@ class SrcField(SrcObject, ABC):
 
 
 class SrcVector(SrcObject, ABC):
+    """Represents a C++ abstraction of a mathematical vector that can be mapped to a vector of symbols.
+
+    Subclasses of `SrcVector` are meant to be used in [SfgComposer.map_vector][pystencilssfg.SfgComposer.map_vector]
+    to produce the necessary mapping code from a high-level C++ vector data structure to a vector of symbols.
+
+    Subclasses of `SrcVector` must implement `extract_component` to emit code extracting scalar values
+    from the high-level vector.
+
+    Currently, *pystencils-sfg* provides an implementation for the C++ `std::vector` via
+    [StdVector][pystencilssfg.source_concepts.cpp.StdVector].
+    """
+
     @abstractmethod
     def extract_component(
         self, destination: TypedSymbolOrObject, coordinate: int

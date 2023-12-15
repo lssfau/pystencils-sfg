@@ -45,9 +45,15 @@ nav:
     - 'CLI and Build System Integration': usage/cli.md
   - 'API Documentation':
     - 'Overview': api/index.md
-    - 'Source File Generator': api/generator.md
-    - 'Code Generation Context': api/context.md
-    - 'Composer': api/composer.md
-    - 'Source File Components': api/source_components.md
-    - 'Kernel Call Tree': api/tree.md
-    - 'Emission and Printing': api/emission.md
+    - 'Front End':
+      - 'Source File Generator': api/generator.md
+      - 'Code Generation Context': api/context.md
+      - 'Composer': api/composer.md
+    - 'Source File Modelling':
+      - 'Source File Components': api/source_components.md
+      - 'Kernel Call Tree': api/tree.md
+    - 'High-Level Language Concepts':
+      - 'Base Classes': 'api/source_objects.md'
+      - 'C++ Standard Library': 'api/cpp_std.md'
+    - 'Code Generation':
+      - 'Emission and Printing': api/emission.md

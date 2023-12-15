@@ -193,7 +193,7 @@ class SfgBasicComposer:
 
         Args:
             field: The pystencils field to be mapped
-            src_object: A `SrcField` object representing a field data structure.
+            src_object: A [SrcField][pystencilssfg.source_concepts.SrcField] object representing a field data structure.
         """
         return SfgDeferredFieldMapping(field, src_object)
 
@@ -205,7 +205,12 @@ class SfgBasicComposer:
         return SfgStatements(mapping, (lhs,), (rhs,))
 
     def map_vector(self, lhs_components: Sequence[TypedSymbolOrObject], rhs: SrcVector):
-        """Extracts scalar numerical values from a vector data type."""
+        """Extracts scalar numerical values from a vector data type.
+
+        Args:
+            lhs_components: Vector components as a list of symbols.
+            rhs: A [SrcVector][pystencilssfg.source_concepts.SrcVector] object representing a vector data structure.
+        """
         return make_sequence(
             *(
                 rhs.extract_component(dest, coord)

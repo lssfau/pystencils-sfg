@@ -12,7 +12,10 @@ if TYPE_CHECKING:
 
 
 class SfgCallTreeNode(ABC):
-    """Base class for all nodes comprising SFG call trees."""
+    """Base class for all nodes comprising SFG call trees.
+
+    Any instantiable call tree node must implement `get_code`.
+    """
 
     def __init__(self, *children: SfgCallTreeNode):
         self._children = list(children)
@@ -50,6 +53,11 @@ class SfgCallTreeNode(ABC):
 
 
 class SfgCallTreeLeaf(SfgCallTreeNode, ABC):
+    """A leaf node of the call tree.
+
+    Leaf nodes must implement `required_parameters` for automatic parameter collection.
+    """
+
     @property
     @abstractmethod
     def required_parameters(self) -> set[TypedSymbolOrObject]:
@@ -57,6 +65,11 @@ class SfgCallTreeLeaf(SfgCallTreeNode, ABC):
 
 
 class SfgEmptyNode(SfgCallTreeLeaf):
+    """A leaf node that does not emit any code.
+
+    Empty nodes must still implement `required_parameters`.
+    """
+
     def __init__(self):
         super().__init__()
 
@@ -76,9 +89,9 @@ class SfgStatements(SfgCallTreeLeaf):
 
     Args:
         code_string: Code to be printed out.
-        defined_objects: Objects (as `SrcObject` or `TypedSymbol`) that will be newly defined and visible to
+        defined_params: Objects (as `SrcObject` or `TypedSymbol`) that will be newly defined and visible to
             code in sequence after these statements.
-        required_objects: Objects (as `SrcObject` or `TypedSymbol`) that are required as input to these statements.
+        required_params: Objects (as `SrcObject` or `TypedSymbol`) that are required as input to these statements.
     """
 
     def __init__(

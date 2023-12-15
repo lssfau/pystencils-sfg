@@ -13,6 +13,11 @@ These pages document the public API of *pystencils-sfg*.
  - [Source File Components](source_components.md)
  - [Kernel Call Tree](tree.md)
 
+### High-Level Language Concepts
+
+ - [Base Classes](source_objects.md)
+ - [C++ Standard Library](cpp_std.md)
+
 ### Code Generation
 
  - [Emission and Printing](emission.md)

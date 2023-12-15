@@ -153,10 +153,10 @@ Extract kernel parameters from C++ objects:
    [`SrcField`][pystencilssfg.source_concepts.SrcField].
    Currently, *pystencils-sfg* provides mappings to 
    [`std::vector`](https://en.cppreference.com/w/cpp/container/vector)
-   (via [`std_vector_ref`][pystencilssfg.source_components.cpp.std_vector_ref])
+   (via [`std_vector_ref`][pystencilssfg.source_concepts.cpp.std_vector_ref])
    and
    [`std::mdspan`](https://en.cppreference.com/w/cpp/container/mdspan)
-   (via [`mdspan_ref`][pystencilssfg.source_components.cpp.mdspan_ref])
+   (via [`mdspan_ref`][pystencilssfg.source_concepts.cpp.mdspan_ref])
    from the C++ standard library.
  - [`map_vector`][pystencilssfg.SfgComposer.map_vector] maps a sequence of scalar numerical values
    (given as `pystencils.TypedSymbol`s) to a vector data type. Currently, only `std::vector` is provided.
