@@ -18,19 +18,18 @@ The code generation process in a generator script is controlled by the
 It configures the code generator by combining configuration options from the 
 environment (e.g. a CMake build system) with options specified in the script,
 and infers the names of the output files from the script's name.
-It then prepares a code generation [context][pystencilssfg.SfgContext] and a
-[composer][pystencilssfg.SfgComposer].
-The latter is returned when entering the context manager, and provides a convenient
-interface to constructing the source files.
+It then prepares and returns a code generation [context][pystencilssfg.SfgContext].
+This context may then be passed to a [composer][pystencilssfg.SfgComposer],
+which provides a convenient interface for constructing the source files.
 
 To start, place the following code in a Python script, e.g. `kernels.py`:
 
 ```Python
-from pystencilssfg import SourceFileGenerator, SfgConfiguration
+from pystencilssfg import SourceFileGenerator, SfgConfiguration, SfgComposer
 
 sfg_config = SfgConfiguration()
-with SourceFileGenerator(sfg_config) as sfg:
-    pass
+with SourceFileGenerator(sfg_config) as ctx:
+    sfg = SfgComposer(ctx)
 
 ```
 
@@ -56,9 +55,11 @@ A few notes on configuration:
 
 ## Using the Composer
 
-The object `sfg` returned by the context manager is an [SfgComposer](pystencilssfg.SfgComposer).
-It is a stateless builder object which provides a convenient interface to construct the source
-file's contents. Here's an overview:
+The object `sfg` constructed in above snippet is an instance of [SfgComposer][pystencilssfg.SfgComposer].
+The composer is the central part of the user front-end of *pystencils-sfg*.
+It provides an interface for constructing source files that attempts to closely mimic
+C++ syntactic structures within Python.
+Here is an overview of its various functions:
 
 ### Includes and Definitions
 

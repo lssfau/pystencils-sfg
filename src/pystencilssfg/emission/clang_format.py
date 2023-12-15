@@ -9,7 +9,13 @@ def invoke_clang_format(code: str, codestyle: SfgCodeStyle) -> str:
     args = [codestyle.clang_format_binary, f"--style={codestyle.code_style}"]
 
     if not shutil.which(codestyle.clang_format_binary):
-        return code
+        if codestyle.force_clang_format:
+            raise SfgException(
+                "`force_clang_format` was set to true in code style, "
+                "but clang-format binary could not be found."
+            )
+        else:
+            return code
 
     result = subprocess.run(args, input=code, capture_output=True, text=True)
 

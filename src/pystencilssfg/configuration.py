@@ -85,15 +85,6 @@ class SfgCodeStyle:
         prefix = " " * self.indent_width
         return indent(s, prefix)
 
-    def __post__init__(self):
-        if self.force_clang_format:
-            import shutil
-
-            if not shutil.which(self.clang_format_binary):
-                raise SfgException(
-                    "`force_clang_format` set to true in code style, but clang-format binary not found."
-                )
-
 
 @dataclass
 class SfgOutputSpec:

@@ -4,7 +4,6 @@ from ..configuration import SfgOutputSpec
 from ..context import SfgContext
 from .prepare import prepare_context
 from .printers import SfgHeaderPrinter, SfgImplPrinter
-
 from .clang_format import invoke_clang_format
 
 
