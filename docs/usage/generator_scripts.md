@@ -67,7 +67,8 @@ With [`SfgComposer.include`][pystencilssfg.SfgComposer.include], the code genera
 to include header files. 
 
 ```Python
-with SourceFileGenerator(sfg_config) as sfg:
+with SourceFileGenerator(sfg_config) as ctx:
+    sfg = SfgComposer(ctx)
     # ...
     sfg.include("<vector>")
     sfg.incldue("custom_header.h")
@@ -93,7 +94,8 @@ If required, use [`SfgComposer.kernel_namespace`][pystencilssfg.SfgComposer.kern
 to access other kernel namespaces than the default one.
 
 ```Python
-with SourceFileGenerator(sfg_config) as sfg:
+with SourceFileGenerator(sfg_config) as ctx:
+    sfg = SfgComposer(ctx)
     # ...
 
     ast = ps.create_kernel(assignments, config)
@@ -127,7 +129,8 @@ Use [`SfgComposer.function`][pystencilssfg.SfgComposer.function] to create a fun
 and [`SfgComposer.call`][pystencilssfg.SfgComposer.call] to call a kernel by its handle:
 
 ```Python
-with SourceFileGenerator(sfg_config) as sfg:
+with SourceFileGenerator(sfg_config) as ctx:
+    sfg = SfgComposer(ctx)
     # ...
 
     sfg.function("MyFunction")(
@@ -167,7 +170,8 @@ A conditonal branch may be added with [`SfgComposer.branch`][pystencilssfg.SfgCo
 using a special syntax:
 
 ```Python
-with SourceFileGenerator(sfg_config) as sfg:
+with SourceFileGenerator(sfg_config) as ctx:
+    sfg = SfgComposer(ctx)
     # ...
     
     sfg.function("myFunction")(
