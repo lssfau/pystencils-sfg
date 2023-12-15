@@ -52,5 +52,5 @@ mypy src/pystencilssfg
 
 Both `flake8` and `mypy` are also run in the integration pipeline.
 It is furthermore recommended to run both checkers as a git pre-commit hook.
-Such a hook can be installed using the [`install_git_hooks.sh`][install_git_hooks.sh] script located at the project root.
+Such a hook can be installed using the [`install_git_hooks.sh`](install_git_hooks.sh) script located at the project root.
 
