@@ -6,6 +6,24 @@ from ..exceptions import SfgException
 
 
 def invoke_clang_format(code: str, codestyle: SfgCodeStyle) -> str:
+    """Call the `clang-format` command-line tool to format the given code string
+    according to the given style arguments.
+
+    Args:
+        code: Code string to format
+        codestyle: [SfgCodeStyle][pystencilssfg.configuration.SfgCodeStyle] object
+            defining the `clang-format` binary and the desired code style.
+
+    Returns:
+        The formatted code, if `clang-format` was run sucessfully.
+        Otherwise, the original unformatted code, unless `codestyle.force_clang_format`
+            was set to true. In the latter case, an exception is thrown.
+
+    Forced Formatting:
+        If `codestyle.force_clang_format` was set to true but the formatter could not
+        be executed (binary not found, or error during exection), the function will
+        throw an exception.
+    """
     args = [codestyle.clang_format_binary, f"--style={codestyle.code_style}"]
 
     if not shutil.which(codestyle.clang_format_binary):

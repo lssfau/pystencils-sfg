@@ -6,7 +6,7 @@ import numpy as np
 from pystencils import Field
 from pystencils.astnodes import KernelFunction
 
-from .tree import (
+from ..tree import (
     SfgCallTreeNode,
     SfgKernelCallNode,
     SfgStatements,
@@ -15,45 +15,42 @@ from .tree import (
     SfgSequence,
     SfgBlock,
 )
-from .tree.deferred_nodes import SfgDeferredFieldMapping
-from .tree.conditional import SfgCondition, SfgCustomCondition, SfgBranch, SfgSwitch
-from .source_components import (
+from ..tree.deferred_nodes import SfgDeferredFieldMapping
+from ..tree.conditional import SfgCondition, SfgCustomCondition, SfgBranch, SfgSwitch
+from ..source_components import (
     SfgFunction,
     SfgHeaderInclude,
     SfgKernelNamespace,
     SfgKernelHandle,
     SfgClass,
-    SfgClassMember,
-    SfgInClassDefinition,
     SfgConstructor,
-    SfgMethod,
     SfgMemberVariable,
     SfgClassKeyword,
-    SfgVisibility,
-    SfgVisibilityBlock,
 )
-from .source_concepts import SrcObject, SrcField, TypedSymbolOrObject, SrcVector
-from .types import cpp_typename, SrcType
-from .exceptions import SfgException
+from ..source_concepts import SrcObject, SrcField, TypedSymbolOrObject, SrcVector
+from ..types import cpp_typename, SrcType
+from ..exceptions import SfgException
 
 if TYPE_CHECKING:
-    from .context import SfgContext
+    from ..context import SfgContext
 
 
-class SfgComposer:
-    """Primary interface for constructing source files in pystencils-sfg."""
+class SfgBasicComposer:
+    """Composer for basic source components."""
 
     def __init__(self, ctx: SfgContext):
-        self._ctx = ctx
+        self._ctx: SfgContext = ctx
 
     @property
     def context(self):
         return self._ctx
 
     def prelude(self, content: str):
-        """Add a string to the code file's prelude.
+        """Append a string to the prelude comment, to be printed at the top of both generated files.
 
-        Do not wrap the given string in comment syntax."""
+        The string should not contain C/C++ comment delimiters, since these will be added automatically
+        during code generation.
+        """
         self._ctx.append_to_prelude(content)
 
     def define(self, definition: str):
@@ -83,6 +80,13 @@ class SfgComposer:
         return kns
 
     def include(self, header_file: str, private: bool = False):
+        """Include a header file.
+
+        Args:
+            header_file: Path to the header file. Enclose in `<>` for a system header.
+            private: If `True`, in header-implementation code generation, the header file is
+                only included in the implementation file.
+        """
         self._ctx.add_include(parse_include(header_file, private))
 
     def numpy_struct(
@@ -365,150 +369,6 @@ def parse_include(incl: str | SfgHeaderInclude, private: bool = False):
         system_header = True
 
     return SfgHeaderInclude(incl, system_header=system_header, private=private)
-
-
-class SfgClassComposer:
-    def __init__(self, ctx: SfgContext):
-        self._ctx = ctx
-
-    class VisibilityContext:
-        def __init__(self, visibility: SfgVisibility):
-            self._vis_block = SfgVisibilityBlock(visibility)
-
-        def members(self):
-            yield from self._vis_block.members()
-
-        def __call__(
-            self,
-            *args: (
-                SfgClassMember | SfgClassComposer.ConstructorBuilder | SrcObject | str
-            ),
-        ):
-            for arg in args:
-                self._vis_block.append_member(SfgClassComposer._resolve_member(arg))
-
-            return self
-
-        def resolve(self, cls: SfgClass) -> None:
-            cls.append_visibility_block(self._vis_block)
-
-    class ConstructorBuilder:
-        def __init__(self, *params: SrcObject):
-            self._params = params
-            self._initializers: list[str] = []
-            self._body = ""
-
-        def init(self, initializer: str) -> SfgClassComposer.ConstructorBuilder:
-            self._initializers.append(initializer)
-            return self
-
-        def body(self, body: str):
-            self._body = body
-            return self
-
-        def resolve(self) -> SfgConstructor:
-            return SfgConstructor(
-                parameters=self._params,
-                initializers=self._initializers,
-                body=self._body,
-            )
-
-    def klass(self, class_name: str, bases: Sequence[str] = ()):
-        return self._class(class_name, SfgClassKeyword.CLASS, bases)
-
-    def struct(self, class_name: str, bases: Sequence[str] = ()):
-        return self._class(class_name, SfgClassKeyword.STRUCT, bases)
-
-    @property
-    def public(self) -> SfgClassComposer.VisibilityContext:
-        return SfgClassComposer.VisibilityContext(SfgVisibility.PUBLIC)
-
-    @property
-    def protected(self) -> SfgClassComposer.VisibilityContext:
-        return SfgClassComposer.VisibilityContext(SfgVisibility.PROTECTED)
-
-    @property
-    def private(self) -> SfgClassComposer.VisibilityContext:
-        return SfgClassComposer.VisibilityContext(SfgVisibility.PRIVATE)
-
-    def var(self, name: str, dtype: SrcType):
-        return SfgMemberVariable(name, dtype)
-
-    def constructor(self, *params):
-        return SfgClassComposer.ConstructorBuilder(*params)
-
-    def method(
-        self,
-        name: str,
-        returns: SrcType = SrcType("void"),
-        inline: bool = False,
-        const: bool = False,
-    ):
-        def sequencer(*args: str | tuple | SfgCallTreeNode | SfgNodeBuilder):
-            tree = make_sequence(*args)
-            return SfgMethod(
-                name, tree, return_type=returns, inline=inline, const=const
-            )
-
-        return sequencer
-
-    #   INTERNALS
-
-    def _class(self, class_name: str, keyword: SfgClassKeyword, bases: Sequence[str]):
-        if self._ctx.get_class(class_name) is not None:
-            raise ValueError(f"Class or struct {class_name} already exists.")
-
-        cls = SfgClass(class_name, class_keyword=keyword, bases=bases)
-        self._ctx.add_class(cls)
-
-        def sequencer(
-            *args: (
-                SfgClassComposer.VisibilityContext
-                | SfgClassMember
-                | SfgClassComposer.ConstructorBuilder
-                | SrcObject
-                | str
-            ),
-        ):
-            default_ended = False
-
-            for arg in args:
-                if isinstance(arg, SfgClassComposer.VisibilityContext):
-                    default_ended = True
-                    arg.resolve(cls)
-                elif isinstance(
-                    arg,
-                    (
-                        SfgClassMember,
-                        SfgClassComposer.ConstructorBuilder,
-                        SrcObject,
-                        str,
-                    ),
-                ):
-                    if default_ended:
-                        raise SfgException(
-                            "Composer Syntax Error: "
-                            "Cannot add members with default visibility after a visibility block."
-                        )
-                    else:
-                        cls.default.append_member(self._resolve_member(arg))
-                else:
-                    raise SfgException(f"{arg} is not a valid class member.")
-
-        return sequencer
-
-    @staticmethod
-    def _resolve_member(
-        arg: (SfgClassMember | SfgClassComposer.ConstructorBuilder | SrcObject | str),
-    ):
-        if isinstance(arg, SrcObject):
-            return SfgMemberVariable(arg.name, arg.dtype)
-        elif isinstance(arg, str):
-            return SfgInClassDefinition(arg)
-        elif isinstance(arg, SfgClassComposer.ConstructorBuilder):
-            return arg.resolve()
-        else:
-            return arg
 
 
 def struct_from_numpy_dtype(

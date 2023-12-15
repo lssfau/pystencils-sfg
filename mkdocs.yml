@@ -24,7 +24,7 @@ plugins:
             members_order: source
             group_by_category: False
             show_root_heading: True
-            show_root_full_path: False
+            show_root_full_path: True
             show_symbol_type_heading: True
             show_symbol_type_toc: True
             show_source: False
@@ -46,6 +46,8 @@ nav:
   - 'API Documentation':
     - 'Overview': api/index.md
     - 'Source File Generator': api/generator.md
-    - 'Composer': api/composition.md
+    - 'Code Generation Context': api/context.md
+    - 'Composer': api/composer.md
     - 'Source File Components': api/source_components.md
     - 'Kernel Call Tree': api/tree.md
+    - 'Emission and Printing': api/emission.md

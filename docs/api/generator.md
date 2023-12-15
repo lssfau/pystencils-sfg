@@ -1,4 +1,5 @@
 
-::: pystencilssfg.configuration
+::: pystencilssfg.generator.SourceFileGenerator
 
-::: pystencilssfg.generator
+::: pystencilssfg.configuration.SfgConfiguration
+

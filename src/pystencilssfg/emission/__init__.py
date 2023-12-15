@@ -1,5 +1,5 @@
-from .header_source_pair import HeaderSourcePairEmitter
+from .header_impl_pair import HeaderImplPairEmitter
 
 __all__ = [
-    "HeaderSourcePairEmitter"
+    "HeaderImplPairEmitter"
 ]
