@@ -54,7 +54,7 @@ class SrcObject:
         return self.name
 
 
-TypedSymbolOrObject: TypeAlias = Union[TypedSymbol, SrcObject]
+TypedSymbolOrObject: TypeAlias = TypedSymbol | SrcObject
 
 
 class SrcField(SrcObject, ABC):

@@ -15,6 +15,7 @@ from .exceptions import SfgException
 
 if TYPE_CHECKING:
     from .tree import SfgCallTreeNode
+    from .context import SfgContext
 
 
 class SfgEmptyLines:
@@ -124,7 +125,7 @@ class SfgKernelNamespace:
 class SfgKernelHandle:
     def __init__(
         self,
-        ctx,
+        ctx: SfgContext,
         name: str,
         namespace: SfgKernelNamespace,
         parameters: Sequence[KernelFunction.Parameter],

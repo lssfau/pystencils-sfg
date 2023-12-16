@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Sequence
 from abc import ABC, abstractmethod
 import numpy as np
 
-from pystencils import Field
+from pystencils import Field, TypedSymbol
 from pystencils.astnodes import KernelFunction
 
 from ..tree import (
@@ -74,7 +74,7 @@ class SfgBasicComposer:
         """Returns the kernel namespace of the given name, creating it if it does not exist yet."""
         kns = self._ctx.get_kernel_namespace(name)
         if kns is None:
-            kns = SfgKernelNamespace(self, name)
+            kns = SfgKernelNamespace(self._ctx, name)
             self._ctx.add_kernel_namespace(kns)
 
         return kns
@@ -198,11 +198,17 @@ class SfgBasicComposer:
         return SfgDeferredFieldMapping(field, src_object)
 
     def map_param(
-        self, lhs: TypedSymbolOrObject, rhs: TypedSymbolOrObject, mapping: str
+        self,
+        lhs: TypedSymbolOrObject,
+        rhs: TypedSymbolOrObject | Sequence[TypedSymbolOrObject],
+        mapping: str,
     ):
         """Arbitrary parameter mapping: Add a single line of code to define a left-hand
-        side object from a right-hand side."""
-        return SfgStatements(mapping, (lhs,), (rhs,))
+        side object from one or multiple right-hand side dependencies."""
+        if isinstance(rhs, (TypedSymbol, SrcObject)):
+            return SfgStatements(mapping, (lhs,), (rhs,))
+        else:
+            return SfgStatements(mapping, (lhs,), rhs)
 
     def map_vector(self, lhs_components: Sequence[TypedSymbolOrObject], rhs: SrcVector):
         """Extracts scalar numerical values from a vector data type.
