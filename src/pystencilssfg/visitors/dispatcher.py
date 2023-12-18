@@ -6,7 +6,6 @@ from functools import wraps
 
 V = TypeVar("V")
 R = TypeVar("R")
-P = ParamSpec("P")
 
 
 class VisitorDispatcher(Generic[V, R]):
@@ -15,7 +14,7 @@ class VisitorDispatcher(Generic[V, R]):
         self._wrapped_method: Callable[..., R] = wrapped_method
 
     def case(self, node_type: type):
-        """Decorator for visitor's methods"""
+        """Decorator for visitor's case handlers."""
 
         def decorate(handler: Callable[..., R]):
             if node_type in self._dispatch_dict:
@@ -42,8 +41,8 @@ def visitor(method):
     """Decorator to create a visitor using type-based dispatch.
 
     Use this decorator to convert a method into a visitor, like shown below.
-    After declaring a method `<method-name>` a visitor,
-    its dispatch variants can be declared using the `<method-name>,case` decarator, like this:
+    After declaring a method (e.g. `my_method`) a visitor,
+    its case handlers can be declared using the `my_method.case` decorator, like this:
 
     ```Python
     class DemoVisitor:
@@ -57,15 +56,14 @@ def visitor(method):
             # code for handling a str
     ```
 
-    Now, if `visit` is called with an object of type `str`, the call is dispatched to `visit_str`.
-    Dispatch follows the Python method resolution order; if cases are declared for both a type
-    and some of its parent types, the most specific case is executed.
-    If no case matches, the fallback code in the original `visit` method is executed.
+    When `visit` is later called with some object `x`, the case handler to be executed is
+    determined according to the method resolution order of `x` (i.e. along its type's inheritance hierarchy).
+    If no case matches, the fallback code in the original visitor method is executed.
+    In this example, if `visit` is called with an object of type `str`, the call is dispatched to `visit_str`.
 
     This visitor dispatch method is primarily designed for traversing abstract syntax tree structures.
-    The primary visitor method (`visit` in above example) defines the common parent type of all object
-    types the visitor can handle - every case's type must be a subtype of this.
-    Of course, like in the example, this visitor dispatcher may be used with arbitrary types if the base
-    type is `object`.
+    The primary visitor method (`visit` in above example) should define the common parent type of all object
+    types the visitor can handle, with cases declared for all required subtypes.
+    However, this type relationship is not enforced at runtime.
     """
     return wraps(method)(VisitorDispatcher(method))
