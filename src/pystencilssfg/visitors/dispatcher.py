@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Callable, TypeVar, Generic, ParamSpec
+from typing import Callable, TypeVar, Generic
 from types import MethodType
 
 from functools import wraps

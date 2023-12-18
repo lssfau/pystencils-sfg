@@ -14,7 +14,18 @@ if TYPE_CHECKING:
 class SfgCallTreeNode(ABC):
     """Base class for all nodes comprising SFG call trees.
 
-    Any instantiable call tree node must implement `get_code`.
+    ## Code Printing
+
+    For extensibility, code printing is implemented inside the call tree.
+    Therefore, every instantiable call tree node must implement the method `get_code`.
+    By convention, the string returned by `get_code` should not contain a trailing newline.
+
+    ## Branching Structure
+
+    The branching structure of the call tree is managed uniformly through the `children` interface
+    of SfgCallTreeNode. Each subclass must ensure that access to and modification of
+    the branching structure through the `children` property and the `child` and `set_child`
+    methods is possible, if necessary by overriding the property and methods.
     """
 
     def __init__(self, *children: SfgCallTreeNode):
@@ -22,22 +33,29 @@ class SfgCallTreeNode(ABC):
 
     @property
     def children(self) -> tuple[SfgCallTreeNode, ...]:
+        """This node's children"""
         return tuple(self._children)
 
     @children.setter
     def children(self, cs: Sequence[SfgCallTreeNode]) -> None:
+        """Replaces this node's children. By default, the number of child nodes must not change."""
         if len(cs) != len(self._children):
             raise ValueError("The number of child nodes must remain the same!")
         self._children = list(cs)
 
     def child(self, idx: int) -> SfgCallTreeNode:
+        """Gets the child at index idx."""
         return self._children[idx]
+
+    def set_child(self, idx: int, c: SfgCallTreeNode):
+        """Replaces the child at index idx."""
+        self._children[idx] = c
 
     def __getitem__(self, idx: int) -> SfgCallTreeNode:
-        return self._children[idx]
+        return self.child(idx)
 
     def __setitem__(self, idx: int, c: SfgCallTreeNode) -> None:
-        self._children[idx] = c
+        self.set_child(idx, c)
 
     @abstractmethod
     def get_code(self, ctx: SfgContext) -> str:
@@ -181,6 +199,15 @@ class SfgBlock(SfgCallTreeNode):
         subtree_code = ctx.codestyle.indent(self.subtree.get_code(ctx))
 
         return "{\n" + subtree_code + "\n}"
+
+
+# class SfgForLoop(SfgCallTreeNode):
+#     def __init__(self, control_line: SfgStatements, body: SfgCallTreeNode):
+#         super().__init__(control_line, body)
+
+#     @property
+#     def body(self) -> SfgStatements:
+#         return cast(SfgStatements)
 
 
 class SfgKernelCallNode(SfgCallTreeLeaf):
