@@ -10,4 +10,4 @@ is required.
    Generator scripts, which are Python scripts that, when executed, emit *pystencils*-generated code to a header/source
    file pair with the same name as the script.
  - [In-Depth: Building Source Files](building.md)
- - [CLI and Build System Integration](cli.md)
+ - [CLI and Build System Integration](cli_and_build_system.md)

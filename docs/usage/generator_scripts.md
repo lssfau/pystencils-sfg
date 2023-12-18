@@ -42,7 +42,7 @@ still be empty.
 A few notes on configuration:
 
  - The [SourceFileGenerator][pystencilssfg.SourceFileGenerator] parses the script's command line arguments
-   for configuration options (refer to [CLI and Build System Integration](cli.md)).
+   for configuration options (refer to [CLI and Build System Integration](cli_and_build_system.md)).
    If you intend to use command-line parameters in your
    generation script, use [`sfg.context.argv`][pystencilssfg.SfgContext.argv] instead of `sys.argv`.
    There, all arguments meant for the code generator are already removed.

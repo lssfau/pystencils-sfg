@@ -7,13 +7,11 @@ and your C/C++/Cuda/HIP framework.
 
 ### From Git
 
-Clone the [repository](https://i10git.cs.fau.de/da15siwa/pystencils-sfg) and install the package into your current Python environment
+Install the package into your current Python environment from the git repository using pip
 (usage of virtual environments is strongly encouraged!):
 
 ```bash
-git clone https://i10git.cs.fau.de/da15siwa/pystencils-sfg.git
-cd pystencils-sfg
-pip install .
+pip install git+https://i10git.cs.fau.de/da15siwa/pystencils-sfg.git
 ```
 
 ### From PyPI
@@ -61,3 +59,31 @@ python poisson_smoother.py
 This command will execute the code generator through the `SourceFileGenerator` context manager.
 The code generator takes the name of your Python script, replaces `.py` with `.cpp` and `.h`, and writes
 `poisson_smoother.cpp` and `poisson_smoother.h` into the current directory, ready to be `#include`d.
+
+The above is what we call a *generator script*; a Python script that, when executed, produces a pair
+of source files of the same name, but with different extensions.
+Generator scripts are the primary front-end pattern of *pystencils-sfg*; to learn more about them,
+read the [Usage Guide](usage/generator_scripts.md).
+
+## CMake Integration
+
+*Pystencils-sfg* comes with a CMake module to register generator scripts for on-the-fly code generation.
+With the module loaded, use the function `pystencilssfg_generate_target_sources` inside your `CMakeLists.txt`
+to register one or multiple generator scripts; their outputs will automatically be added to the specified target.
+
+```CMake
+pystencilssfg_generate_target_sources( <target name> 
+    SCRIPTS kernels.py ...
+    FILE_EXTENSIONS .h .cpp
+)
+```
+
+*Pystencils-sfg* makes sure that all generated files are on the project's include path.
+To `#include` them, add the prefix `gen/<target name>`:
+
+```C++
+#include "gen/<target name>/kernels.h"
+```
+
+For details on how to add *pystencils-sfg* to your CMake project, refer to
+[CLI and Build System Integration](usage/cli_and_build_system.md).

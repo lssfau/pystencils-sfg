@@ -42,7 +42,7 @@ nav:
     - 'Overview': usage/index.md
     - 'Writing Generator Scripts': usage/generator_scripts.md
     - 'In-Depth: Building Source Files': usage/building.md
-    - 'CLI and Build System Integration': usage/cli.md
+    - 'CLI and Build System Integration': usage/cli_and_build_system.md
   - 'API Documentation':
     - 'Overview': api/index.md
     - 'Front End':
