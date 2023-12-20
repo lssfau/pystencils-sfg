@@ -32,10 +32,12 @@ import sympy as sp
 
 from pystencils import fields, kernel
 
-from pystencilssfg import SourceFileGenerator
+from pystencilssfg import SourceFileGenerator, SfgComposer
 from pystencilssfg.source_concepts.cpp import mdspan_ref
 
-with SourceFileGenerator() as sfg:
+with SourceFileGenerator() as ctx:
+    sfg = SfgComposer(ctx)
+
     u_src, u_dst, f = fields("u_src, u_dst, f(1) : double[2D]", layout="fzyx")
     h = sp.Symbol("h")
 
