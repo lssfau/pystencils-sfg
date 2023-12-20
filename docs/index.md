@@ -11,7 +11,7 @@ Install the package into your current Python environment from the git repository
 (usage of virtual environments is strongly encouraged!):
 
 ```bash
-pip install git+https://i10git.cs.fau.de/da15siwa/pystencils-sfg.git
+pip install git+https://i10git.cs.fau.de/pycodegen/pystencils-sfg.git
 ```
 
 ### From PyPI

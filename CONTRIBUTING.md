@@ -3,7 +3,7 @@
 ## Creating merge requests
 
 Any contributions to this project must happen through GitLab merge requests to the main development
-repository (currently [i10git.cs.fau.de/da15siwa/pystencils-sfg](https://i10git.cs.fau.de/da15siwa/pystencils-sfg)).
+repository ([i10git.cs.fau.de/pycodegen/pystencils-sfg](https://i10git.cs.fau.de/pycodegen/pystencils-sfg)).
 For a merge request to be accepted, it needs to both pass the continous integration pipeline and be approved by a project maintainer.
 
 ## Free Software

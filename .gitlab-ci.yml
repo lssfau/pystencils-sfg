@@ -50,4 +50,4 @@ pages:
   tags:
     - docker
   only:
-    - master@da15siwa/pystencils-sfg
+    - master@pycodegen/pystencils-sfg
