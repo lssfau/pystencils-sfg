@@ -1,4 +1,11 @@
-site_name: pystencils Source File Generator Documentation
+site_name: pystencils-sfg Docs
+site_author: Frederik Hennig
+copyright: © 2023 Frederik Hennig
+
+repo_name: GitLab
+repo_url: https://i10git.cs.fau.de/pycodegen/pystencils-sfg
+
+
 theme: 
   name: material
   features: 
