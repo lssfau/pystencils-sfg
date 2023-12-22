@@ -6,6 +6,7 @@ import numpy as np
 from pystencils import Field, TypedSymbol
 from pystencils.astnodes import KernelFunction
 
+from .custom import CustomGenerator
 from ..tree import (
     SfgCallTreeNode,
     SfgKernelCallNode,
@@ -53,13 +54,24 @@ class SfgBasicComposer:
         """
         self._ctx.append_to_prelude(content)
 
-    def define(self, definition: str):
-        """Add a custom definition to the generated header file."""
-        self._ctx.add_definition(definition)
+    def define(self, *definitions: str):
+        """Add custom definitions to the generated header file."""
+        for d in definitions:
+            self._ctx.add_definition(d)
+
+    def define_once(self, *definitions: str):
+        """Same as `define`, but only adds definitions only if the same code string was not already added."""
+        for definition in definitions:
+            if all(d != definition for d in self._ctx.definitions()):
+                self._ctx.add_definition(definition)
 
     def namespace(self, namespace: str):
         """Set the inner code namespace. Throws an exception if a namespace was already set."""
         self._ctx.set_namespace(namespace)
+
+    def generate(self, generator: CustomGenerator):
+        """Invokes a custom code generator with the underlying context."""
+        generator.generate(self._ctx)
 
     @property
     def kernels(self) -> SfgKernelNamespace:
