@@ -70,7 +70,7 @@ class SfgBasicComposer:
         self._ctx.set_namespace(namespace)
 
     def generate(self, generator: CustomGenerator):
-        """Invokes a custom code generator with the underlying context."""
+        """Invoke a custom code generator with the underlying context."""
         generator.generate(self._ctx)
 
     @property
@@ -83,7 +83,7 @@ class SfgBasicComposer:
         return self._ctx._default_kernel_namespace
 
     def kernel_namespace(self, name: str) -> SfgKernelNamespace:
-        """Returns the kernel namespace of the given name, creating it if it does not exist yet."""
+        """Return the kernel namespace of the given name, creating it if it does not exist yet."""
         kns = self._ctx.get_kernel_namespace(name)
         if kns is None:
             kns = SfgKernelNamespace(self._ctx, name)
@@ -119,7 +119,7 @@ class SfgBasicComposer:
     def kernel_function(
         self, name: str, ast_or_kernel_handle: KernelFunction | SfgKernelHandle
     ):
-        """Creates a function comprising just a single kernel call.
+        """Create a function comprising just a single kernel call.
 
         Args:
             ast_or_kernel_handle: Either a pystencils AST, or a kernel handle for an already registered AST.
@@ -130,8 +130,8 @@ class SfgBasicComposer:
         if isinstance(ast_or_kernel_handle, KernelFunction):
             khandle = self._ctx.default_kernel_namespace.add(ast_or_kernel_handle)
             tree = SfgKernelCallNode(khandle)
-        elif isinstance(ast_or_kernel_handle, SfgKernelCallNode):
-            tree = ast_or_kernel_handle
+        elif isinstance(ast_or_kernel_handle, SfgKernelHandle):
+            tree = SfgKernelCallNode(ast_or_kernel_handle)
         else:
             raise TypeError("Invalid type of argument `ast_or_kernel_handle`!")
 
