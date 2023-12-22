@@ -11,3 +11,4 @@ is required.
    file pair with the same name as the script.
  - [In-Depth: Building Source Files](building.md)
  - [CLI and Build System Integration](cli_and_build_system.md)
+ - [Tips And Tricks](tips_n_tricks.md): A collection of various tricks that might come in handy when working with *pystencils-sfg*.

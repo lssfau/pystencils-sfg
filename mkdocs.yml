@@ -50,6 +50,7 @@ nav:
     - 'Writing Generator Scripts': usage/generator_scripts.md
     - 'In-Depth: Building Source Files': usage/building.md
     - 'CLI and Build System Integration': usage/cli_and_build_system.md
+    - 'Tips and Tricks': usage/tips_n_tricks.md
   - 'API Documentation':
     - 'Overview': api/index.md
     - 'Front End':
