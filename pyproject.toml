@@ -16,7 +16,11 @@ dynamic = ["version"]
 sfg-cli = "pystencilssfg.cli:cli_main"
 
 [build-system]
-requires = ["setuptools>=61", "versioneer>=0.29"]
+requires = [
+    "setuptools>=69",
+    "versioneer>=0.29",
+    "tomli; python_version < '3.11'"
+]
 build-backend = "setuptools.build_meta"
 
 [tool.pdm.dev-dependencies]
