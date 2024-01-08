@@ -14,8 +14,7 @@ from .context import SfgContext
 
 
 class SourceFileGenerator:
-    """Context manager that controls the code generation process in generator scripts.
-    """
+    """Context manager that controls the code generation process in generator scripts."""
 
     def __init__(self, sfg_config: SfgConfiguration | None = None):
         if sfg_config and not isinstance(sfg_config, SfgConfiguration):
@@ -31,8 +30,13 @@ class SourceFileGenerator:
 
         config = merge_configurations(project_config, cmdline_config, sfg_config)
 
+        assert config.codestyle is not None
+
         self._context = SfgContext(
-            config.outer_namespace, config.codestyle, argv=script_args
+            config.outer_namespace,
+            config.codestyle,
+            argv=script_args,
+            project_info=config.project_info,
         )
 
         from .emission import HeaderImplPairEmitter

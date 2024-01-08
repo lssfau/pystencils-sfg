@@ -1,4 +1,4 @@
-from typing import Generator, Sequence
+from typing import Generator, Sequence, Any
 
 from .configuration import SfgCodeStyle
 from .source_components import (
@@ -48,15 +48,19 @@ class SfgContext:
         outer_namespace: str | None = None,
         codestyle: SfgCodeStyle = SfgCodeStyle(),
         argv: Sequence[str] | None = None,
+        project_info: Any = None,
     ):
         """
         Args:
             outer_namespace: Qualified name of the outer code namespace
             codestyle: Code style that should be used by the code emitter
-            argv: The generator script's command line arguments;
-                reserved for internal use by the [SourceFileGenerator][pystencilssfg.SourceFileGenerator].
+            argv: The generator script's command line arguments.
+                Reserved for internal use by the [SourceFileGenerator][pystencilssfg.SourceFileGenerator].
+            project_info: Project-specific information provided by a build system.
+                Reserved for internal use by the [SourceFileGenerator][pystencilssfg.SourceFileGenerator].
         """
         self._argv = argv
+        self._project_info = project_info
         self._default_kernel_namespace = SfgKernelNamespace(self, "kernels")
 
         self._outer_namespace = outer_namespace
@@ -90,6 +94,11 @@ class SfgContext:
         if self._argv is None:
             raise SfgException("This context provides no command-line arguments.")
         return self._argv
+
+    @property
+    def project_info(self) -> Any:
+        """Project-specific information provided by a build system."""
+        return self._project_info
 
     @property
     def outer_namespace(self) -> str | None:
