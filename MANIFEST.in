@@ -1,2 +1,3 @@
 include src/pystencilssfg/cmake/*.cmake
 include src/pystencilssfg/cmake/modules/*.cmake
+include src/pystencilssfg/py.typed
