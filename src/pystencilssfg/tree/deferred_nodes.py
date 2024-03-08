@@ -27,19 +27,22 @@ class SfgDeferredNode(SfgCallTreeNode, ABC):
 
     class InvalidAccess:
         def __get__(self):
-            raise SfgException("Invalid access into deferred node; deferred nodes must be expanded first.")
+            raise SfgException(
+                "Invalid access into deferred node; deferred nodes must be expanded first."
+            )
 
     def __init__(self):
         self._children = SfgDeferredNode.InvalidAccess
 
     def get_code(self, ctx: SfgContext) -> str:
-        raise SfgException("Invalid access into deferred node; deferred nodes must be expanded first.")
+        raise SfgException(
+            "Invalid access into deferred node; deferred nodes must be expanded first."
+        )
 
 
 class SfgParamCollectionDeferredNode(SfgDeferredNode, ABC):
     @abstractmethod
-    def expand(self, visible_params: set[TypedSymbolOrObject]) -> SfgCallTreeNode:
-        ...
+    def expand(self, visible_params: set[TypedSymbolOrObject]) -> SfgCallTreeNode: ...
 
 
 class SfgDeferredFieldMapping(SfgParamCollectionDeferredNode):
@@ -51,9 +54,14 @@ class SfgDeferredFieldMapping(SfgParamCollectionDeferredNode):
         #    Find field pointer
         ptr = None
         for param in visible_params:
-            if isinstance(param, FieldPointerSymbol) and param.field_name == self._field.name:
+            if (
+                isinstance(param, FieldPointerSymbol)
+                and param.field_name == self._field.name
+            ):
                 if param.dtype.base_type != self._field.dtype:
-                    raise SfgException("Data type mismatch between field and encountered pointer symbol")
+                    raise SfgException(
+                        "Data type mismatch between field and encountered pointer symbol"
+                    )
                 ptr = param
 
         #   Find required sizes

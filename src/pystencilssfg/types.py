@@ -19,7 +19,7 @@ PsType is a temporary solution and will be removed in the future
 in favor of the consolidated pystencils backend typing system.
 """
 
-SrcType = NewType('SrcType', str)
+SrcType = NewType("SrcType", str)
 """C/C++-Types occuring during source file generation.
 
 When necessary, the SFG package checks equality of types by their name strings; it does

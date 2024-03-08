@@ -218,7 +218,7 @@ class SfgClassComposer:
 
     @staticmethod
     def _resolve_member(
-        arg: (SfgClassMember | SfgClassComposer.ConstructorBuilder | SrcObject | str),
+        arg: SfgClassMember | SfgClassComposer.ConstructorBuilder | SrcObject | str,
     ):
         if isinstance(arg, SrcObject):
             return SfgMemberVariable(arg.name, arg.dtype)

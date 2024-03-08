@@ -7,5 +7,4 @@ class CustomGenerator(ABC):
     [SfgComposer.generate][pystencilssfg.SfgComposer.generate]."""
 
     @abstractmethod
-    def generate(self, ctx: SfgContext) -> None:
-        ...
+    def generate(self, ctx: SfgContext) -> None: ...

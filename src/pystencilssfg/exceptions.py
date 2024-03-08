@@ -1,3 +1,2 @@
-
 class SfgException(Exception):
     pass

@@ -247,7 +247,9 @@ class SfgClassMember(ABC):
     @property
     def visibility(self) -> SfgVisibility:
         if self._visibility is None:
-            raise SfgException(f"{self} is not bound to a class and therefore has no visibility.")
+            raise SfgException(
+                f"{self} is not bound to a class and therefore has no visibility."
+            )
         return self._visibility
 
     @property
@@ -309,11 +311,7 @@ class SfgInClassDefinition(SfgClassMember):
 
 
 class SfgMemberVariable(SrcObject, SfgClassMember):
-    def __init__(
-        self,
-        name: str,
-        dtype: SrcType
-    ):
+    def __init__(self, name: str, dtype: SrcType):
         SrcObject.__init__(self, name, dtype)
         SfgClassMember.__init__(self)
 
@@ -347,7 +345,7 @@ class SfgConstructor(SfgClassMember):
         self,
         parameters: Sequence[SrcObject] = (),
         initializers: Sequence[str] = (),
-        body: str = ""
+        body: str = "",
     ):
         SfgClassMember.__init__(self)
         self._parameters = tuple(parameters)
@@ -383,6 +381,7 @@ class SfgClass:
     A more succinct interface for constructing classes is available through the
     [SfgClassComposer][pystencilssfg.composer.SfgClassComposer].
     """
+
     def __init__(
         self,
         class_name: str,
@@ -428,7 +427,8 @@ class SfgClass:
     def append_visibility_block(self, block: SfgVisibilityBlock):
         if block.visibility == SfgVisibility.DEFAULT:
             raise SfgException(
-                "Can't add another block with DEFAULT visibility to a class. Use `.default` instead.")
+                "Can't add another block with DEFAULT visibility to a class. Use `.default` instead."
+            )
 
         block._bind(self)
         for m in block.members():
@@ -442,12 +442,11 @@ class SfgClass:
         self, visibility: SfgVisibility | None = None
     ) -> Generator[SfgClassMember, None, None]:
         if visibility is None:
-            yield from chain.from_iterable(
-                b.members() for b in self._blocks
-            )
+            yield from chain.from_iterable(b.members() for b in self._blocks)
         else:
             yield from chain.from_iterable(
-                b.members() for b in filter(lambda b: b.visibility == visibility, self._blocks)
+                b.members()
+                for b in filter(lambda b: b.visibility == visibility, self._blocks)
             )
 
     def definitions(

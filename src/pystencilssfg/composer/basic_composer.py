@@ -243,7 +243,10 @@ class SfgNodeBuilder(ABC):
         pass
 
 
-def make_sequence(*args: tuple | str | SfgCallTreeNode | SfgNodeBuilder) -> SfgSequence:
+SequencerArg = tuple | str | SfgCallTreeNode | SfgNodeBuilder
+
+
+def make_sequence(*args: SequencerArg) -> SfgSequence:
     """Construct a sequence of C++ code from various kinds of arguments.
 
     `make_sequence` is ubiquitous throughout the function building front-end;
@@ -362,12 +365,17 @@ class SfgSwitchBuilder(SfgNodeBuilder):
         if label in self._cases:
             raise SfgException(f"Duplicate case: {label}")
 
-        def sequencer(*args):
+        def sequencer(*args: SequencerArg):
             tree = make_sequence(*args)
             self._cases[label] = tree
             return self
 
         return sequencer
+
+    def cases(self, cases_dict: dict[str, SequencerArg]):
+        for key, value in cases_dict.items():
+            self.case(key)(value)
+        return self
 
     def default(self, *args):
         if self._default is not None:

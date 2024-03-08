@@ -11,8 +11,9 @@ from ..tree.basic_nodes import (
     SfgStatements,
 )
 from ..tree.deferred_nodes import SfgParamCollectionDeferredNode
+from ..tree.conditional import SfgSwitch
 from .dispatcher import visitor
-from ..source_concepts.source_objects import TypedSymbolOrObject
+from ..source_concepts.source_objects import TypedSymbol, SrcObject, TypedSymbolOrObject
 
 
 class FlattenSequences:
@@ -57,6 +58,13 @@ class ExpandingParameterCollector:
     @visit.case(SfgCallTreeLeaf)
     def leaf(self, leaf: SfgCallTreeLeaf) -> set[TypedSymbolOrObject]:
         return leaf.required_parameters
+
+    @visit.case(SfgSwitch)
+    def switch(self, sw: SfgSwitch) -> set[TypedSymbolOrObject]:
+        params = self.branching_node(sw)
+        if isinstance(sw.switch_arg, (TypedSymbol, SrcObject)):
+            params.add(sw.switch_arg)
+        return params
 
     @visit.case(SfgSequence)
     def sequence(self, sequence: SfgSequence) -> set[TypedSymbolOrObject]:

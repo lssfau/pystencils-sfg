@@ -23,7 +23,7 @@ from ..source_components import (
     SfgMemberVariable,
     SfgMethod,
     SfgVisibility,
-    SfgVisibilityBlock
+    SfgVisibilityBlock,
 )
 
 

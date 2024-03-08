@@ -78,8 +78,7 @@ class SfgCallTreeLeaf(SfgCallTreeNode, ABC):
 
     @property
     @abstractmethod
-    def required_parameters(self) -> set[TypedSymbolOrObject]:
-        ...
+    def required_parameters(self) -> set[TypedSymbolOrObject]: ...
 
 
 class SfgEmptyNode(SfgCallTreeLeaf):
