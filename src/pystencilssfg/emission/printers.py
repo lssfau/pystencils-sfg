@@ -3,16 +3,15 @@ from __future__ import annotations
 from textwrap import indent
 from itertools import chain, repeat, cycle
 
-from pystencils.astnodes import KernelFunction
-from pystencils import Backend
-from pystencils.backends import generate_c
+from pystencils import KernelFunction
+from pystencils.backend.emission import emit_code
 
 from ..context import SfgContext
 from ..configuration import SfgOutputSpec
 from ..visitors import visitor
 from ..exceptions import SfgException
 
-from ..source_components import (
+from ..ir.source_components import (
     SfgEmptyLines,
     SfgHeaderInclude,
     SfgKernelNamespace,
@@ -71,9 +70,12 @@ class SfgGeneralPrinter:
 
 
 class SfgHeaderPrinter(SfgGeneralPrinter):
-    def __init__(self, ctx: SfgContext, output_spec: SfgOutputSpec):
+    def __init__(
+        self, ctx: SfgContext, output_spec: SfgOutputSpec, inline_impl: bool = False
+    ):
         self._output_spec = output_spec
         self._ctx = ctx
+        self._inline_impl = inline_impl
 
     def get_code(self) -> str:
         return self.visit(self._ctx)
@@ -102,6 +104,9 @@ class SfgHeaderPrinter(SfgGeneralPrinter):
 
         if fq_namespace is not None:
             code += f"}} // namespace {fq_namespace}\n"
+
+        if self._inline_impl:
+            code += f'#include "{self._output_spec.get_impl_filename()}"\n'
 
         return code
 
@@ -182,9 +187,12 @@ def delimiter(content):
 
 
 class SfgImplPrinter(SfgGeneralPrinter):
-    def __init__(self, ctx: SfgContext, output_spec: SfgOutputSpec):
+    def __init__(
+        self, ctx: SfgContext, output_spec: SfgOutputSpec, inline_impl: bool = False
+    ):
         self._output_spec = output_spec
         self._ctx = ctx
+        self._inline_impl = inline_impl
 
     def get_code(self) -> str:
         return self.visit(self._ctx)
@@ -197,7 +205,8 @@ class SfgImplPrinter(SfgGeneralPrinter):
     def frame(self, ctx: SfgContext) -> str:
         code = super().prelude(ctx)
 
-        code += f'\n#include "{self._output_spec.get_header_filename()}"\n\n'
+        if not self._inline_impl:
+            code += f'\n#include "{self._output_spec.get_header_filename()}"\n\n'
 
         includes = filter(lambda incl: incl.private, ctx.includes())
         code += "\n".join(self.visit(incl) for incl in includes)
@@ -230,17 +239,20 @@ class SfgImplPrinter(SfgGeneralPrinter):
     @visit.case(SfgKernelNamespace)
     def kernel_namespace(self, kns: SfgKernelNamespace) -> str:
         code = f"namespace {kns.name} {{\n\n"
-        code += "\n\n".join(self.visit(ast) for ast in kns.asts)
+        code += "\n\n".join(self.visit(ast) for ast in kns.kernel_functions)
         code += f"\n}} // namespace {kns.name}\n"
         return code
 
     @visit.case(KernelFunction)
     def kernel(self, kfunc: KernelFunction) -> str:
-        return generate_c(kfunc, dialect=Backend.C)
+        return emit_code(kfunc)
 
     @visit.case(SfgFunction)
     def function(self, func: SfgFunction) -> str:
-        code = f"{func.return_type} {func.name} ({self.param_list(func)})"
+        inline_prefix = "inline " if self._inline_impl else ""
+        code = (
+            f"{inline_prefix} {func.return_type} {func.name} ({self.param_list(func)})"
+        )
         code += (
             "{\n" + self._ctx.codestyle.indent(func.tree.get_code(self._ctx)) + "}\n"
         )
@@ -253,8 +265,9 @@ class SfgImplPrinter(SfgGeneralPrinter):
 
     @visit.case(SfgMethod)
     def sfg_method(self, method: SfgMethod) -> str:
+        inline_prefix = "inline " if self._inline_impl else ""
         const_qual = "const" if method.const else ""
-        code = f"{method.return_type} {method.owning_class.class_name}::{method.name}"
+        code = f"{inline_prefix}{method.return_type} {method.owning_class.class_name}::{method.name}"
         code += f"({self.param_list(method)}) {const_qual}"
         code += (
             " {\n" + self._ctx.codestyle.indent(method.tree.get_code(self._ctx)) + "}\n"

@@ -1,8 +1,10 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Sequence
+from typing import Sequence
 
-from ..tree import SfgCallTreeNode
-from ..source_components import (
+from pystencils.types import PsCustomType, UserTypeSpec
+
+from ..ir import SfgCallTreeNode
+from ..ir.source_components import (
     SfgClass,
     SfgClassMember,
     SfgInClassDefinition,
@@ -12,38 +14,27 @@ from ..source_components import (
     SfgClassKeyword,
     SfgVisibility,
     SfgVisibilityBlock,
+    SfgVar,
 )
-from ..source_concepts import SrcObject
-from ..types import SrcType
 from ..exceptions import SfgException
 
-from .basic_composer import SfgBasicComposer, SfgNodeBuilder, make_sequence
-
-if TYPE_CHECKING:
-    from ..context import SfgContext
+from .mixin import SfgComposerMixIn
+from .basic_composer import SfgNodeBuilder, make_sequence
 
 
-class SfgClassComposer:
+class SfgClassComposer(SfgComposerMixIn):
     """Composer for classes and structs.
 
 
     This class cannot be instantiated on its own but must be mixed in with
-    [SfgBasicComposer][pystencilssfg.composer.SfgBasicComposer].
-    Use through [SfgComposer][pystencilssfg.SfgComposer].
+    :class:`SfgBasicComposer`.
+    Its interface is exposed by :class:`SfgComposer`.
     """
-
-    def __init__(self, ctx: SfgContext):
-        if not isinstance(self, SfgBasicComposer):
-            raise Exception("SfgClassComposer must be mixed-in with SfgBasicComposer.")
-        self._ctx: SfgContext = ctx
 
     class VisibilityContext:
         """Represent a visibility block in the composer syntax.
 
-        Returned by
-        [private][pystencilssfg.composer.SfgClassComposer.private],
-        [public][pystencilssfg.composer.SfgClassComposer.public] and
-        [protected][pystencilssfg.composer.SfgClassComposer.protected].
+        Returned by `private`, `public`, and `protected`.
         """
 
         def __init__(self, visibility: SfgVisibility):
@@ -55,7 +46,7 @@ class SfgClassComposer:
         def __call__(
             self,
             *args: (
-                SfgClassMember | SfgClassComposer.ConstructorBuilder | SrcObject | str
+                SfgClassMember | SfgClassComposer.ConstructorBuilder | SfgVar | str
             ),
         ):
             for arg in args:
@@ -69,10 +60,10 @@ class SfgClassComposer:
     class ConstructorBuilder:
         """Composer syntax for constructor building.
 
-        Returned by [constructor][pystencilssfg.composer.SfgClassComposer.constructor].
+        Returned by `constructor`.
         """
 
-        def __init__(self, *params: SrcObject):
+        def __init__(self, *params: SfgVar):
             self._params = params
             self._initializers: list[str] = []
             self._body: str | None = None
@@ -129,16 +120,7 @@ class SfgClassComposer:
         """Create a `private` visibility block in a class or struct body"""
         return SfgClassComposer.VisibilityContext(SfgVisibility.PRIVATE)
 
-    def var(self, name: str, dtype: SrcType):
-        """In a class or struct body or visibility block, and a member variable.
-
-        Args:
-            name: The variable's name
-            dtype: The variable's data type
-        """
-        return SfgMemberVariable(name, dtype)
-
-    def constructor(self, *params: SrcObject):
+    def constructor(self, *params: SfgVar):
         """In a class or struct body or visibility block, add a constructor.
 
         Args:
@@ -149,12 +131,12 @@ class SfgClassComposer:
     def method(
         self,
         name: str,
-        returns: SrcType = SrcType("void"),
+        returns: UserTypeSpec = PsCustomType("void"),
         inline: bool = False,
         const: bool = False,
     ):
         """In a class or struct body or visibility block, add a method.
-        The usage is similar to [SfgBasicComposer.function][pystencilssfg.composer.SfgBasicComposer.function].
+        The usage is similar to :any:`SfgBasicComposer.function`.
 
         Args:
             name: The method name
@@ -166,7 +148,11 @@ class SfgClassComposer:
         def sequencer(*args: str | tuple | SfgCallTreeNode | SfgNodeBuilder):
             tree = make_sequence(*args)
             return SfgMethod(
-                name, tree, return_type=returns, inline=inline, const=const
+                name,
+                tree,
+                return_type=self._composer.cpptype(returns),
+                inline=inline,
+                const=const,
             )
 
         return sequencer
@@ -185,7 +171,7 @@ class SfgClassComposer:
                 SfgClassComposer.VisibilityContext
                 | SfgClassMember
                 | SfgClassComposer.ConstructorBuilder
-                | SrcObject
+                | SfgVar
                 | str
             ),
         ):
@@ -200,7 +186,7 @@ class SfgClassComposer:
                     (
                         SfgClassMember,
                         SfgClassComposer.ConstructorBuilder,
-                        SrcObject,
+                        SfgVar,
                         str,
                     ),
                 ):
@@ -218,9 +204,9 @@ class SfgClassComposer:
 
     @staticmethod
     def _resolve_member(
-        arg: SfgClassMember | SfgClassComposer.ConstructorBuilder | SrcObject | str,
+        arg: SfgClassMember | SfgClassComposer.ConstructorBuilder | SfgVar | str,
     ):
-        if isinstance(arg, SrcObject):
+        if isinstance(arg, SfgVar):
             return SfgMemberVariable(arg.name, arg.dtype)
         elif isinstance(arg, str):
             return SfgInClassDefinition(arg)

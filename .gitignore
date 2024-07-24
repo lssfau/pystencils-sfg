@@ -17,6 +17,10 @@ dist
 *.whl
 *.egg-info
 
+# tests and coverage
+.coverage
+htmlcov
+coverage.xml                
 
 #   mkdocs
 site

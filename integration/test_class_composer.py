@@ -2,7 +2,6 @@
 from pystencilssfg import SourceFileGenerator, SfgConfiguration, SfgComposer
 from pystencilssfg.configuration import SfgCodeStyle
 from pystencilssfg.composer import SfgClassComposer
-from pystencilssfg.source_concepts import SrcObject
 
 from pystencils import fields, kernel
 
@@ -19,7 +18,6 @@ f, g = fields("f, g(1): double[2D]")
 
 with SourceFileGenerator(sfg_config) as ctx:
     sfg = SfgComposer(ctx)
-    c = SfgClassComposer(ctx)
 
     @kernel
     def assignments():
@@ -27,29 +25,29 @@ with SourceFileGenerator(sfg_config) as ctx:
 
     khandle = sfg.kernels.create(assignments)
 
-    c.struct("DataStruct")(
-        SrcObject("coord", "uint32_t"),
-        SrcObject("value", "float")
+    sfg.struct("DataStruct")(
+        sfg.var("coord", "uint32_t"),
+        sfg.var("value", "float")
     ),
 
-    c.klass("MyClass", bases=("MyBaseClass",))(
+    sfg.klass("MyClass", bases=("MyBaseClass",))(
         # class body sequencer
 
-        c.constructor(SrcObject("a", "int"))
+        sfg.constructor(sfg.var("a", "int"))
         .init("a_(a)")
         .body(
             'cout << "Hi!" << endl;'
         ),
 
-        c.private(
-            c.var("a_", "int"),
+        sfg.private(
+            sfg.var("a_", "int"),
 
-            c.method("getX", returns="int")(
+            sfg.method("getX", returns="int")(
                 "return 2.0;"
             )
         ),
 
-        c.public(
+        sfg.public(
             "using xtype = uint8_t;"
         )
     )

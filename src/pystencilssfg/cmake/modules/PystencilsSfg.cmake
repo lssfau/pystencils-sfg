@@ -43,14 +43,15 @@ endfunction()
 
 
 function(pystencilssfg_generate_target_sources TARGET)
-    set(options HEADER_ONLY)
+    set(options)
+    set(oneValueArgs OUTPUT_MODE)
     set(multiValueArgs SCRIPTS DEPENDS FILE_EXTENSIONS)
     cmake_parse_arguments(_pssfg "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     set(generatorArgs)
 
-    if(_pssfg_HEADER_ONLY)
-        list(APPEND generatorArgs "--sfg-header-only")
+    if(DEFINED _pssfg_OUTPUT_MODE)
+        list(APPEND generatorArgs "--sfg-output-mode=${_pssfg_OUTPUT_MODE}")
     endif()
 
     if(DEFINED PystencilsSfg_CONFIGURATOR_SCRIPT)

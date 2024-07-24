@@ -5,7 +5,7 @@ import sympy as sp
 from pystencils import fields, kernel
 
 from pystencilssfg import SourceFileGenerator, SfgConfiguration, SfgComposer
-from pystencilssfg.source_concepts.cpp import mdspan_ref
+from pystencilssfg.lang.cpp import mdspan_ref
 
 sfg_config = SfgConfiguration(
     outer_namespace="make_demo"
@@ -22,7 +22,7 @@ Author: Frederik Hennig <frederik.hennig@fau.de>""")
     
     sfg.namespace("jacobi")
 
-    u_src, u_dst, f = fields("u_src, u_dst, f(1) : double[2D]", layout="fzyx")
+    u_src, u_dst, f = fields("u_src, u_dst, f : double[2D]", layout="fzyx")
     h = sp.Symbol("h")
 
     @kernel

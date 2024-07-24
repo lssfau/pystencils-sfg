@@ -9,13 +9,11 @@ with SourceFileGenerator() as ctx:
     lb_config = LBMConfig(streaming_pattern='esotwist')
 
     lb_ast_even = create_lb_ast(lbm_config=lb_config, timestep=Timestep.EVEN)
-    lb_ast_even.function_name = "streamCollide_even"
 
     lb_ast_odd = create_lb_ast(lbm_config=lb_config, timestep=Timestep.ODD)
-    lb_ast_odd.function_name = "streamCollide_odd"
 
-    kernel_even = sfg.kernels.add(lb_ast_even)
-    kernel_odd = sfg.kernels.add(lb_ast_odd)
+    kernel_even = sfg.kernels.add(lb_ast_even, "lb_even")
+    kernel_odd = sfg.kernels.add(lb_ast_odd, "lb_odd")
 
     sfg.function("myFunction")(
         sfg.branch("(timestep & 1) ^ 1")(

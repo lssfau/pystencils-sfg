@@ -1,9 +1,8 @@
 # type: ignore
 from pystencilssfg import SourceFileGenerator, SfgConfiguration, SfgComposer
 from pystencilssfg.configuration import SfgCodeStyle
-from pystencilssfg.types import SrcType
-from pystencilssfg.source_concepts import SrcObject
-from pystencilssfg.source_components import SfgClass, SfgMemberVariable, SfgConstructor, SfgMethod, SfgVisibility
+from pystencils.types import PsCustomType
+from pystencilssfg.ir.source_components import SfgClass, SfgMemberVariable, SfgConstructor, SfgMethod
 
 from pystencils import fields, kernel
 
@@ -38,7 +37,7 @@ with SourceFileGenerator(sfg_config) as ctx:
         sfg.seq(
             "return -1.0;"
         ),
-        return_type=SrcType("double"),
+        return_type="double",
         inline=True,
         const=True
     ))
@@ -48,20 +47,20 @@ with SourceFileGenerator(sfg_config) as ctx:
         sfg.seq(
             "return 2.0f;"
         ),
-        return_type=SrcType("float"),
+        return_type="float",
         inline=False,
         const=True
     ))
 
     cls.default.append_member(
         SfgMemberVariable(
-            "stuff", "std::vector< int >"
+            "stuff", PsCustomType("std::vector< int > &")
         )
     )
 
     cls.default.append_member(
         SfgConstructor(
-            [SrcObject("stuff", "std::vector< int > &")],
+            [sfg.var("stuff", PsCustomType("std::vector< int > &"))],
             ["stuff_(stuff)"]
         )
     )

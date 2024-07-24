@@ -1,2 +1,0 @@
-
-::: pystencilssfg.context.SfgContext

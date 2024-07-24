@@ -1,10 +1,12 @@
 stages:
-  - pretest
-  - test
+  - "Code Quality"
+  - "Tests"
+  - "Documentation"
   - deploy
 
 linter:
-  stage: pretest
+  stage: "Code Quality"
+  needs: []
   except:
     variables:
       - $ENABLE_NIGHTLY_BUILDS
@@ -15,7 +17,8 @@ linter:
     - docker
 
 typechecker:
-  stage: pretest
+  stage: "Code Quality"
+  needs: []
   except:
     variables:
       - $ENABLE_NIGHTLY_BUILDS
@@ -26,24 +29,46 @@ typechecker:
   tags:
     - docker
 
-build-documentation:
-  stage: test
+testsuite:
+  stage: "Tests"
   image: i10git.cs.fau.de:5005/pycodegen/pycodegen/full
+  needs: []
+  before_script:
+    - pip install "git+https://i10git.cs.fau.de/pycodegen/pystencils.git@v2.0-dev"
+    - pip install -e .
   script:
-    - pip install mkdocs mkdocs-material mkdocstrings[python]
-    - mkdocs build
+    - pytest -v --cov-report html --cov-report xml --cov-report term --cov=src/pystencilssfg tests
+  artifacts:
+    when: always
+    paths:
+      - htmlcov
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+build-documentation:
+  stage: "Documentation"
+  image: i10git.cs.fau.de:5005/pycodegen/pycodegen/full
+  needs: []
+  before_script:
+    - pip install "git+https://i10git.cs.fau.de/pycodegen/pystencils.git@v2.0-dev"
+    - pip install -e .[docs]
+  script:
+    - cd docs
+    - make html
   tags:
     - docker
   artifacts:
     paths:
-      - site
+      - docs/build/html
 
 pages:
   image: i10git.cs.fau.de:5005/pycodegen/pycodegen/full
   stage: deploy
   script:
     - ls -l
-    - mv site public  # folder has to be named "public" for gitlab to publish it
+    - mv docs/build/html public  # folder has to be named "public" for gitlab to publish it
   artifacts:
     paths:
       - public

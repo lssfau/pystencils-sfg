@@ -13,9 +13,6 @@ from importlib import util as iutil
 
 from .exceptions import SfgException
 
-HEADER_FILE_EXTENSIONS = {"h", "hpp"}
-IMPL_FILE_EXTENSIONS = {"c", "cpp", ".impl.h"}
-
 
 class SfgConfigSource(Enum):
     DEFAULT = auto()
@@ -53,6 +50,31 @@ class SfgCodeStyle:
         return indent(s, prefix)
 
 
+class SfgOutputMode(Enum):
+    STANDALONE = auto()
+    """Generate a header/implementation file pair (e.g. ``.hpp/.cpp``) where the implementation file will
+    be compiled to a standalone object."""
+
+    INLINE = auto()
+    """Generate a header/inline implementation file pair (e.g. ``.hpp/.ipp``) where all implementations
+    are inlined by including the implementation file at the end of the header file."""
+
+    HEADER_ONLY = auto()
+    """Generate only a header file.
+
+    At the moment, header-only mode does not support generation of kernels and requires that all functions
+    and methods are marked `inline`.
+    """
+
+
+HEADER_FILE_EXTENSIONS = {"h", "hpp", "cuh"}
+IMPL_FILE_EXTENSIONS: dict[SfgOutputMode, set[str]] = {
+    SfgOutputMode.STANDALONE: {"c", "cpp", "cu"},
+    SfgOutputMode.INLINE: {".impl.h", "ipp"},
+    SfgOutputMode.HEADER_ONLY: set(),
+}
+
+
 @dataclass
 class SfgOutputSpec:
     """Name and path specification for files output by the code generator.
@@ -87,36 +109,36 @@ class SfgOutputSpec:
 @dataclass
 class SfgConfiguration:
     """
-    Configuration for the [SfgSourceFileGenerator][pystencilssfg.SourceFileGenerator].
+    Configuration for the `SfgSourceFileGenerator`.
 
     The source file generator draws configuration from a total of four sources:
 
-     - The [default configuration][pystencilssfg.configuration.DEFAULT_CONFIG];
-     - The project configuration;
-     - Command-line arguments;
-     - The user configuration passed to the constructor of `SourceFileGenerator`.
+    - The default configuration (`pystencilssfg.configuration.DEFAULT_CONFIG`);
+    - The project configuration;
+    - Command-line arguments;
+    - The user configuration passed to the constructor of `SourceFileGenerator`.
 
     They take precedence in the following way:
 
-     - Project configuration overrides the default configuration
-     - Command line arguments override the project configuration
-     - User configuration overrides default and project configuration,
-       and must not conflict with command-line arguments; otherwise, an error is thrown.
+    - Project configuration overrides the default configuration
+    - Command line arguments override the project configuration
+    - User configuration overrides default and project configuration,
+      and must not conflict with command-line arguments; otherwise, an error is thrown.
 
-    ### Project Configuration via Configurator Script
+    **Project Configuration via Configurator Script**
 
     Currently, the only way to define the project configuration is via a configuration module.
     A configurator module is a Python file defining the following function at the top-level:
 
-    ```Python
-    from pystencilssfg import SfgConfiguration
+    .. code-block:: Python
 
-    def sfg_config() -> SfgConfiguration:
-        # ...
-        return SfgConfiguration(
+        from pystencilssfg import SfgConfiguration
+
+        def sfg_config() -> SfgConfiguration:
             # ...
-        )
-    ```
+            return SfgConfiguration(
+                # ...
+            )
 
     The configuration module is passed to the code generation script via the command-line argument
     `--sfg-config-module`.
@@ -130,12 +152,12 @@ class SfgConfiguration:
     impl_extension: str | None = None
     """File extension for generated implementation file."""
 
-    header_only: bool | None = None
-    """If set to `True`, generate only a header file without accompaning source file."""
+    output_mode: SfgOutputMode | None = None
+    """The generator's output mode; defines which files to generate, and the set of legal file extensions."""
 
     outer_namespace: str | None = None
     """The outermost namespace in the generated file. May be a valid C++ nested namespace qualifier
-    (like `a::b::c`) or `None` if no outer namespace should be generated."""
+    (like ``a::b::c``) or `None` if no outer namespace should be generated."""
 
     codestyle: SfgCodeStyle | None = None
     """Code style that should be used by the code generator."""
@@ -147,11 +169,6 @@ class SfgConfiguration:
     """Object for managing project-specific information. To be set by the configurator script."""
 
     def __post_init__(self, cfg_src: SfgConfigSource | None = None):
-        if self.header_only:
-            raise SfgConfigException(
-                cfg_src, "Header-only code generation is not implemented yet."
-            )
-
         if self.header_extension and self.header_extension[0] == ".":
             self.header_extension = self.header_extension[1:]
 
@@ -178,12 +195,12 @@ DEFAULT_CONFIG = SfgConfiguration(
     config_source=SfgConfigSource.DEFAULT,
     header_extension="h",
     impl_extension="cpp",
-    header_only=False,
+    output_mode=SfgOutputMode.STANDALONE,
     outer_namespace=None,
     codestyle=SfgCodeStyle(),
     output_directory=".",
 )
-"""Default configuration for the [SourceFileGenerator][pystencilssfg.SourceFileGenerator]."""
+"""Default configuration for the `SourceFileGenerator`."""
 
 
 def run_configurator(configurator_script: str):
@@ -230,7 +247,11 @@ def add_config_args_to_parser(parser: ArgumentParser):
         help="Comma-separated list of file extensions",
     )
     config_group.add_argument(
-        "--sfg-header-only", default=None, action="store_true", dest="header_only"
+        "--sfg-output-mode",
+        type=str,
+        default=None,
+        choices=("standalone", "inline", "header-only"),
+        dest="output_mode",
     )
     config_group.add_argument(
         "--sfg-config-module", type=str, default=None, dest="configurator_script"
@@ -245,10 +266,23 @@ def config_from_parser_args(args):
     else:
         project_config = None
 
+    if args.output_mode is not None:
+        match args.output_mode.lower():
+            case "standalone":
+                output_mode = SfgOutputMode.STANDALONE
+            case "inline":
+                output_mode = SfgOutputMode.INLINE
+            case "header-only":
+                output_mode = SfgOutputMode.HEADER_ONLY
+            case _:
+                assert False, "invalid output mode"
+    else:
+        output_mode = None
+
     if args.file_extensions is not None:
         file_extentions = list(args.file_extensions.split(","))
         h_ext, src_ext = _get_file_extensions(
-            SfgConfigSource.COMMANDLINE, file_extentions
+            SfgConfigSource.COMMANDLINE, file_extentions, output_mode
         )
     else:
         h_ext, src_ext = None, None
@@ -257,7 +291,7 @@ def config_from_parser_args(args):
         config_source=SfgConfigSource.COMMANDLINE,
         header_extension=h_ext,
         impl_extension=src_ext,
-        header_only=args.header_only,
+        output_mode=output_mode,
         output_directory=args.output_directory,
     )
 
@@ -312,7 +346,9 @@ def merge_configurations(
     return config
 
 
-def _get_file_extensions(cfgsrc: SfgConfigSource, extensions: Sequence[str]):
+def _get_file_extensions(
+    cfgsrc: SfgConfigSource, extensions: Sequence[str], output_mode: SfgOutputMode
+):
     h_ext = None
     src_ext = None
 
@@ -325,7 +361,7 @@ def _get_file_extensions(cfgsrc: SfgConfigSource, extensions: Sequence[str]):
                     cfgsrc, "Multiple header file extensions specified."
                 )
             h_ext = ext
-        elif ext in IMPL_FILE_EXTENSIONS:
+        elif ext in IMPL_FILE_EXTENSIONS[output_mode]:
             if src_ext is not None:
                 raise SfgConfigException(
                     cfgsrc, "Multiple source file extensions specified."
@@ -333,7 +369,7 @@ def _get_file_extensions(cfgsrc: SfgConfigSource, extensions: Sequence[str]):
             src_ext = ext
         else:
             raise SfgConfigException(
-                cfgsrc, f"Don't know how to interpret file extension '.{ext}'"
+                cfgsrc, f"Invalid file extension '.{ext}' for output mode {output_mode}"
             )
 
     return h_ext, src_ext

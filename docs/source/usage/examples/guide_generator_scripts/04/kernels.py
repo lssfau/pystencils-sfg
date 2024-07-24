@@ -1,0 +1,23 @@
+from pystencilssfg import SourceFileGenerator
+
+import pystencils as ps
+import sympy as sp
+
+with SourceFileGenerator() as sfg:
+    #   Define a copy kernel
+    src, dst = ps.fields("src, dst: [1D]")
+    c = sp.Symbol("c")
+
+    @ps.kernel
+    def scale():
+        dst.center @= c * src.center()
+
+    #   Add it to the file
+    scale_kernel = sfg.kernels.create(scale, "scale")
+
+    #   start
+    #   ... see above ...
+    sfg.function("scale_kernel")(
+        sfg.call(scale_kernel)
+    )
+    #   end

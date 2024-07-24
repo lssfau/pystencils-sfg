@@ -1,7 +1,7 @@
 from typing import Generator, Sequence, Any
 
 from .configuration import SfgCodeStyle
-from .source_components import (
+from .ir.source_components import (
     SfgHeaderInclude,
     SfgKernelNamespace,
     SfgFunction,
@@ -13,34 +13,33 @@ from .exceptions import SfgException
 class SfgContext:
     """Represents a header/implementation file pair in the code generator.
 
-    ## Source File Properties and Components
+    **Source File Properties and Components**
 
     The SfgContext collects all properties and components of a header/implementation
     file pair (or just the header file, if header-only generation is used).
     These are:
 
-     - The code namespace, which is combined from the [outer_namespace][pystencilssfg.SfgContext.outer_namespace]
-       and the [inner_namespace][pystencilssfg.SfgContext.inner_namespace]. The outer namespace is meant to be set
-       externally e.g. by the project configuration, while the inner namespace is meant to be set by the generator
-       script.
-     - The [prelude comment][pystencilssfg.SfgContext.prelude_comment] is a block of text printed as a comment block
-       at the top of both generated files. Typically, it contains authorship and licence information.
-     - The set of [Included header files][pystencilssfg.SfgContext.includes].
-     - Custom [definitions][pystencilssfg.SfgContext.definitions], which are just arbitrary code strings.
-     - Any number of [kernel namespaces][pystencilssfg.SfgContext.kernel_namespaces], within which *pystencils*
-       kernels are managed.
-     - Any number of [functions][pystencilssfg.SfgContext.functions], which are meant to serve as wrappers
-       around kernel calls.
-     - Any number of [classes][pystencilssfg.SfgContext.classes], which can be used to build more extensive wrappers
-       around kernels.
+    - The code namespace, which is combined from the `outer_namespace`
+      and the `pystencilssfg.SfgContext.inner_namespace`. The outer namespace is meant to be set
+      externally e.g. by the project configuration, while the inner namespace is meant to be set by the generator
+      script.
+    - The `prelude comment` is a block of text printed as a comment block
+      at the top of both generated files. Typically, it contains authorship and licence information.
+    - The set of included header files (`pystencilssfg.SfgContext.includes`).
+    - Custom `definitions`, which are just arbitrary code strings.
+    - Any number of kernel namespaces (`pystencilssfg.SfgContext.kernel_namespaces`), within which *pystencils*
+      kernels are managed.
+    - Any number of functions (`pystencilssfg.SfgContext.functions`), which are meant to serve as wrappers
+      around kernel calls.
+    - Any number of classes (`pystencilssfg.SfgContext.classes`), which can be used to build more extensive wrappers
+      around kernels.
 
-    ## Order of Definitions
+    **Order of Definitions**
 
     To honor C/C++ use-after-declare rules, the context preserves the order in which definitions, functions and classes
     are added to it.
     The header file printers implemented in *pystencils-sfg* will print the declarations accordingly.
-    The declarations can retrieved in order of definition via
-    [declarations_ordered][pystencilssfg.SfgContext.declarations_ordered].
+    The declarations can retrieved in order of definition via `declarations_ordered`.
     """
 
     def __init__(
