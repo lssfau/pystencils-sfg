@@ -1,3 +1,6 @@
+from pystencilssfg import __version__ as sfg_version
+from packaging.version import Version
+
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
@@ -9,7 +12,13 @@
 project = "pystencils-sfg"
 copyright = "2024, Frederik Hennig"
 author = "Frederik Hennig"
-release = "0.0a"
+
+parsed_version = Version(sfg_version)
+
+version = ".".join([parsed_version.public])
+release = sfg_version
+
+html_title = f"pystencils-sfg v{version} Documentation"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

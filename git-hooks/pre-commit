@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "[Pre-Commit] Checking code style"
-pdm run flake8 src/pystencilssfg
+flake8 src/pystencilssfg
 status=$?
 
 if [ ${status} != 0 ]; then
@@ -11,7 +11,7 @@ else
 fi
 
 echo "[Pre-Commit] Checking types"
-pdm run mypy src/pystencilssfg
+mypy src/pystencilssfg
 status=$?
 if [ ${status} != 0 ]; then
     exit 1

@@ -7,9 +7,8 @@
 **/build
 
 
-#   pdm dev environment
+#   dev environment
 **/.venv
-.pdm-python
 
 #   build artifacts
 dist

@@ -29,6 +29,7 @@ interactive = [
 testing = [
     "flake8>=6.1.0",
     "mypy>=1.7.0",
+    "black"
 ]
 docs = [
     "sphinx",
@@ -36,7 +37,8 @@ docs = [
     "myst-parser",
     "sphinx_design",
     "sphinx_autodoc_typehints",
-    "sphinx-copybutton"
+    "sphinx-copybutton",
+    "packaging"
 ]
 
 [tool.versioneer]

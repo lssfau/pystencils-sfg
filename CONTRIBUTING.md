@@ -20,37 +20,35 @@ a local clone of your fork.
 
 ### Set up your dev environment
 
-`pystencils-sfg` uses [`pdm`](https://pdm-project.org) for managing a virtual development environment.
-Install `pdm` through your system's package manager and run `pdm sync` in your cloned project directory.
-It will set up a virtual environment in the subfolder `.venv`, installing all project dependencies into it.
-The `pystencils-sfg` package itself is also installed in editable mode.
-You can activate the virtual environment using `eval $(pdm venv activate)`.
+Create a virtual environment using either `venv` or `virtualenv` and install the pystencils-sfg source tree
+into it using an editable install, e.g. by running the following commands in the `pystencils-sfg` project root directory:
+
+```bash
+python -m virtualenv .venv
+source .venv/bin/activate
+pip install -e .
+```
 
 ### Code Style and Type Checking
 
 To contribute, please adhere to the Python code style set by [PEP 8](https://peps.python.org/pep-0008/).
-It is recommended that you use the [black](https://pypi.org/project/black/) formatter to format your source files.
-Use flake8 (installed in the `pdm` virtual environment) to check your code style:
+For consistency, format all your source files using the [black](https://pypi.org/project/black/) formatter.
+Use flake8 to check your code style:
 
 ```shell
-pdm run flake8 src/pystencilssfg
-# or, if .venv is activated
 flake8 src/pystencilssfg
 ```
 
-Further, `pystencils-sfg` takes a rigorous approach to correct static typing.
+Further, `pystencils-sfg` is being fully type-checked using [MyPy](https://www.mypy-lang.org/).
 All submitted code should contain type annotations ([PEP 484](https://peps.python.org/pep-0484/)) and must be
 correctly statically typed.
-To check types, we use [MyPy](https://www.mypy-lang.org/), which is automatically installed in the dev environment
-and can be invoked as
+Before each commit, check your types by calling
 
 ```shell
-pdm run mypy src/pystencilssfg
-# or, if .venv is activated
 mypy src/pystencilssfg
 ```
 
 Both `flake8` and `mypy` are also run in the integration pipeline.
-It is furthermore recommended to run both checkers as a git pre-commit hook.
+You can automate the code quality checks by running them via a git pre-commit hook.
 Such a hook can be installed using the [`install_git_hooks.sh`](install_git_hooks.sh) script located at the project root.
 
