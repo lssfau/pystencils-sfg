@@ -435,11 +435,7 @@ class SfgMethod(SfgFunction, SfgClassMember):
 
         self._inline = inline
         self._const = const
-
-        from .postprocessing import CallTreePostProcessing
-
-        param_collector = CallTreePostProcessing()
-        self._parameters: set[SfgVar] = param_collector(self._tree).function_params
+        self._parameters: set[SfgVar] = set()
 
     @property
     def inline(self) -> bool:
@@ -448,6 +444,14 @@ class SfgMethod(SfgFunction, SfgClassMember):
     @property
     def const(self) -> bool:
         return self._const
+
+    def _bind(self, cls: SfgClass, vis: SfgVisibility):
+        super()._bind(cls, vis)
+
+        from .postprocessing import CallTreePostProcessing
+
+        param_collector = CallTreePostProcessing(enclosing_class=cls)
+        self._parameters = param_collector(self._tree).function_params
 
 
 class SfgConstructor(SfgClassMember):
