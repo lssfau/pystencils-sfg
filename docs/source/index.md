@@ -10,7 +10,7 @@ api/index
 
 [![pipeline](https://i10git.cs.fau.de/pycodegen/pystencils-sfg/badges/master/pipeline.svg)](https://i10git.cs.fau.de/pycodegen-/pystencils-sfg/commits/master)
 [![coverage](https://i10git.cs.fau.de/pycodegen/pystencils-sfg/badges/master/coverage.svg)](https://i10git.cs.fau.de/pycodegen-/pystencils-sfg/commits/master)
-[![licence](https://img.shields.io/badge/License-GNU_General_Public_Licence_v3-lightgray)](https://i10git.cs.fau.de/pycodegen/pystencils-sfg/-/blob/master/LICENSE)
+[![licence](https://img.shields.io/gitlab/license/pycodegen%2Fpystencils-sfg?gitlab_url=https%3A%2F%2Fi10git.cs.fau.de)](https://i10git.cs.fau.de/pycodegen/pystencils-sfg/-/blob/master/LICENSE)
 
 A bridge over the semantic gap between code emitted by [pystencils](https://pypi.org/project/pystencils/)
 and your C/C++/Cuda/HIP framework.
