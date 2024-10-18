@@ -1,10 +1,14 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
-from ..context import SfgContext
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .composer import SfgComposer
 
 
 class CustomGenerator(ABC):
     """Abstract base class for custom code generators that may be passed to
-    [SfgComposer.generate][pystencilssfg.SfgComposer.generate]."""
+    `SfgComposer.generate`."""
 
     @abstractmethod
-    def generate(self, ctx: SfgContext) -> None: ...
+    def generate(self, sfg: SfgComposer) -> None: ...

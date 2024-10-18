@@ -33,15 +33,22 @@ testsuite:
   stage: "Tests"
   image: i10git.cs.fau.de:5005/pycodegen/pycodegen/full
   needs: []
+  tags:
+    - docker
   before_script:
     - pip install "git+https://i10git.cs.fau.de/pycodegen/pystencils.git@v2.0-dev"
     - pip install -e .
   script:
-    - pytest -v --cov-report html --cov-report xml --cov-report term --cov=src/pystencilssfg tests
+    - coverage run -m pytest -v
+    - coverage report
+    - coverage html
+    - coverage xml
+  coverage: '/TOTAL.*\s+(\d+%)$/'
   artifacts:
     when: always
     paths:
       - htmlcov
+      - coverage.xml
     reports:
       coverage_report:
         coverage_format: cobertura

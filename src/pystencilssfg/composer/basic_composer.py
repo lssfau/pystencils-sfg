@@ -1,13 +1,19 @@
 from __future__ import annotations
-from typing import Sequence
+from typing import Sequence, TypeAlias
 from abc import ABC, abstractmethod
 import numpy as np
 import sympy as sp
 from functools import reduce
 
 from pystencils import Field
-from pystencils.backend import KernelParameter, KernelFunction
-from pystencils.types import create_type, UserTypeSpec, PsCustomType, PsPointerType
+from pystencils.backend import KernelFunction
+from pystencils.types import (
+    create_type,
+    UserTypeSpec,
+    PsCustomType,
+    PsPointerType,
+    PsType,
+)
 
 from ..context import SfgContext
 from .custom import CustomGenerator
@@ -25,6 +31,7 @@ from ..ir import (
 )
 from ..ir.postprocessing import (
     SfgDeferredParamMapping,
+    SfgDeferredParamSetter,
     SfgDeferredFieldMapping,
     SfgDeferredVectorMapping,
 )
@@ -37,9 +44,20 @@ from ..ir.source_components import (
     SfgConstructor,
     SfgMemberVariable,
     SfgClassKeyword,
-    SfgVar,
 )
-from ..lang import IFieldExtraction, SrcVector, AugExpr, SrcField
+from ..lang import (
+    VarLike,
+    ExprLike,
+    _VarLike,
+    _ExprLike,
+    asvar,
+    depends,
+    SfgVar,
+    AugExpr,
+    SrcField,
+    IFieldExtraction,
+    SrcVector,
+)
 from ..exceptions import SfgException
 
 
@@ -53,13 +71,16 @@ class SfgIComposer(ABC):
 
 
 class SfgNodeBuilder(ABC):
+    """Base class for node builders used by the composer"""
+
     @abstractmethod
     def resolve(self) -> SfgCallTreeNode:
         pass
 
 
-ExprLike = str | SfgVar | AugExpr
-SequencerArg = tuple | str | AugExpr | SfgCallTreeNode | SfgNodeBuilder
+_SequencerArg = (tuple, ExprLike, SfgCallTreeNode, SfgNodeBuilder)
+SequencerArg: TypeAlias = tuple | ExprLike | SfgCallTreeNode | SfgNodeBuilder
+"""Valid arguments to `make_sequence` and any sequencer that uses it."""
 
 
 class SfgBasicComposer(SfgIComposer):
@@ -74,27 +95,87 @@ class SfgBasicComposer(SfgIComposer):
 
         The string should not contain C/C++ comment delimiters, since these will be added automatically
         during code generation.
+
+        :Example:
+            >>> sfg.prelude("This file was generated using pystencils-sfg; do not modify it directly!")
+
+            will appear in the generated files as
+
+            .. code-block:: C++
+
+                /*
+                 * This file was generated using pystencils-sfg; do not modify it directly!
+                 */
+
         """
         self._ctx.append_to_prelude(content)
 
+    def code(self, *code: str):
+        """Add arbitrary lines of code to the generated header file.
+
+        :Example:
+
+            >>> sfg.code(
+            ...     "#define PI 3.14  // more than enough for engineers",
+            ...     "using namespace std;"
+            ... )
+
+            will appear as
+
+            .. code-block:: C++
+
+                #define PI 3.14 // more than enough for engineers
+                using namespace std;
+
+        """
+        for c in code:
+            self._ctx.add_definition(c)
+
     def define(self, *definitions: str):
-        """Add custom definitions to the generated header file."""
-        for d in definitions:
-            self._ctx.add_definition(d)
+        from warnings import warn
+
+        warn(
+            "The `define` method of `SfgBasicComposer` is deprecated and will be removed in a future version."
+            "Use `sfg.code()` instead.",
+            FutureWarning,
+        )
+
+        self.code(*definitions)
 
     def define_once(self, *definitions: str):
-        """Same as `define`, but only adds definitions only if the same code string was not already added."""
+        """Add unique definitions to the header file.
+
+        Each code string given to `define_once` will only be added if the exact same string
+        was not already added before.
+        """
         for definition in definitions:
             if all(d != definition for d in self._ctx.definitions()):
                 self._ctx.add_definition(definition)
 
     def namespace(self, namespace: str):
-        """Set the inner code namespace. Throws an exception if a namespace was already set."""
+        """Set the inner code namespace. Throws an exception if a namespace was already set.
+
+        :Example:
+
+            After adding the following to your generator script:
+
+            >>> sfg.namespace("codegen_is_awesome")
+
+            All generated code will be placed within that namespace:
+
+            .. code-block:: C++
+
+                namespace codegen_is_awesome {
+                    /* all generated code */
+                }
+        """
         self._ctx.set_namespace(namespace)
 
     def generate(self, generator: CustomGenerator):
         """Invoke a custom code generator with the underlying context."""
-        generator.generate(self._ctx)
+        from .composer import SfgComposer
+
+        generator.generate(SfgComposer(self))
 
     @property
     def kernels(self) -> SfgKernelNamespace:
@@ -120,9 +201,21 @@ class SfgBasicComposer(SfgIComposer):
         """Include a header file.
 
         Args:
-            header_file: Path to the header file. Enclose in `<>` for a system header.
-            private: If `True`, in header-implementation code generation, the header file is
+            header_file: Path to the header file. Enclose in ``<>`` for a system header.
+            private: If ``True``, in header-implementation code generation, the header file is
                 only included in the implementation file.
+
+        :Example:
+
+            >>> sfg.include("<vector>")
+            >>> sfg.include("custom.h")
+
+            will be printed as
+
+            .. code-block:: C++
+
+                #include <vector>
+                #include "custom.h"
         """
         self._ctx.add_include(SfgHeaderInclude.parse(header_file, private))
 
@@ -137,7 +230,7 @@ class SfgBasicComposer(SfgIComposer):
         if self._ctx.get_class(name) is not None:
             raise SfgException(f"Class with name {name} already exists.")
 
-        cls = struct_from_numpy_dtype(name, dtype, add_constructor=add_constructor)
+        cls = _struct_from_numpy_dtype(name, dtype, add_constructor=add_constructor)
         self._ctx.add_class(cls)
         return cls
 
@@ -179,7 +272,7 @@ class SfgBasicComposer(SfgIComposer):
         if self._ctx.get_function(name) is not None:
             raise ValueError(f"Function {name} already exists.")
 
-        def sequencer(*args: str | tuple | SfgCallTreeNode | SfgNodeBuilder):
+        def sequencer(*args: SequencerArg):
             tree = make_sequence(*args)
             func = SfgFunction(name, tree)
             self._ctx.add_function(func)
@@ -208,18 +301,22 @@ class SfgBasicComposer(SfgIComposer):
         num_blocks_str = str(num_blocks)
         tpb_str = str(threads_per_block)
         stream_str = str(stream) if stream is not None else None
-        depends = _depends(num_blocks) | _depends(threads_per_block) | _depends(stream)
+
+        deps = depends(num_blocks) | depends(threads_per_block)
+        if stream is not None:
+            deps |= depends(stream)
+
         return SfgCudaKernelInvocation(
-            kernel_handle, num_blocks_str, tpb_str, stream_str, depends
+            kernel_handle, num_blocks_str, tpb_str, stream_str, deps
         )
 
     def seq(self, *args: tuple | str | SfgCallTreeNode | SfgNodeBuilder) -> SfgSequence:
         """Syntax sequencing. For details, see `make_sequence`"""
         return make_sequence(*args)
 
-    def params(self, *args: SfgVar) -> SfgFunctionParams:
+    def params(self, *args: AugExpr) -> SfgFunctionParams:
         """Use inside a function body to add parameters to the function."""
-        return SfgFunctionParams(args)
+        return SfgFunctionParams([x.as_variable() for x in args])
 
     def require(self, *includes: str | SfgHeaderInclude) -> SfgRequireIncludes:
         return SfgRequireIncludes(
@@ -232,7 +329,7 @@ class SfgBasicComposer(SfgIComposer):
         ptr: bool = False,
         ref: bool = False,
         const: bool = False,
-    ):
+    ) -> PsType:
         if ptr and ref:
             raise SfgException("Create either a pointer, or a ref type, not both!")
 
@@ -250,11 +347,23 @@ class SfgBasicComposer(SfgIComposer):
         else:
             return base_type
 
-    def var(self, name: str, dtype: UserTypeSpec) -> SfgVar:
+    def var(self, name: str, dtype: UserTypeSpec) -> AugExpr:
         """Create a variable with given name and data type."""
-        return SfgVar(name, create_type(dtype))
+        return AugExpr(create_type(dtype)).var(name)
 
-    def init(self, lhs: SfgVar) -> SfgInplaceInitBuilder:
+    def vars(self, names: str, dtype: UserTypeSpec) -> tuple[AugExpr, ...]:
+        """Create multiple variables with given names and the same data type.
+
+        Example:
+
+        >>> sfg.vars("x, y, z", "float32")
+        (x, y, z)
+
+        """
+        varnames = names.split(",")
+        return tuple(self.var(n.strip(), dtype) for n in varnames)
+
+    def init(self, lhs: VarLike):
         """Create a C++ in-place initialization.
 
         Usage:
@@ -270,9 +379,51 @@ class SfgBasicComposer(SfgIComposer):
 
             SomeClass obj { arg1, arg2, arg3 };
         """
-        return SfgInplaceInitBuilder(lhs)
+        lhs_var = asvar(lhs)
 
-    def expr(self, fmt: str, *deps, **kwdeps):
+        def parse_args(*args: ExprLike):
+            args_str = ", ".join(str(arg) for arg in args)
+            deps: set[SfgVar] = reduce(set.union, (depends(arg) for arg in args), set())
+            return SfgStatements(
+                f"{lhs_var.dtype} {lhs_var.name} {{ {args_str} }};",
+                (lhs_var,),
+                deps,
+            )
+
+        return parse_args
+
+    def expr(self, fmt: str, *deps, **kwdeps) -> AugExpr:
+        """Create an expression while keeping track of variables it depends on.
+
+        This method is meant to be used similarly to `str.format`; in fact,
+        it calls `str.format` internally and therefore supports all of its
+        formatting features.
+        In addition, however, the format arguments are scanned for *variables*
+        (e.g. created using `var`), which are attached to the expression.
+        This way, *pystencils-sfg* keeps track of any variables an expression depends on.
+
+        :Example:
+
+            >>> x, y, z, w = sfg.vars("x, y, z, w", "float32")
+            >>> expr = sfg.expr("{} + {} * {}", x, y, z)
+            >>> expr
+            x + y * z
+
+            You can look at the expression's dependencies:
+
+            >>> sorted(expr.depends, key=lambda v: v.name)
+            [x: float, y: float, z: float]
+
+            If you use an existing expression to create a larger one, the new expression
+            inherits all variables from its parts:
+
+            >>> expr2 = sfg.expr("{} + {}", expr, w)
+            >>> expr2
+            x + y * z + w
+            >>> sorted(expr2.depends, key=lambda v: v.name)
+            [w: float, x: float, y: float, z: float]
+
+        """
         return AugExpr.format(fmt, *deps, **kwdeps)
 
     @property
@@ -306,38 +457,47 @@ class SfgBasicComposer(SfgIComposer):
         """
         return SfgDeferredFieldMapping(field, index_provider)
 
+    def set_param(self, param: VarLike | sp.Symbol, expr: ExprLike):
+        deps = depends(expr)
+        var: SfgVar | sp.Symbol = asvar(param) if isinstance(param, _VarLike) else param
+        return SfgDeferredParamSetter(var, deps, str(expr))
+
     def map_param(
         self,
-        lhs: SfgVar,
-        rhs: SfgVar | Sequence[SfgVar],
+        param: VarLike | sp.Symbol,
+        depends: VarLike | Sequence[VarLike],
         mapping: str,
     ):
-        """Arbitrary parameter mapping: Add a single line of code to define a left-hand
-        side object from one or multiple right-hand side dependencies."""
-        if isinstance(rhs, (KernelParameter, SfgVar)):
-            rhs = [rhs]
-        return SfgDeferredParamMapping(lhs, set(rhs), mapping)
+        from warnings import warn
 
-    def map_vector(self, lhs_components: Sequence[SfgVar | sp.Symbol], rhs: SrcVector):
+        warn(
+            "The `map_param` method of `SfgBasicComposer` is deprecated and will be removed "
+            "in a future version. Use `sfg.set_param` instead.",
+            FutureWarning,
+        )
+
+        if isinstance(depends, _VarLike):
+            depends = [depends]
+        lhs_var: SfgVar | sp.Symbol = (
+            asvar(param) if isinstance(param, _VarLike) else param
+        )
+        return SfgDeferredParamMapping(lhs_var, set(asvar(v) for v in depends), mapping)
+
+    def map_vector(self, lhs_components: Sequence[VarLike | sp.Symbol], rhs: SrcVector):
         """Extracts scalar numerical values from a vector data type.
 
         Args:
             lhs_components: Vector components as a list of symbols.
             rhs: A `SrcVector` object representing a vector data structure.
         """
-        return SfgDeferredVectorMapping(lhs_components, rhs)
+        components: list[SfgVar | sp.Symbol] = [
+            (asvar(c) if isinstance(c, _VarLike) else c) for c in lhs_components
+        ]
+        return SfgDeferredVectorMapping(components, rhs)
 
 
 def make_statements(arg: ExprLike) -> SfgStatements:
-    match arg:
-        case str():
-            return SfgStatements(arg, (), ())
-        case SfgVar(name, _):
-            return SfgStatements(name, (), (arg,))
-        case AugExpr():
-            return SfgStatements(str(arg), (), arg.depends)
-        case _:
-            assert False
+    return SfgStatements(str(arg), (), depends(arg))
 
 
 def make_sequence(*args: SequencerArg) -> SfgSequence:
@@ -354,37 +514,37 @@ def make_sequence(*args: SequencerArg) -> SfgSequence:
     - Sub-ASTs and AST builders, which are often produced by the syntactic sugar and
       factory methods of `SfgComposer`.
 
-    Its usage is best shown by example:
+    :Example:
 
-    .. code-block:: Python
+        .. code-block:: Python
 
-        tree = make_sequence(
-            "int a = 0;",
-            "int b = 1;",
-            (
-                "int tmp = b;",
-                "b = a;",
-                "a = tmp;"
-            ),
-            SfgKernelCall(kernel_handle)
-        )
+            tree = make_sequence(
+                "int a = 0;",
+                "int b = 1;",
+                (
+                    "int tmp = b;",
+                    "b = a;",
+                    "a = tmp;"
+                ),
+                SfgKernelCall(kernel_handle)
+            )
 
-        sfg.context.add_function("myFunction", tree)
+            sfg.context.add_function("myFunction", tree)
 
-    will translate to
+        will translate to
 
-    .. code-block:: C++
+        .. code-block:: C++
 
-        void myFunction() {
-            int a = 0;
-            int b = 0;
-            {
-                int tmp = b;
-                b = a;
-                a = tmp;
+            void myFunction() {
+                int a = 0;
+                int b = 0;
+                {
+                    int tmp = b;
+                    b = a;
+                    a = tmp;
+                }
+                kernels::kernel( ... );
             }
-            kernels::kernel( ... );
-        }
     """
     children = []
     for i, arg in enumerate(args):
@@ -392,10 +552,8 @@ def make_sequence(*args: SequencerArg) -> SfgSequence:
             children.append(arg.resolve())
         elif isinstance(arg, SfgCallTreeNode):
             children.append(arg)
-        elif isinstance(arg, AugExpr):
-            children.append(SfgStatements(str(arg), (), arg.depends))
-        elif isinstance(arg, str):
-            children.append(SfgStatements(arg, (), ()))
+        elif isinstance(arg, _ExprLike):
+            children.append(make_statements(arg))
         elif isinstance(arg, tuple):
             #   Tuples are treated as blocks
             subseq = make_sequence(*arg)
@@ -406,35 +564,9 @@ def make_sequence(*args: SequencerArg) -> SfgSequence:
     return SfgSequence(children)
 
 
-class SfgInplaceInitBuilder(SfgNodeBuilder):
-    def __init__(self, lhs: SfgVar) -> None:
-        self._lhs: SfgVar = lhs
-        self._depends: set[SfgVar] = set()
-        self._rhs: str | None = None
-
-    def __call__(
-        self,
-        *rhs: str | AugExpr,
-    ) -> SfgInplaceInitBuilder:
-        if self._rhs is not None:
-            raise SfgException("Assignment builder used multiple times.")
-
-        self._rhs = ", ".join(str(expr) for expr in rhs)
-        self._depends = reduce(
-            set.union, (obj.depends for obj in rhs if isinstance(obj, AugExpr)), set()
-        )
-        return self
-
-    def resolve(self) -> SfgCallTreeNode:
-        assert self._rhs is not None
-        return SfgStatements(
-            f"{self._lhs.dtype} {self._lhs.name} {{ {self._rhs} }};",
-            [self._lhs],
-            self._depends,
-        )
-
-
 class SfgBranchBuilder(SfgNodeBuilder):
+    """Multi-call builder for C++ ``if/else`` statements."""
+
     def __init__(self) -> None:
         self._phase = 0
 
@@ -471,6 +603,8 @@ class SfgBranchBuilder(SfgNodeBuilder):
 
 
 class SfgSwitchBuilder(SfgNodeBuilder):
+    """Builder for C++ switches."""
+
     def __init__(self, switch_arg: ExprLike):
         self._switch_arg = switch_arg
         self._cases: dict[str, SfgSequence] = dict()
@@ -505,7 +639,7 @@ class SfgSwitchBuilder(SfgNodeBuilder):
         return SfgSwitch(make_statements(self._switch_arg), self._cases, self._default)
 
 
-def struct_from_numpy_dtype(
+def _struct_from_numpy_dtype(
     struct_name: str, dtype: np.dtype, add_constructor: bool = True
 ):
     cls = SfgClass(struct_name, class_keyword=SfgClassKeyword.STRUCT)
@@ -533,15 +667,3 @@ def struct_from_numpy_dtype(
         cls.default.append_member(SfgConstructor(constr_params, constr_inits))
 
     return cls
-
-
-def _depends(expr: ExprLike | Sequence[ExprLike] | None) -> set[SfgVar]:
-    match expr:
-        case None | str():
-            return set()
-        case SfgVar():
-            return {expr}
-        case AugExpr():
-            return expr.depends
-        case _:
-            raise ValueError(f"Invalid expression: {expr}")

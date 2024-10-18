@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Sequence, Generator, TypeVar, Generic, Any
+from typing import TYPE_CHECKING, Sequence, Generator, TypeVar, Generic
 from dataclasses import replace
 from itertools import chain
 
@@ -14,6 +14,7 @@ from pystencils.backend.kernelfunction import (
 )
 from pystencils.types import PsType, PsCustomType
 
+from ..lang import SfgVar
 from ..exceptions import SfgException
 
 if TYPE_CHECKING:
@@ -31,6 +32,7 @@ class SfgEmptyLines:
 
 
 class SfgHeaderInclude:
+    """Represent ``#include``-directives."""
 
     @staticmethod
     def parse(incl: str | SfgHeaderInclude, private: bool = False):
@@ -197,57 +199,10 @@ class SfgKernelHandle:
 
     @property
     def fields(self):
-        return self.fields
+        return self._fields
 
     def get_kernel_function(self) -> KernelFunction:
         return self._namespace.get_kernel_function(self)
-
-
-class SfgVar:
-    __match_args__ = ("name", "dtype")
-
-    def __init__(
-        self,
-        name: str,
-        dtype: PsType,
-        required_includes: set[SfgHeaderInclude] | None = None,
-    ):
-        self._name = name
-        self._dtype = dtype
-
-        self._required_includes = (
-            required_includes if required_includes is not None else set()
-        )
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @property
-    def dtype(self) -> PsType:
-        return self._dtype
-
-    def _args(self) -> tuple[Any, ...]:
-        return (self._name, self._dtype)
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, SfgVar):
-            return False
-
-        return self._args() == other._args()
-
-    def __hash__(self) -> int:
-        return hash(self._args())
-
-    @property
-    def required_includes(self) -> set[SfgHeaderInclude]:
-        return self._required_includes
-
-    def __str__(self) -> str:
-        return self._name
-
-    def __repr__(self) -> str:
-        return f"SfgVar( {self._name}, {repr(self._dtype)} )"
 
 
 SymbolLike_T = TypeVar("SymbolLike_T", bound=KernelParameter)
@@ -517,7 +472,7 @@ class SfgClass:
 
         self._definitions: list[SfgInClassDefinition] = []
         self._constructors: list[SfgConstructor] = []
-        self._methods: dict[str, SfgMethod] = dict()
+        self._methods: list[SfgMethod] = []
         self._member_vars: dict[str, SfgMemberVariable] = dict()
 
     @property
@@ -595,11 +550,9 @@ class SfgClass:
         self, visibility: SfgVisibility | None = None
     ) -> Generator[SfgMethod, None, None]:
         if visibility is not None:
-            yield from filter(
-                lambda m: m.visibility == visibility, self._methods.values()
-            )
+            yield from filter(lambda m: m.visibility == visibility, self._methods)
         else:
-            yield from self._methods.values()
+            yield from self._methods
 
     # PRIVATE
 
@@ -621,16 +574,10 @@ class SfgClass:
         self._definitions.append(definition)
 
     def _add_constructor(self, constr: SfgConstructor):
-        #   TODO: Check for signature conflicts?
         self._constructors.append(constr)
 
     def _add_method(self, method: SfgMethod):
-        if method.name in self._methods:
-            raise SfgException(
-                f"Duplicate method name {method.name} in class {self._class_name}"
-            )
-
-        self._methods[method.name] = method
+        self._methods.append(method)
 
     def _add_member_variable(self, variable: SfgMemberVariable):
         if variable.name in self._member_vars:

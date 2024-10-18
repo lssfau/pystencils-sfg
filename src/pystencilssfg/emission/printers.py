@@ -178,14 +178,6 @@ class SfgHeaderPrinter(SfgGeneralPrinter):
         return code
 
 
-def delimiter(content):
-    return f"""\
-/*************************************************************************************
- *                                {content}
-*************************************************************************************/
-"""
-
-
 class SfgImplPrinter(SfgGeneralPrinter):
     def __init__(
         self, ctx: SfgContext, output_spec: SfgOutputSpec, inline_impl: bool = False
@@ -219,11 +211,8 @@ class SfgImplPrinter(SfgGeneralPrinter):
 
         parts = interleave(
             chain(
-                [delimiter("Kernels")],
                 ctx.kernel_namespaces(),
-                [delimiter("Functions")],
                 ctx.functions(),
-                [delimiter("Class Methods")],
                 ctx.classes(),
             ),
             repeat(SfgEmptyLines(1)),

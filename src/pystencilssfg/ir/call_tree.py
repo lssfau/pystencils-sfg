@@ -4,7 +4,8 @@ from typing import TYPE_CHECKING, Sequence, Iterable, NewType
 from abc import ABC, abstractmethod
 from itertools import chain
 
-from .source_components import SfgHeaderInclude, SfgKernelHandle, SfgVar
+from .source_components import SfgHeaderInclude, SfgKernelHandle
+from ..lang import SfgVar
 
 if TYPE_CHECKING:
     from ..context import SfgContext
@@ -122,6 +123,10 @@ class SfgStatements(SfgCallTreeLeaf):
     @property
     def required_includes(self) -> set[SfgHeaderInclude]:
         return self._required_includes
+
+    @property
+    def code_string(self) -> str:
+        return self._code_string
 
     def get_code(self, ctx: SfgContext) -> str:
         return self._code_string

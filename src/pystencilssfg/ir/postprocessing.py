@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Sequence, Iterable
 import warnings
 from functools import reduce
 from dataclasses import dataclass
@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 import sympy as sp
 
 from pystencils import Field, TypedSymbol
+from pystencils.types import deconstify
 from pystencils.backend.kernelfunction import (
     FieldPointerParam,
     FieldShapeParam,
@@ -18,8 +19,8 @@ from pystencils.backend.kernelfunction import (
 from ..exceptions import SfgException
 
 from .call_tree import SfgCallTreeNode, SfgCallTreeLeaf, SfgSequence, SfgStatements
-from ..ir.source_components import SfgVar, SfgSymbolLike
-from ..lang import IFieldExtraction, SrcField, SrcVector
+from ..ir.source_components import SfgSymbolLike
+from ..lang import SfgVar, IFieldExtraction, SrcField, SrcVector
 
 if TYPE_CHECKING:
     from ..context import SfgContext
@@ -61,7 +62,7 @@ class FlattenSequences:
 class PostProcessingContext:
     def __init__(self, enclosing_class: SfgClass | None = None) -> None:
         self.enclosing_class: SfgClass | None = enclosing_class
-        self.live_objects: set[SfgVar] = set()
+        self._live_variables: dict[str, SfgVar] = dict()
 
     def is_method(self) -> bool:
         return self.enclosing_class is not None
@@ -71,6 +72,65 @@ class PostProcessingContext:
             raise SfgException("Cannot get the enclosing class of a free function.")
 
         return self.enclosing_class
+
+    @property
+    def live_variables(self) -> set[SfgVar]:
+        return set(self._live_variables.values())
+
+    def get_live_variable(self, name: str) -> SfgVar | None:
+        return self._live_variables.get(name)
+
+    def _define(self, vars: Iterable[SfgVar], expr: str):
+        for var in vars:
+            if var.name in self._live_variables:
+                live_var = self._live_variables[var.name]
+
+                live_var_dtype = live_var.dtype
+                def_dtype = var.dtype
+
+                #   A const definition conflicts with a non-const live variable
+                #   A non-const definition is always OK, but then the types must be the same
+                if (def_dtype.const and not live_var_dtype.const) or (
+                    deconstify(def_dtype) != deconstify(live_var_dtype)
+                ):
+                    warnings.warn(
+                        f"Type conflict at variable definition: Expected type {live_var_dtype}, but got {def_dtype}.\n"
+                        f"    * At definition {expr}",
+                        UserWarning,
+                    )
+
+                del self._live_variables[var.name]
+
+    def _use(self, vars: Iterable[SfgVar]):
+        for var in vars:
+            if var.name in self._live_variables:
+                live_var = self._live_variables[var.name]
+
+                if var != live_var:
+                    if var.dtype == live_var.dtype:
+                        #   This can only happen if the variables are SymbolLike,
+                        #   i.e. wrap a field-associated kernel parameter
+                        #   TODO: Once symbol properties are a thing, check and combine them here
+                        warnings.warn(
+                            "Encountered two non-identical variables with same name and data type:\n"
+                            f"    {var.name_and_type()}\n"
+                            "and\n"
+                            f"    {live_var.name_and_type()}\n"
+                        )
+                    elif deconstify(var.dtype) == deconstify(live_var.dtype):
+                        #   Same type, just different constness
+                        #   One of them must be non-const -> keep the non-const one
+                        if live_var.dtype.const and not var.dtype.const:
+                            self._live_variables[var.name] = var
+                    else:
+                        raise SfgException(
+                            "Encountered two variables with same name but different data types:\n"
+                            f"    {var.name_and_type()}\n"
+                            "and\n"
+                            f"    {live_var.name_and_type()}"
+                        )
+            else:
+                self._live_variables[var.name] = var
 
 
 @dataclass(frozen=True)
@@ -84,30 +144,8 @@ class CallTreePostProcessing:
         self._flattener = FlattenSequences()
 
     def __call__(self, ast: SfgCallTreeNode) -> PostProcessingResult:
-        params = self.get_live_objects(ast)
-        params_by_name: dict[str, SfgVar] = dict()
-
-        for param in params:
-            if param.name in params_by_name:
-                other = params_by_name[param.name]
-
-                if param.dtype == other.dtype:
-                    warnings.warn(
-                        "Encountered two non-identical parameters with same name and data type:\n"
-                        f"    {repr(param)}\n"
-                        "and\n"
-                        f"    {repr(other)}\n"
-                    )
-                else:
-                    raise SfgException(
-                        "Encountered two parameters with same name but different data types:\n"
-                        f"    {repr(param)}\n"
-                        "and\n"
-                        f"    {repr(other)}"
-                    )
-            params_by_name[param.name] = param
-
-        return PostProcessingResult(set(params_by_name.values()))
+        live_vars = self.get_live_variables(ast)
+        return PostProcessingResult(live_vars)
 
     def handle_sequence(self, seq: SfgSequence, ppc: PostProcessingContext):
         def iter_nested_sequences(seq: SfgSequence):
@@ -122,18 +160,18 @@ class CallTreePostProcessing:
                     iter_nested_sequences(c)
                 else:
                     if isinstance(c, SfgStatements):
-                        ppc.live_objects -= c.defines
+                        ppc._define(c.defines, c.code_string)
 
-                    ppc.live_objects |= self.get_live_objects(c)
+                    ppc._use(self.get_live_variables(c))
 
         iter_nested_sequences(seq)
 
-    def get_live_objects(self, node: SfgCallTreeNode) -> set[SfgVar]:
+    def get_live_variables(self, node: SfgCallTreeNode) -> set[SfgVar]:
         match node:
             case SfgSequence():
                 ppc = self._ppc()
                 self.handle_sequence(node, ppc)
-                return ppc.live_objects
+                return ppc.live_variables
 
             case SfgCallTreeLeaf():
                 return node.depends
@@ -144,7 +182,7 @@ class CallTreePostProcessing:
             case _:
                 return reduce(
                     lambda x, y: x | y,
-                    (self.get_live_objects(c) for c in node.children),
+                    (self.get_live_variables(c) for c in node.children),
                     set(),
                 )
 
@@ -177,14 +215,30 @@ class SfgDeferredNode(SfgCallTreeNode, ABC):
 
 
 class SfgDeferredParamMapping(SfgDeferredNode):
-    def __init__(self, lhs: SfgVar, rhs: set[SfgVar], mapping: str):
+    def __init__(self, lhs: SfgVar | sp.Symbol, depends: set[SfgVar], mapping: str):
         self._lhs = lhs
-        self._rhs = rhs
+        self._depends = depends
         self._mapping = mapping
 
     def expand(self, ppc: PostProcessingContext) -> SfgCallTreeNode:
-        if self._lhs in ppc.live_objects:
-            return SfgStatements(self._mapping, (self._lhs,), tuple(self._rhs))
+        live_var = ppc.get_live_variable(self._lhs.name)
+        if live_var is not None:
+            return SfgStatements(self._mapping, (live_var,), tuple(self._depends))
+        else:
+            return SfgSequence([])
+
+
+class SfgDeferredParamSetter(SfgDeferredNode):
+    def __init__(self, param: SfgVar | sp.Symbol, depends: set[SfgVar], rhs_expr: str):
+        self._lhs = param
+        self._depends = depends
+        self._rhs_expr = rhs_expr
+
+    def expand(self, ppc: PostProcessingContext) -> SfgCallTreeNode:
+        live_var = ppc.get_live_variable(self._lhs.name)
+        if live_var is not None:
+            code = f"{live_var.dtype} {live_var.name} = {self._rhs_expr};"
+            return SfgStatements(code, (live_var,), tuple(self._depends))
         else:
             return SfgSequence([])
 
@@ -209,7 +263,7 @@ class SfgDeferredFieldMapping(SfgDeferredNode):
             self._field.strides
         )
 
-        for param in ppc.live_objects:
+        for param in ppc.live_variables:
             #   idk why, but mypy does not understand these pattern matches
             match param:
                 case SfgSymbolLike(FieldPointerParam(_, _, field)) if field == self._field:  # type: ignore
@@ -288,7 +342,7 @@ class SfgDeferredVectorMapping(SfgDeferredNode):
     def expand(self, ppc: PostProcessingContext) -> SfgCallTreeNode:
         nodes = []
 
-        for param in ppc.live_objects:
+        for param in ppc.live_variables:
             if param.name in self._scalars:
                 idx, _ = self._scalars[param.name]
                 expr = self._vector.extract_component(idx)

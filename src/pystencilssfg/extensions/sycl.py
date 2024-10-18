@@ -16,14 +16,14 @@ from ..composer import (
     SfgComposerMixIn,
 )
 from ..ir.source_components import SfgKernelHandle, SfgHeaderInclude
-from ..ir.source_components import SfgVar, SfgSymbolLike
+from ..ir.source_components import SfgSymbolLike
 from ..ir import (
     SfgCallTreeNode,
     SfgCallTreeLeaf,
     SfgKernelCallNode,
 )
 
-from ..lang import AugExpr
+from ..lang import SfgVar, AugExpr
 
 
 class SyclComposerMixIn(SfgComposerMixIn):

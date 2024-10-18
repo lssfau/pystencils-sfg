@@ -58,6 +58,11 @@ class SourceFileGenerator:
             project_info=config.project_info,
         )
 
+        from pystencilssfg.ir import SfgHeaderInclude
+
+        self._context.add_include(SfgHeaderInclude("cstdint", system_header=True))
+        self._context.add_definition("#define RESTRICT __restrict__")
+
         self._emitter: AbstractEmitter
         match config.output_mode:
             case SfgOutputMode.HEADER_ONLY:

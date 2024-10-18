@@ -27,6 +27,7 @@ extensions = [
     "myst_parser",
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
+    "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx_autodoc_typehints",
     "sphinx_design",
@@ -56,6 +57,7 @@ intersphinx_mapping = {
     "numpy": ("https://docs.scipy.org/doc/numpy/", None),
     "matplotlib": ("https://matplotlib.org/", None),
     "sympy": ("https://docs.sympy.org/latest/", None),
+    "pystencils": ("https://da15siwa.pages.i10git.cs.fau.de/dev-docs/pystencils-nbackend/", None),
 }
 
 
@@ -63,6 +65,13 @@ intersphinx_mapping = {
 
 autodoc_member_order = "bysource"
 autodoc_typehints = "description"
+
+#   Doctest Setup
+
+doctest_global_setup = '''
+from pystencilssfg import SfgContext, SfgComposer
+sfg = SfgComposer(SfgContext())
+'''
 
 
 #   Prepare code generation examples

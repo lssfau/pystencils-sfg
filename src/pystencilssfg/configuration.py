@@ -40,7 +40,10 @@ class SfgCodeStyle:
     """
 
     force_clang_format: bool = False
-    """If set to True, abort code generation if `clang-format` binary cannot be found."""
+    """If set to True, abort code generation if ``clang-format`` binary cannot be found."""
+
+    skip_clang_format: bool = False
+    """If set to True, skip formatting using ``clang-format``."""
 
     clang_format_binary: str = "clang-format"
     """Path to the clang-format executable"""

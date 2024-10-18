@@ -3,7 +3,13 @@ from typing import Sequence
 
 from pystencils.types import PsCustomType, UserTypeSpec
 
-from ..ir import SfgCallTreeNode
+from ..lang import (
+    _VarLike,
+    VarLike,
+    ExprLike,
+    asvar,
+)
+
 from ..ir.source_components import (
     SfgClass,
     SfgClassMember,
@@ -14,12 +20,14 @@ from ..ir.source_components import (
     SfgClassKeyword,
     SfgVisibility,
     SfgVisibilityBlock,
-    SfgVar,
 )
 from ..exceptions import SfgException
 
 from .mixin import SfgComposerMixIn
-from .basic_composer import SfgNodeBuilder, make_sequence
+from .basic_composer import (
+    make_sequence,
+    SequencerArg,
+)
 
 
 class SfgClassComposer(SfgComposerMixIn):
@@ -46,7 +54,7 @@ class SfgClassComposer(SfgComposerMixIn):
         def __call__(
             self,
             *args: (
-                SfgClassMember | SfgClassComposer.ConstructorBuilder | SfgVar | str
+                SfgClassMember | SfgClassComposer.ConstructorBuilder | VarLike | str
             ),
         ):
             for arg in args:
@@ -63,15 +71,21 @@ class SfgClassComposer(SfgComposerMixIn):
         Returned by `constructor`.
         """
 
-        def __init__(self, *params: SfgVar):
-            self._params = params
+        def __init__(self, *params: VarLike):
+            self._params = tuple(asvar(p) for p in params)
             self._initializers: list[str] = []
             self._body: str | None = None
 
-        def init(self, initializer: str) -> SfgClassComposer.ConstructorBuilder:
+        def init(self, var: VarLike):
             """Add an initialization expression to the constructor's initializer list."""
-            self._initializers.append(initializer)
-            return self
+
+            def init_sequencer(*args: ExprLike):
+                expr = ", ".join(str(arg) for arg in args)
+                initializer = f"{asvar(var)}{{ {expr} }}"
+                self._initializers.append(initializer)
+                return self
+
+            return init_sequencer
 
         def body(self, body: str):
             """Define the constructor body"""
@@ -120,7 +134,7 @@ class SfgClassComposer(SfgComposerMixIn):
         """Create a `private` visibility block in a class or struct body"""
         return SfgClassComposer.VisibilityContext(SfgVisibility.PRIVATE)
 
-    def constructor(self, *params: SfgVar):
+    def constructor(self, *params: VarLike):
         """In a class or struct body or visibility block, add a constructor.
 
         Args:
@@ -145,7 +159,7 @@ class SfgClassComposer(SfgComposerMixIn):
             const: Whether or not the method is const-qualified.
         """
 
-        def sequencer(*args: str | tuple | SfgCallTreeNode | SfgNodeBuilder):
+        def sequencer(*args: SequencerArg):
             tree = make_sequence(*args)
             return SfgMethod(
                 name,
@@ -171,7 +185,7 @@ class SfgClassComposer(SfgComposerMixIn):
                 SfgClassComposer.VisibilityContext
                 | SfgClassMember
                 | SfgClassComposer.ConstructorBuilder
-                | SfgVar
+                | VarLike
                 | str
             ),
         ):
@@ -186,9 +200,9 @@ class SfgClassComposer(SfgComposerMixIn):
                     (
                         SfgClassMember,
                         SfgClassComposer.ConstructorBuilder,
-                        SfgVar,
                         str,
-                    ),
+                    )
+                    + _VarLike,
                 ):
                     if default_ended:
                         raise SfgException(
@@ -204,13 +218,17 @@ class SfgClassComposer(SfgComposerMixIn):
 
     @staticmethod
     def _resolve_member(
-        arg: SfgClassMember | SfgClassComposer.ConstructorBuilder | SfgVar | str,
-    ):
-        if isinstance(arg, SfgVar):
-            return SfgMemberVariable(arg.name, arg.dtype)
-        elif isinstance(arg, str):
-            return SfgInClassDefinition(arg)
-        elif isinstance(arg, SfgClassComposer.ConstructorBuilder):
-            return arg.resolve()
-        else:
-            return arg
+        arg: SfgClassMember | SfgClassComposer.ConstructorBuilder | VarLike | str,
+    ) -> SfgClassMember:
+        match arg:
+            case _ if isinstance(arg, _VarLike):
+                var = asvar(arg)
+                return SfgMemberVariable(var.name, var.dtype)
+            case str():
+                return SfgInClassDefinition(arg)
+            case SfgClassComposer.ConstructorBuilder():
+                return arg.resolve()
+            case SfgClassMember():
+                return arg
+            case _:
+                raise ValueError(f"Invalid class member: {arg}")

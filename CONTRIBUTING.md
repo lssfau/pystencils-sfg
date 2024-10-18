@@ -15,8 +15,8 @@ As such, any submission of contributions via merge requests is considered as agr
 
 ### Fork and Clone
 
-To work within the `pystencils-sfg` source tree, first create a *fork* of this repository on GitLab and create
-a local clone of your fork.
+To work within the `pystencils-sfg` source tree, first create a *fork* of this repository
+and clone it to your workstation.
 
 ### Set up your dev environment
 
@@ -52,3 +52,16 @@ Both `flake8` and `mypy` are also run in the integration pipeline.
 You can automate the code quality checks by running them via a git pre-commit hook.
 Such a hook can be installed using the [`install_git_hooks.sh`](install_git_hooks.sh) script located at the project root.
 
+### Test Your Code
+
+We are working toward near-complete test coverage of the module source files.
+When you add code, make sure to include test cases for both its desired
+and exceptional behavior at the appropriate locations in the [tests](tests) directory.
+
+Unit tests should be placed under a path and filename mirroring the location
+of the API they are testing within the *pystencils-sfg* source tree.
+
+In [tests/generator_scripts](tests/generator_scripts), a framework is provided to test entire generator scripts
+for successful execution, correctness, and compilability of their output.
+Read the documentation within [test_generator_scripts.py](tests/generator_scripts/test_generator_scripts.py)
+for more information.

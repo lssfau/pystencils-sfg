@@ -24,6 +24,9 @@ def invoke_clang_format(code: str, codestyle: SfgCodeStyle) -> str:
         be executed (binary not found, or error during exection), the function will
         throw an exception.
     """
+    if codestyle.skip_clang_format:
+        return code
+
     args = [codestyle.clang_format_binary, f"--style={codestyle.code_style}"]
 
     if not shutil.which(codestyle.clang_format_binary):

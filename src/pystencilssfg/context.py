@@ -69,7 +69,7 @@ class SfgContext:
 
         #   Source Components
         self._prelude: str = ""
-        self._includes: set[SfgHeaderInclude] = set()
+        self._includes: list[SfgHeaderInclude] = []
         self._definitions: list[str] = []
         self._kernel_namespaces = {
             self._default_kernel_namespace.name: self._default_kernel_namespace
@@ -78,10 +78,6 @@ class SfgContext:
         self._classes: dict[str, SfgClass] = dict()
 
         self._declarations_ordered: list[str | SfgFunction | SfgClass] = list()
-
-        #   Standard stuff
-        self.add_include(SfgHeaderInclude("cstdint", system_header=True))
-        self.add_definition("#define RESTRICT __restrict__")
 
     @property
     def argv(self) -> Sequence[str]:
@@ -159,7 +155,7 @@ class SfgContext:
         yield from self._includes
 
     def add_include(self, include: SfgHeaderInclude):
-        self._includes.add(include)
+        self._includes.append(include)
 
     def definitions(self) -> Generator[str, None, None]:
         """Definitions are arbitrary custom lines of code."""

@@ -11,3 +11,4 @@ These pages provide a reference for the public API of *pystencils-sfg*.
     composer
     lang
     ir
+    errors

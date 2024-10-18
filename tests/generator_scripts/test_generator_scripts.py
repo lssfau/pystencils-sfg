@@ -14,21 +14,59 @@ EXPECTED_DIR = path.join(THIS_DIR, "expected")
 
 @dataclass
 class ScriptInfo:
+    @staticmethod
+    def make(name, *args, **kwargs):
+        return pytest.param(ScriptInfo(name, *args, **kwargs), id=f"{name}.py")
+
     script_name: str
+    """Name of the generator script, without .py-extension.
+
+    Generator scripts must be located in the ``scripts`` folder.
+    """
+
     expected_outputs: tuple[str, ...]
+    """List of file extensions expected to be emitted by the generator script.
+
+    Output files will all be placed in the ``out`` folder.
+    """
 
     compilable_output: str | None = None
+    """File extension of the output file that can be compiled.
+
+    If this is set, and the expected file exists, the ``compile_cmd`` will be
+    executed to check for error-free compilation of the output.
+    """
+
     compile_cmd: str = f"g++ --std=c++17 -I {THIS_DIR}/deps/mdspan/include"
+    """Command to be invoked to compile the generated source file."""
+
+    def __repr__(self) -> str:
+        return self.script_name
 
 
+"""Scripts under test.
+
+When adding new generator scripts to the `scripts` directory,
+do not forget to include them here.
+"""
 SCRIPTS = [
-    ScriptInfo("SimpleJacobi", ("h", "cpp"), compilable_output="cpp"),
-    ScriptInfo("SimpleClasses", ("h", "cpp")),
+    ScriptInfo.make("Structural", ("h", "cpp")),
+    ScriptInfo.make("SimpleJacobi", ("h", "cpp"), compilable_output="cpp"),
+    ScriptInfo.make("SimpleClasses", ("h", "cpp")),
+    ScriptInfo.make("Variables", ("h", "cpp"), compilable_output="cpp"),
 ]
 
 
 @pytest.mark.parametrize("script_info", SCRIPTS)
 def test_generator_script(script_info: ScriptInfo):
+    """Test a generator script defined by ``script_info``.
+
+    The generator script will be run, with its output placed in the ``out`` folder.
+    If it is successful, its output files will be compared against
+    any files of the same name from the ``expected`` folder.
+    Finally, if any compilable files are specified, the test will attempt to compile them.
+    """
+
     script_name = script_info.script_name
     script_file = path.join(SCRIPTS_DIR, script_name + ".py")
 
@@ -67,7 +105,7 @@ def test_generator_script(script_info: ScriptInfo):
 
         #   Strip whitespace
         expected = "".join(expected.split())
-        actual = "".join(expected.split())
+        actual = "".join(actual.split())
 
         assert expected == actual
 
