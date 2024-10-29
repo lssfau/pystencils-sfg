@@ -5,7 +5,6 @@ import re
 
 from pystencils.types import PsType, PsCustomType
 from pystencils.enums import Target
-from pystencils.backend.kernelfunction import KernelParameter
 
 from ..exceptions import SfgException
 from ..context import SfgContext
@@ -15,8 +14,7 @@ from ..composer import (
     SfgComposer,
     SfgComposerMixIn,
 )
-from ..ir.source_components import SfgKernelHandle, SfgHeaderInclude
-from ..ir.source_components import SfgSymbolLike
+from ..ir.source_components import SfgKernelHandle, SfgHeaderInclude, SfgKernelParamVar
 from ..ir import (
     SfgCallTreeNode,
     SfgCallTreeLeaf,
@@ -75,7 +73,7 @@ class SyclHandler(AugExpr):
 
         id_regex = re.compile(r"sycl::(id|item|nd_item)<\s*[0-9]\s*>")
 
-        def filter_id(param: SfgSymbolLike[KernelParameter]) -> bool:
+        def filter_id(param: SfgKernelParamVar) -> bool:
             return (
                 isinstance(param.dtype, PsCustomType)
                 and id_regex.search(param.dtype.c_string()) is not None
@@ -119,7 +117,7 @@ class SyclGroup(AugExpr):
 
         id_regex = re.compile(r"sycl::id<\s*[0-9]\s*>")
 
-        def filter_id(param: SfgSymbolLike[KernelParameter]) -> bool:
+        def filter_id(param: SfgKernelParamVar) -> bool:
             return (
                 isinstance(param.dtype, PsCustomType)
                 and id_regex.search(param.dtype.c_string()) is not None

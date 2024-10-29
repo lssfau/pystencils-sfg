@@ -9,5 +9,5 @@ private:
     float alpha;
 public:
     Scale(float alpha) : alpha{ alpha } {}
-    void operator() (float *const _data_f, float *const _data_g);
+    void operator() (float *RESTRICT const _data_f, float *RESTRICT const _data_g);
 };

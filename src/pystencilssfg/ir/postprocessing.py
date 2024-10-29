@@ -8,18 +8,14 @@ from abc import ABC, abstractmethod
 
 import sympy as sp
 
-from pystencils import Field, TypedSymbol
+from pystencils import Field
 from pystencils.types import deconstify
-from pystencils.backend.kernelfunction import (
-    FieldPointerParam,
-    FieldShapeParam,
-    FieldStrideParam,
-)
+from pystencils.backend.properties import FieldBasePtr, FieldShape, FieldStride
 
 from ..exceptions import SfgException
 
 from .call_tree import SfgCallTreeNode, SfgCallTreeLeaf, SfgSequence, SfgStatements
-from ..ir.source_components import SfgSymbolLike
+from ..ir.source_components import SfgKernelParamVar
 from ..lang import SfgVar, IFieldExtraction, SrcField, SrcVector
 
 if TYPE_CHECKING:
@@ -252,43 +248,38 @@ class SfgDeferredFieldMapping(SfgDeferredNode):
             else extraction.get_extraction()
         )
 
-    # type: ignore
     def expand(self, ppc: PostProcessingContext) -> SfgCallTreeNode:
         #    Find field pointer
-        ptr: SfgSymbolLike[FieldPointerParam] | None = None
-        shape: list[SfgSymbolLike[FieldShapeParam] | int | None] = [None] * len(
-            self._field.shape
-        )
-        strides: list[SfgSymbolLike[FieldStrideParam] | int | None] = [None] * len(
+        ptr: SfgKernelParamVar | None = None
+        shape: list[SfgKernelParamVar | str | None] = [None] * len(self._field.shape)
+        strides: list[SfgKernelParamVar | str | None] = [None] * len(
             self._field.strides
         )
 
         for param in ppc.live_variables:
-            #   idk why, but mypy does not understand these pattern matches
-            match param:
-                case SfgSymbolLike(FieldPointerParam(_, _, field)) if field == self._field:  # type: ignore
-                    ptr = param
-                case SfgSymbolLike(
-                    FieldShapeParam(_, _, field, coord)  # type: ignore
-                ) if field == self._field:  # type: ignore
-                    shape[coord] = param  # type: ignore
-                case SfgSymbolLike(
-                    FieldStrideParam(_, _, field, coord)  # type: ignore
-                ) if field == self._field:  # type: ignore
-                    strides[coord] = param  # type: ignore
+            if isinstance(param, SfgKernelParamVar):
+                for prop in param.wrapped.properties:
+                    match prop:
+                        case FieldBasePtr(field) if field == self._field:
+                            ptr = param
+                        case FieldShape(field, coord) if field == self._field:  # type: ignore
+                            shape[coord] = param  # type: ignore
+                        case FieldStride(field, coord) if field == self._field:  # type: ignore
+                            strides[coord] = param  # type: ignore
 
-        #   Find constant sizes
+        #   Find constant or otherwise determined sizes
         for coord, s in enumerate(self._field.shape):
-            if not isinstance(s, TypedSymbol):
-                shape[coord] = s
+            if shape[coord] is None:
+                shape[coord] = str(s)
 
-        #   Find constant strides
+        #   Find constant or otherwise determined strides
         for coord, s in enumerate(self._field.strides):
-            if not isinstance(s, TypedSymbol):
-                strides[coord] = s
+            if strides[coord] is None:
+                strides[coord] = str(s)
 
         #   Now we have all the symbols, start extracting them
         nodes = []
+        done: set[SfgKernelParamVar] = set()
 
         if ptr is not None:
             expr = self._extraction.ptr()
@@ -298,7 +289,7 @@ class SfgDeferredFieldMapping(SfgDeferredNode):
                 )
             )
 
-        def get_shape(coord, symb: SfgSymbolLike | int):
+        def get_shape(coord, symb: SfgKernelParamVar | str):
             expr = self._extraction.size(coord)
 
             if expr is None:
@@ -306,14 +297,15 @@ class SfgDeferredFieldMapping(SfgDeferredNode):
                     f"Cannot extract shape in coordinate {coord} from {self._extraction}"
                 )
 
-            if isinstance(symb, SfgSymbolLike):
+            if isinstance(symb, SfgKernelParamVar) and symb not in done:
+                done.add(symb)
                 return SfgStatements(
                     f"{symb.dtype} {symb.name} {{ {expr} }};", (symb,), expr.depends
                 )
             else:
                 return SfgStatements(f"/* {expr} == {symb} */", (), ())
 
-        def get_stride(coord, symb: SfgSymbolLike | int):
+        def get_stride(coord, symb: SfgKernelParamVar | str):
             expr = self._extraction.stride(coord)
 
             if expr is None:
@@ -321,7 +313,8 @@ class SfgDeferredFieldMapping(SfgDeferredNode):
                     f"Cannot extract stride in coordinate {coord} from {self._extraction}"
                 )
 
-            if isinstance(symb, SfgSymbolLike):
+            if isinstance(symb, SfgKernelParamVar) and symb not in done:
+                done.add(symb)
                 return SfgStatements(
                     f"{symb.dtype} {symb.name} {{ {expr} }};", (symb,), expr.depends
                 )

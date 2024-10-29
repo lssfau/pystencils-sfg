@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Sequence, Generator, TypeVar, Generic
+from typing import TYPE_CHECKING, Sequence, Generator, TypeVar
 from dataclasses import replace
 from itertools import chain
 
@@ -10,7 +10,6 @@ from pystencils import CreateKernelConfig, create_kernel, Field
 from pystencils.backend.kernelfunction import (
     KernelFunction,
     KernelParameter,
-    FieldParameter,
 )
 from pystencils.types import PsType, PsCustomType
 
@@ -162,14 +161,14 @@ class SfgKernelHandle:
         self._ctx = ctx
         self._name = name
         self._namespace = namespace
-        self._parameters = [SfgSymbolLike(p) for p in parameters]
+        self._parameters = [SfgKernelParamVar(p) for p in parameters]
 
-        self._scalar_params: set[SfgSymbolLike] = set()
+        self._scalar_params: set[SfgKernelParamVar] = set()
         self._fields: set[Field] = set()
 
         for param in self._parameters:
-            if isinstance(param.wrapped, FieldParameter):
-                self._fields.add(param.wrapped.field)
+            if param.wrapped.is_field_parameter:
+                self._fields |= set(param.wrapped.fields)
             else:
                 self._scalar_params.add(param)
 
@@ -190,7 +189,7 @@ class SfgKernelHandle:
                 return f"{fqn}::{self.kernel_namespace.name}::{self.kernel_name}"
 
     @property
-    def parameters(self) -> Sequence[SfgSymbolLike]:
+    def parameters(self) -> Sequence[SfgKernelParamVar]:
         return self._parameters
 
     @property
@@ -208,17 +207,17 @@ class SfgKernelHandle:
 SymbolLike_T = TypeVar("SymbolLike_T", bound=KernelParameter)
 
 
-class SfgSymbolLike(SfgVar, Generic[SymbolLike_T]):
+class SfgKernelParamVar(SfgVar):
     __match_args__ = ("wrapped",)
 
     """Cast pystencils- or SymPy-native symbol-like objects as a `SfgVar`."""
 
-    def __init__(self, param: SymbolLike_T):
+    def __init__(self, param: KernelParameter):
         self._param = param
         super().__init__(param.name, param.dtype)
 
     @property
-    def wrapped(self) -> SymbolLike_T:
+    def wrapped(self) -> KernelParameter:
         return self._param
 
     def _args(self):
