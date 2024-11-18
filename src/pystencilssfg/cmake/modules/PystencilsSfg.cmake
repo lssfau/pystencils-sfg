@@ -4,8 +4,6 @@ set(PystencilsSfg_GENERATED_SOURCES_DIR "${CMAKE_BINARY_DIR}/sfg_sources" CACHE 
 mark_as_advanced(PystencilsSfg_GENERATED_SOURCES_DIR)
 
 file(MAKE_DIRECTORY "${PystencilsSfg_GENERATED_SOURCES_DIR}")
-include_directories(${PystencilsSfg_GENERATED_SOURCES_DIR})
-
 
 function(_pssfg_add_gen_source target script)
     set(options)
@@ -39,6 +37,7 @@ function(_pssfg_add_gen_source target script)
                        WORKING_DIRECTORY "${generatedSourcesDir}")
 
     target_sources(${target} PRIVATE ${generatedSourcesAbsolute})
+    target_include_directories(${target} PRIVATE ${PystencilsSfg_GENERATED_SOURCES_DIR})
 endfunction()
 
 
