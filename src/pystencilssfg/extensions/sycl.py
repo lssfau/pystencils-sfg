@@ -14,7 +14,7 @@ from ..composer import (
     SfgComposer,
     SfgComposerMixIn,
 )
-from ..ir.source_components import SfgKernelHandle, SfgHeaderInclude, SfgKernelParamVar
+from ..ir.source_components import SfgKernelHandle, SfgHeaderInclude
 from ..ir import (
     SfgCallTreeNode,
     SfgCallTreeLeaf,
@@ -73,7 +73,7 @@ class SyclHandler(AugExpr):
 
         id_regex = re.compile(r"sycl::(id|item|nd_item)<\s*[0-9]\s*>")
 
-        def filter_id(param: SfgKernelParamVar) -> bool:
+        def filter_id(param: SfgVar) -> bool:
             return (
                 isinstance(param.dtype, PsCustomType)
                 and id_regex.search(param.dtype.c_string()) is not None
@@ -117,7 +117,7 @@ class SyclGroup(AugExpr):
 
         id_regex = re.compile(r"sycl::id<\s*[0-9]\s*>")
 
-        def filter_id(param: SfgKernelParamVar) -> bool:
+        def filter_id(param: SfgVar) -> bool:
             return (
                 isinstance(param.dtype, PsCustomType)
                 and id_regex.search(param.dtype.c_string()) is not None
@@ -131,7 +131,7 @@ class SyclGroup(AugExpr):
             comp.map_param(
                 id_param,
                 h_item,
-                f"{id_param.dtype} {id_param.name} = {h_item}.get_local_id();",
+                f"{id_param.dtype.c_string()} {id_param.name} = {h_item}.get_local_id();",
             ),
             SfgKernelCallNode(kernel),
         )
@@ -186,7 +186,7 @@ class SfgLambda:
 
     def get_code(self, ctx: SfgContext):
         captures = ", ".join(self._captures)
-        params = ", ".join(f"{p.dtype} {p.name}" for p in self._params)
+        params = ", ".join(f"{p.dtype.c_string()} {p.name}" for p in self._params)
         body = self._tree.get_code(ctx)
         body = ctx.codestyle.indent(body)
         rtype = (

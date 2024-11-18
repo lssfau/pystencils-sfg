@@ -109,7 +109,7 @@ def test_field_extraction():
     khandle = sfg.kernels.create(set_constant)
 
     extraction = TestFieldExtraction("f")
-    call_tree = make_sequence(sfg.map_field(f, extraction), sfg.call(khandle))
+    call_tree = make_sequence(sfg.map_field(f, extraction, cast_indexing_symbols=False), sfg.call(khandle))
 
     pp = CallTreePostProcessing()
     free_vars = pp.get_live_variables(call_tree)
@@ -143,8 +143,8 @@ def test_duplicate_field_shapes():
     khandle = sfg.kernels.create(set_constant)
 
     call_tree = make_sequence(
-        sfg.map_field(g, TestFieldExtraction("g")),
-        sfg.map_field(f, TestFieldExtraction("f")),
+        sfg.map_field(g, TestFieldExtraction("g"), cast_indexing_symbols=False),
+        sfg.map_field(f, TestFieldExtraction("f"), cast_indexing_symbols=False),
         sfg.call(khandle),
     )
 

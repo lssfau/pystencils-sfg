@@ -163,7 +163,7 @@ class SfgKernelHandle:
         self._namespace = namespace
         self._parameters = [SfgKernelParamVar(p) for p in parameters]
 
-        self._scalar_params: set[SfgKernelParamVar] = set()
+        self._scalar_params: set[SfgVar] = set()
         self._fields: set[Field] = set()
 
         for param in self._parameters:
@@ -193,7 +193,7 @@ class SfgKernelHandle:
         return self._parameters
 
     @property
-    def scalar_parameters(self):
+    def scalar_parameters(self) -> set[SfgVar]:
         return self._scalar_params
 
     @property

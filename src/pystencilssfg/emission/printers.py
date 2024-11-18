@@ -66,7 +66,7 @@ class SfgGeneralPrinter:
 
     def param_list(self, func: SfgFunction) -> str:
         params = sorted(list(func.parameters), key=lambda p: p.name)
-        return ", ".join(f"{param.dtype} {param.name}" for param in params)
+        return ", ".join(f"{param.dtype.c_string()} {param.name}" for param in params)
 
 
 class SfgHeaderPrinter(SfgGeneralPrinter):
@@ -113,7 +113,7 @@ class SfgHeaderPrinter(SfgGeneralPrinter):
     @visit.case(SfgFunction)
     def function(self, func: SfgFunction):
         params = sorted(list(func.parameters), key=lambda p: p.name)
-        param_list = ", ".join(f"{param.dtype} {param.name}" for param in params)
+        param_list = ", ".join(f"{param.dtype.c_string()} {param.name}" for param in params)
         return f"{func.return_type} {func.name} ( {param_list} );"
 
     @visit.case(SfgClass)
@@ -149,7 +149,7 @@ class SfgHeaderPrinter(SfgGeneralPrinter):
     @visit.case(SfgConstructor)
     def sfg_constructor(self, constr: SfgConstructor):
         code = f"{constr.owning_class.class_name} ("
-        code += ", ".join(f"{param.dtype} {param.name}" for param in constr.parameters)
+        code += ", ".join(f"{param.dtype.c_string()} {param.name}" for param in constr.parameters)
         code += ")\n"
         if constr.initializers:
             code += "  : " + ", ".join(constr.initializers) + "\n"
@@ -161,7 +161,7 @@ class SfgHeaderPrinter(SfgGeneralPrinter):
 
     @visit.case(SfgMemberVariable)
     def sfg_member_var(self, var: SfgMemberVariable):
-        return f"{var.dtype} {var.name};"
+        return f"{var.dtype.c_string()} {var.name};"
 
     @visit.case(SfgMethod)
     def sfg_method(self, method: SfgMethod):

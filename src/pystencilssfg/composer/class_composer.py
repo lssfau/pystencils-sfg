@@ -8,6 +8,7 @@ from ..lang import (
     VarLike,
     ExprLike,
     asvar,
+    SfgVar,
 )
 
 from ..ir.source_components import (
@@ -72,16 +73,28 @@ class SfgClassComposer(SfgComposerMixIn):
         """
 
         def __init__(self, *params: VarLike):
-            self._params = tuple(asvar(p) for p in params)
+            self._params = list(asvar(p) for p in params)
             self._initializers: list[str] = []
             self._body: str | None = None
 
-        def init(self, var: VarLike):
+        def add_param(self, param: VarLike, at: int | None = None):
+            if at is None:
+                self._params.append(asvar(param))
+            else:
+                self._params.insert(at, asvar(param))
+
+        @property
+        def parameters(self) -> list[SfgVar]:
+            return self._params
+
+        def init(self, var: VarLike | str):
             """Add an initialization expression to the constructor's initializer list."""
+
+            member = var if isinstance(var, str) else asvar(var)
 
             def init_sequencer(*args: ExprLike):
                 expr = ", ".join(str(arg) for arg in args)
-                initializer = f"{asvar(var)}{{ {expr} }}"
+                initializer = f"{member}{{ {expr} }}"
                 self._initializers.append(initializer)
                 return self
 

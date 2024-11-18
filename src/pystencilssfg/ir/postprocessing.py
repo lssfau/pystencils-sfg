@@ -9,14 +9,14 @@ from abc import ABC, abstractmethod
 import sympy as sp
 
 from pystencils import Field
-from pystencils.types import deconstify
+from pystencils.types import deconstify, PsType
 from pystencils.backend.properties import FieldBasePtr, FieldShape, FieldStride
 
 from ..exceptions import SfgException
 
 from .call_tree import SfgCallTreeNode, SfgCallTreeLeaf, SfgSequence, SfgStatements
 from ..ir.source_components import SfgKernelParamVar
-from ..lang import SfgVar, IFieldExtraction, SrcField, SrcVector
+from ..lang import SfgVar, IFieldExtraction, SrcField, SrcVector, AugExpr
 
 if TYPE_CHECKING:
     from ..context import SfgContext
@@ -233,20 +233,26 @@ class SfgDeferredParamSetter(SfgDeferredNode):
     def expand(self, ppc: PostProcessingContext) -> SfgCallTreeNode:
         live_var = ppc.get_live_variable(self._lhs.name)
         if live_var is not None:
-            code = f"{live_var.dtype} {live_var.name} = {self._rhs_expr};"
+            code = f"{live_var.dtype.c_string()} {live_var.name} = {self._rhs_expr};"
             return SfgStatements(code, (live_var,), tuple(self._depends))
         else:
             return SfgSequence([])
 
 
 class SfgDeferredFieldMapping(SfgDeferredNode):
-    def __init__(self, psfield: Field, extraction: IFieldExtraction | SrcField):
+    def __init__(
+        self,
+        psfield: Field,
+        extraction: IFieldExtraction | SrcField,
+        cast_indexing_symbols: bool = True,
+    ):
         self._field = psfield
         self._extraction: IFieldExtraction = (
             extraction
             if isinstance(extraction, IFieldExtraction)
             else extraction.get_extraction()
         )
+        self._cast_indexing_symbols = cast_indexing_symbols
 
     def expand(self, ppc: PostProcessingContext) -> SfgCallTreeNode:
         #    Find field pointer
@@ -285,9 +291,15 @@ class SfgDeferredFieldMapping(SfgDeferredNode):
             expr = self._extraction.ptr()
             nodes.append(
                 SfgStatements(
-                    f"{ptr.dtype} {ptr.name} {{ {expr} }};", (ptr,), expr.depends
+                    f"{ptr.dtype.c_string()} {ptr.name} {{ {expr} }};", (ptr,), expr.depends
                 )
             )
+
+        def maybe_cast(expr: AugExpr, target_type: PsType) -> AugExpr:
+            if self._cast_indexing_symbols:
+                return AugExpr(target_type).bind("{}( {} )", deconstify(target_type).c_string(), expr)
+            else:
+                return expr
 
         def get_shape(coord, symb: SfgKernelParamVar | str):
             expr = self._extraction.size(coord)
@@ -299,8 +311,9 @@ class SfgDeferredFieldMapping(SfgDeferredNode):
 
             if isinstance(symb, SfgKernelParamVar) and symb not in done:
                 done.add(symb)
+                expr = maybe_cast(expr, symb.dtype)
                 return SfgStatements(
-                    f"{symb.dtype} {symb.name} {{ {expr} }};", (symb,), expr.depends
+                    f"{symb.dtype.c_string()} {symb.name} {{ {expr} }};", (symb,), expr.depends
                 )
             else:
                 return SfgStatements(f"/* {expr} == {symb} */", (), ())
@@ -315,8 +328,9 @@ class SfgDeferredFieldMapping(SfgDeferredNode):
 
             if isinstance(symb, SfgKernelParamVar) and symb not in done:
                 done.add(symb)
+                expr = maybe_cast(expr, symb.dtype)
                 return SfgStatements(
-                    f"{symb.dtype} {symb.name} {{ {expr} }};", (symb,), expr.depends
+                    f"{symb.dtype.c_string()} {symb.name} {{ {expr} }};", (symb,), expr.depends
                 )
             else:
                 return SfgStatements(f"/* {expr} == {symb} */", (), ())
@@ -341,7 +355,7 @@ class SfgDeferredVectorMapping(SfgDeferredNode):
                 expr = self._vector.extract_component(idx)
                 nodes.append(
                     SfgStatements(
-                        f"{param.dtype} {param.name} {{ {expr} }};",
+                        f"{param.dtype.c_string()} {param.name} {{ {expr} }};",
                         (param,),
                         expr.depends,
                     )

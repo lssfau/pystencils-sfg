@@ -385,7 +385,7 @@ class SfgBasicComposer(SfgIComposer):
             args_str = ", ".join(str(arg) for arg in args)
             deps: set[SfgVar] = reduce(set.union, (depends(arg) for arg in args), set())
             return SfgStatements(
-                f"{lhs_var.dtype} {lhs_var.name} {{ {args_str} }};",
+                f"{lhs_var.dtype.c_string()} {lhs_var.name} {{ {args_str} }};",
                 (lhs_var,),
                 deps,
             )
@@ -412,7 +412,7 @@ class SfgBasicComposer(SfgIComposer):
             You can look at the expression's dependencies:
 
             >>> sorted(expr.depends, key=lambda v: v.name)
-            [x: float, y: float, z: float]
+            [x: float32, y: float32, z: float32]
 
             If you use an existing expression to create a larger one, the new expression
             inherits all variables from its parts:
@@ -421,7 +421,7 @@ class SfgBasicComposer(SfgIComposer):
             >>> expr2
             x + y * z + w
             >>> sorted(expr2.depends, key=lambda v: v.name)
-            [w: float, x: float, y: float, z: float]
+            [w: float32, x: float32, y: float32, z: float32]
 
         """
         return AugExpr.format(fmt, *deps, **kwdeps)
@@ -446,7 +446,10 @@ class SfgBasicComposer(SfgIComposer):
         return SfgSwitchBuilder(switch_arg)
 
     def map_field(
-        self, field: Field, index_provider: IFieldExtraction | SrcField
+        self,
+        field: Field,
+        index_provider: IFieldExtraction | SrcField,
+        cast_indexing_symbols: bool = True,
     ) -> SfgDeferredFieldMapping:
         """Map a pystencils field to a field data structure, from which pointers, sizes
         and strides should be extracted.
@@ -454,8 +457,11 @@ class SfgBasicComposer(SfgIComposer):
         Args:
             field: The pystencils field to be mapped
             src_object: A `IFieldIndexingProvider` object representing a field data structure.
+            cast_indexing_symbols: Whether to always introduce explicit casts for indexing symbols
         """
-        return SfgDeferredFieldMapping(field, index_provider)
+        return SfgDeferredFieldMapping(
+            field, index_provider, cast_indexing_symbols=cast_indexing_symbols
+        )
 
     def set_param(self, param: VarLike | sp.Symbol, expr: ExprLike):
         deps = depends(expr)

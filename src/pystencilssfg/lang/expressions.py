@@ -174,23 +174,30 @@ class AugExpr:
         """Create a new `AugExpr` by combining existing expressions."""
         return AugExpr().bind(fmt, *deps, **kwdeps)
 
-    def bind(self, fmt: str, *deps, **kwdeps):
-        dependencies: set[SfgVar] = set()
+    def bind(self, fmt: str | AugExpr, *deps, **kwdeps):
+        if isinstance(fmt, AugExpr):
+            if bool(deps) or bool(kwdeps):
+                raise ValueError("Binding to another AugExpr does not permit additional arguments")
+            if fmt._bound is None:
+                raise ValueError("Cannot rebind to unbound AugExpr.")
+            self._bind(fmt._bound)
+        else:
+            dependencies: set[SfgVar] = set()
 
-        from pystencils.sympyextensions import is_constant
+            from pystencils.sympyextensions import is_constant
 
-        for expr in chain(deps, kwdeps.values()):
-            if isinstance(expr, _ExprLike):
-                dependencies |= depends(expr)
-            elif isinstance(expr, sp.Expr) and not is_constant(expr):
-                raise ValueError(
-                    f"Cannot parse SymPy expression as C++ expression: {expr}\n"
-                    "  * pystencils-sfg is currently unable to parse non-constant SymPy expressions "
-                    "since they contain symbols without type information."
-                )
+            for expr in chain(deps, kwdeps.values()):
+                if isinstance(expr, _ExprLike):
+                    dependencies |= depends(expr)
+                elif isinstance(expr, sp.Expr) and not is_constant(expr):
+                    raise ValueError(
+                        f"Cannot parse SymPy expression as C++ expression: {expr}\n"
+                        "  * pystencils-sfg is currently unable to parse non-constant SymPy expressions "
+                        "since they contain symbols without type information."
+                    )
 
-        code = fmt.format(*deps, **kwdeps)
-        self._bind(DependentExpression(code, dependencies))
+            code = fmt.format(*deps, **kwdeps)
+            self._bind(DependentExpression(code, dependencies))
         return self
 
     def expr(self) -> DependentExpression:
@@ -251,7 +258,7 @@ class AugExpr:
         self._bound = expr
         return self
 
-    def _is_bound(self) -> bool:
+    def is_bound(self) -> bool:
         return self._bound is not None
 
 

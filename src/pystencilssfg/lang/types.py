@@ -1,5 +1,5 @@
 from typing import Any
-from pystencils.types import PsType
+from pystencils.types import PsType, PsPointerType
 
 
 class Ref(PsType):
@@ -24,3 +24,13 @@ class Ref(PsType):
 
     def __repr__(self) -> str:
         return f"Ref({repr(self.base_type)})"
+
+
+def strip_ptr_ref(dtype: PsType):
+    match dtype:
+        case Ref():
+            return strip_ptr_ref(dtype.base_type)
+        case PsPointerType():
+            return strip_ptr_ref(dtype.base_type)
+        case _:
+            return dtype

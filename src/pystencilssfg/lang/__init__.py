@@ -12,7 +12,7 @@ from .expressions import (
     SrcVector,
 )
 
-from .types import Ref
+from .types import Ref, strip_ptr_ref
 
 __all__ = [
     "SfgVar",
@@ -27,4 +27,5 @@ __all__ = [
     "SrcField",
     "SrcVector",
     "Ref",
+    "strip_ptr_ref"
 ]
