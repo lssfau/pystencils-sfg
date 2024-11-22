@@ -39,8 +39,7 @@ testsuite:
     - pip install "git+https://i10git.cs.fau.de/pycodegen/pystencils.git@v2.0-dev"
     - pip install -e .
   script:
-    - coverage run -m pytest -v
-    - coverage report
+    - pytest -v
     - coverage html
     - coverage xml
   coverage: '/TOTAL.*\s+(\d+%)$/'
