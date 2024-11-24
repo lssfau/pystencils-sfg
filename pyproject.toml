@@ -33,7 +33,7 @@ testing = [
 ]
 docs = [
     "sphinx",
-    "furo",
+    "sphinx-book-theme",
     "myst-parser",
     "sphinx_design",
     "sphinx_autodoc_typehints",
