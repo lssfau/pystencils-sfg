@@ -33,7 +33,8 @@ testing = [
 ]
 docs = [
     "sphinx",
-    "sphinx-book-theme",
+    "pydata-sphinx-theme==0.15.4",
+    "sphinx-book-theme==1.1.3",  # workaround for https://github.com/executablebooks/sphinx-book-theme/issues/865
     "myst-parser",
     "sphinx_design",
     "sphinx_autodoc_typehints",
