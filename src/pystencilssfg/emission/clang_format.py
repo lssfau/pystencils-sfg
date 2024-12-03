@@ -1,11 +1,11 @@
 import subprocess
 import shutil
 
-from ..configuration import SfgCodeStyle
+from ..config import ClangFormatOptions
 from ..exceptions import SfgException
 
 
-def invoke_clang_format(code: str, codestyle: SfgCodeStyle) -> str:
+def invoke_clang_format(code: str, options: ClangFormatOptions) -> str:
     """Call the `clang-format` command-line tool to format the given code string
     according to the given style arguments.
 
@@ -24,13 +24,15 @@ def invoke_clang_format(code: str, codestyle: SfgCodeStyle) -> str:
         be executed (binary not found, or error during exection), the function will
         throw an exception.
     """
-    if codestyle.skip_clang_format:
+    if options.get_option("skip"):
         return code
 
-    args = [codestyle.clang_format_binary, f"--style={codestyle.code_style}"]
+    binary = options.get_option("binary")
+    force = options.get_option("force")
+    args = [binary, f"--style={options.code_style}"]
 
-    if not shutil.which(codestyle.clang_format_binary):
-        if codestyle.force_clang_format:
+    if not shutil.which(binary):
+        if force:
             raise SfgException(
                 "`force_clang_format` was set to true in code style, "
                 "but clang-format binary could not be found."
@@ -41,7 +43,7 @@ def invoke_clang_format(code: str, codestyle: SfgCodeStyle) -> str:
     result = subprocess.run(args, input=code, capture_output=True, text=True)
 
     if result.returncode != 0:
-        if codestyle.force_clang_format:
+        if force:
             raise SfgException(f"Call to clang-format failed: \n{result.stderr}")
         else:
             return code

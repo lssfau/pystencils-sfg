@@ -27,6 +27,7 @@ extensions = [
     "myst_parser",
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
+    "sphinx.ext.autosummary",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx_autodoc_typehints",
@@ -42,6 +43,10 @@ source_suffix = {
 }
 master_doc = "index"
 nitpicky = True
+myst_enable_extensions = [
+    "colon_fence",
+    "dollarmath"
+]
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -71,6 +76,7 @@ intersphinx_mapping = {
 
 autodoc_member_order = "bysource"
 autodoc_typehints = "description"
+# autodoc_class_signature = "separated"
 
 #   Doctest Setup
 

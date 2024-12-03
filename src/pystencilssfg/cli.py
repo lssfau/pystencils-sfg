@@ -4,13 +4,8 @@ from os import path
 
 from argparse import ArgumentParser, BooleanOptionalAction
 
-from .configuration import (
-    SfgConfigException,
-    SfgConfigSource,
-    add_config_args_to_parser,
-    config_from_parser_args,
-    merge_configurations,
-)
+from .config import CommandLineParameters, SfgConfigException, OutputMode
+from .emission import OutputSpec
 
 
 def add_newline_arg(parser):
@@ -39,7 +34,7 @@ def cli_main(program="sfg-cli"):
     )
 
     outfiles_parser.set_defaults(func=list_files)
-    add_config_args_to_parser(outfiles_parser)
+    CommandLineParameters.add_args_to_parser(outfiles_parser)
     add_newline_arg(outfiles_parser)
     outfiles_parser.add_argument(
         "--sep", type=str, default=" ", dest="sep", help="Separator for list items"
@@ -79,21 +74,18 @@ def version(args):
 
 
 def list_files(args):
-    try:
-        project_config, cmdline_config = config_from_parser_args(args)
-    except SfgConfigException as exc:
-        abort_with_config_exception(exc)
-
-    config = merge_configurations(project_config, cmdline_config, None)
+    cli_params = CommandLineParameters(args)
+    config = cli_params.get_config()
 
     _, scriptname = path.split(args.codegen_script)
     basename = path.splitext(scriptname)[0]
 
-    from .emission import HeaderImplPairEmitter
+    output_spec = OutputSpec.create(config, basename)
+    output_files = [output_spec.get_header_filepath()]
+    if config.output_mode != OutputMode.HEADER_ONLY:
+        output_files.append(output_spec.get_impl_filepath())
 
-    emitter = HeaderImplPairEmitter(config.get_output_spec(basename))
-
-    print(args.sep.join(emitter.output_files), end=os.linesep if args.newline else "")
+    print(args.sep.join(output_files), end=os.linesep if args.newline else "")
 
     exit(0)
 
@@ -112,18 +104,6 @@ def make_cmake_find_module(args):
     exit(0)
 
 
-def abort_with_config_exception(exception: SfgConfigException):
-    def eprint(*args, **kwargs):
-        print(*args, file=sys.stderr, **kwargs)
-
-    match exception.config_source:
-        case SfgConfigSource.PROJECT:
-            eprint(
-                f"Invalid project configuration: {exception.message}\nCheck your configurator script."
-            )
-        case SfgConfigSource.COMMANDLINE:
-            eprint(f"Invalid configuration on command line: {exception.message}")
-        case _:
-            assert False, "(Theoretically) unreachable code. Contact the developers."
-
+def abort_with_config_exception(exception: SfgConfigException, source: str):
+    print(f"Invalid {source} configuration: {exception.args[0]}.", file=sys.stderr)
     exit(1)

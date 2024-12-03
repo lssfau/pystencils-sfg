@@ -11,7 +11,7 @@ execute_process( COMMAND sfg-cli cmake make-find-module
 
 find_package( PystencilsSfg REQUIRED )
 
-set( PystencilsSfg_CONFIGURATOR_SCRIPT codegen_config.py )
+set( PystencilsSfg_CONFIG_MODULE codegen_config.py )
 
 add_library( genlib )
 pystencilssfg_generate_target_sources( genlib SCRIPTS kernels.py FILE_EXTENSIONS .h .cpp )

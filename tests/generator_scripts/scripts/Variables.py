@@ -1,7 +1,6 @@
-import sympy as sp
 from pystencils import TypedSymbol, fields, kernel
 
-from pystencilssfg import SourceFileGenerator, SfgConfiguration
+from pystencilssfg import SourceFileGenerator
 
 with SourceFileGenerator() as sfg:
     α = TypedSymbol("alpha", "float32")

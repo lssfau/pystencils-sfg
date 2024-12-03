@@ -319,6 +319,7 @@ class SfgBasicComposer(SfgIComposer):
         return SfgFunctionParams([x.as_variable() for x in args])
 
     def require(self, *includes: str | SfgHeaderInclude) -> SfgRequireIncludes:
+        """Use inside a function body to require the inclusion of headers."""
         return SfgRequireIncludes(
             list(SfgHeaderInclude.parse(incl) for incl in includes)
         )
@@ -443,6 +444,7 @@ class SfgBasicComposer(SfgIComposer):
         return SfgBranchBuilder()
 
     def switch(self, switch_arg: ExprLike) -> SfgSwitchBuilder:
+        """Use inside a function to construct a switch-case statement."""
         return SfgSwitchBuilder(switch_arg)
 
     def map_field(
