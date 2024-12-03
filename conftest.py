@@ -1,4 +1,5 @@
 import pytest
+from os import path
 
 
 @pytest.fixture(autouse=True)
@@ -9,3 +10,11 @@ def prepare_composer(doctest_namespace):
 
     sfg = SfgComposer(SfgContext())
     doctest_namespace["sfg"] = sfg
+
+
+DATA_DIR = path.join(path.split(__file__)[0], "tests/data")
+
+
+@pytest.fixture
+def sample_config_module():
+    return path.join(DATA_DIR, "project_config.py")

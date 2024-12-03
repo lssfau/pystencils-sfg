@@ -7,7 +7,6 @@ from pystencils import KernelFunction
 from pystencils.backend.emission import emit_code
 
 from ..context import SfgContext
-from ..configuration import SfgOutputSpec
 from ..visitors import visitor
 from ..exceptions import SfgException
 
@@ -24,6 +23,8 @@ from ..ir.source_components import (
     SfgVisibility,
     SfgVisibilityBlock,
 )
+
+from .emitter import OutputSpec
 
 
 def interleave(*iters):
@@ -71,7 +72,7 @@ class SfgGeneralPrinter:
 
 class SfgHeaderPrinter(SfgGeneralPrinter):
     def __init__(
-        self, ctx: SfgContext, output_spec: SfgOutputSpec, inline_impl: bool = False
+        self, ctx: SfgContext, output_spec: OutputSpec, inline_impl: bool = False
     ):
         self._output_spec = output_spec
         self._ctx = ctx
@@ -180,7 +181,7 @@ class SfgHeaderPrinter(SfgGeneralPrinter):
 
 class SfgImplPrinter(SfgGeneralPrinter):
     def __init__(
-        self, ctx: SfgContext, output_spec: SfgOutputSpec, inline_impl: bool = False
+        self, ctx: SfgContext, output_spec: OutputSpec, inline_impl: bool = False
     ):
         self._output_spec = output_spec
         self._ctx = ctx

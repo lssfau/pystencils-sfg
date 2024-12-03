@@ -39,7 +39,7 @@ testsuite:
     - pip install "git+https://i10git.cs.fau.de/pycodegen/pystencils.git@v2.0-dev"
     - pip install -e .
   script:
-    - pytest -v
+    - pytest -v --cov=src/pystencilssfg --cov-report=term
     - coverage html
     - coverage xml
   coverage: '/TOTAL.*\s+(\d+%)$/'

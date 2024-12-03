@@ -23,9 +23,6 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project.optional-dependencies]
-interactive = [
-    "ipython>=8.17.2",
-]
 testing = [
     "flake8>=6.1.0",
     "mypy>=1.7.0",
@@ -39,7 +36,8 @@ docs = [
     "sphinx_design",
     "sphinx_autodoc_typehints",
     "sphinx-copybutton",
-    "packaging"
+    "packaging",
+    "clang-format"
 ]
 
 [tool.versioneer]
@@ -51,4 +49,8 @@ tag_prefix = "v"
 parentdir_prefix = "pystencilssfg-"
 
 [tool.coverage.run]
-include = ["src/pystencilssfg/*"]
+omit = [
+    "setup.py",
+    "src/pystencilssfg/_version.py",
+    "integration/*"
+]

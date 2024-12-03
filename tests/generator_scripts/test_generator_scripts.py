@@ -9,6 +9,7 @@ import subprocess
 
 THIS_DIR = path.split(__file__)[0]
 SCRIPTS_DIR = path.join(THIS_DIR, "scripts")
+CONFIG_DIR = path.join(THIS_DIR, "config")
 EXPECTED_DIR = path.join(THIS_DIR, "expected")
 
 
@@ -30,6 +31,12 @@ class ScriptInfo:
     Output files will all be placed in the ``out`` folder.
     """
 
+    args: tuple[str, ...] = ()
+    """Command-line arguments to be passed to the generator script"""
+
+    should_fail: bool = False
+    """Whether the exeuction of this script should fail."""
+
     compilable_output: str | None = None
     """File extension of the output file that can be compiled.
 
@@ -50,10 +57,41 @@ When adding new generator scripts to the `scripts` directory,
 do not forget to include them here.
 """
 SCRIPTS = [
-    ScriptInfo.make("Structural", ("h", "cpp")),
-    ScriptInfo.make("SimpleJacobi", ("h", "cpp"), compilable_output="cpp"),
-    ScriptInfo.make("SimpleClasses", ("h", "cpp")),
-    ScriptInfo.make("Variables", ("h", "cpp"), compilable_output="cpp"),
+    ScriptInfo.make(
+        "TestConfigModule",
+        ("h++", "c++"),
+        args=(
+            "--sfg-file-extensions",
+            ".c++,.h++",
+            "--sfg-config-module",
+            path.join(CONFIG_DIR, "TestConfigModule_cfg.py"),
+        ),
+    ),
+    ScriptInfo.make(
+        "TestIllegalArgs",
+        ("h++", "c++"),
+        args=(
+            "--sfg-file-extensionss",
+            ".c++,.h++",
+        ),
+        should_fail=True
+    ),
+    ScriptInfo.make(
+        "TestExtraCommandLineArgs",
+        ("h++", "c++"),
+        args=(
+            "--sfg-file-extensions",
+            ".c++,.h++",
+            "--precision",
+            "float32",
+            "test1",
+            "test2"
+        ),
+    ),
+    ScriptInfo.make("Structural", ("hpp", "cpp")),
+    ScriptInfo.make("SimpleJacobi", ("hpp", "cpp"), compilable_output="cpp"),
+    ScriptInfo.make("SimpleClasses", ("hpp", "cpp")),
+    ScriptInfo.make("Variables", ("hpp", "cpp"), compilable_output="cpp"),
 ]
 
 
@@ -75,12 +113,17 @@ def test_generator_script(script_info: ScriptInfo):
         shutil.rmtree(output_dir)
     os.makedirs(output_dir, exist_ok=True)
 
-    args = ["python", script_file, "--sfg-output-dir", output_dir]
+    args = ["python", script_file, "--sfg-output-dir", output_dir] + list(script_info.args)
 
     result = subprocess.run(args)
 
+    if script_info.should_fail:
+        if result.returncode == 0:
+            pytest.fail(f"Generator script {script_name} was supposed to fail, but didn't.")
+        return
+
     if result.returncode != 0:
-        raise AssertionError(f"Generator script {script_name} failed.")
+        pytest.fail(f"Generator script {script_name} failed.")
 
     #   Check generated files
     expected_files = set(

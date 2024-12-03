@@ -54,9 +54,20 @@ function(pystencilssfg_generate_target_sources TARGET)
     endif()
 
     if(DEFINED PystencilsSfg_CONFIGURATOR_SCRIPT)
+        message(AUTHOR_WARNING "The variable PystencilsSfg_CONFIGURATOR_SCRIPT is deprecated. Set PystencilsSfg_CONFIG_MODULE instead.")
         cmake_path(ABSOLUTE_PATH PystencilsSfg_CONFIGURATOR_SCRIPT OUTPUT_VARIABLE configscript)
         list(APPEND generatorArgs "--sfg-config-module=${configscript}")
         list(APPEND _pssfg_DEPENDS ${configscript})
+    endif()
+
+    if(DEFINED PystencilsSfg_CONFIG_MODULE)
+        if(DEFINED PystencilsSfg_CONFIGURATOR_SCRIPT)
+            message(FATAL_ERROR "At most one of PystencilsSfg_CONFIGURATOR_SCRIPT and PystencilsSfg_CONFIG_MODULE may be set.")
+        endif()
+
+        cmake_path(ABSOLUTE_PATH PystencilsSfg_CONFIG_MODULE OUTPUT_VARIABLE config_module)
+        list(APPEND generatorArgs "--sfg-config-module=${config_module}")
+        list(APPEND _pssfg_DEPENDS ${config_module})
     endif()
 
     if(DEFINED _pssfg_FILE_EXTENSIONS)

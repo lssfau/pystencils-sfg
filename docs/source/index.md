@@ -3,9 +3,24 @@
 ```{toctree}
 :maxdepth: 1
 :hidden:
+:caption: User Guide
 
-usage/index
-api/index
+usage/generator_scripts
+usage/project_integration
+usage/tips_n_tricks
+```
+
+
+```{toctree}
+:maxdepth: 1
+:hidden:
+:caption: API Reference
+
+api/generation
+api/composer
+api/lang
+api/ir
+api/errors
 ```
 
 [![pipeline](https://i10git.cs.fau.de/pycodegen/pystencils-sfg/badges/master/pipeline.svg)](https://i10git.cs.fau.de/pycodegen-/pystencils-sfg/commits/master)
@@ -210,4 +225,34 @@ To `#include` them, add the prefix `gen/<target name>`:
 ```
 
 For details on how to add *pystencils-sfg* to your CMake project, refer to
-[CLI and Build System Integration](usage/cli_and_build_system.md).
+[the project integration guide](#guide_project_integration).
+
+## Learn To Use pystencils-sfg
+
+Here is an overview of user guides for pystencils-sfg available on this site.
+A basic understanding of [pystencils](https://pycodegen.pages.i10git.cs.fau.de/pystencils/index.html)
+is required.
+
+```{card} Writing Generator Scripts
+:link: guide:generator_scripts
+:link-type: ref
+
+Learn about *generator scripts*, the primary usage idiom of *pystencils-sfg*:
+Embedd *pystencils*-generated kernels into C++ source files and augment them with
+arbitrary C++ glue code.
+```
+
+```{card} CLI and Build System Integration
+:link: guide_project_integration
+:link-type: ref
+
+Learn how to control code generation from the command line
+and how to embedd *pystencils-sfg* into your build system.
+```
+
+```{card} Tips and Tricks
+:link: guide:tips_n_tricks
+:link-type: ref
+
+A collection of various tricks that might come in handy when working with *pystencils-sfg*.
+```

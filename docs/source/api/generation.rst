@@ -5,13 +5,32 @@ Generator Script Interface
 .. autoclass:: pystencilssfg.SourceFileGenerator
     :members:
 
-.. autoclass:: pystencilssfg.SfgConfiguration
+Configuration
+=============
+
+.. module:: pystencilssfg.config
+
+.. autoclass:: SfgConfig
+    :members:
+    :exclude-members: __init__
+    
+
+Categories, Parameter Types, and Special Values
+-----------------------------------------------
+
+.. autoclass:: _GlobalNamespace
+.. autodata:: GLOBAL_NAMESPACE
+
+.. autoclass:: OutputMode
     :members:
 
-.. autoclass:: pystencilssfg.SfgOutputMode
+.. autoclass:: CodeStyle
     :members:
 
-.. autoclass:: pystencilssfg.SfgCodeStyle
+.. autoclass:: ClangFormatOptions
     :members:
 
-.. autoattribute:: pystencilssfg.configuration.DEFAULT_CONFIG
+Option Descriptors
+------------------
+
+.. autoclass:: Option

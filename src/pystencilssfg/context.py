@@ -1,6 +1,6 @@
 from typing import Generator, Sequence, Any
 
-from .configuration import SfgCodeStyle
+from .config import CodeStyle
 from .ir.source_components import (
     SfgHeaderInclude,
     SfgKernelNamespace,
@@ -45,7 +45,7 @@ class SfgContext:
     def __init__(
         self,
         outer_namespace: str | None = None,
-        codestyle: SfgCodeStyle = SfgCodeStyle(),
+        codestyle: CodeStyle | None = None,
         argv: Sequence[str] | None = None,
         project_info: Any = None,
     ):
@@ -65,7 +65,7 @@ class SfgContext:
         self._outer_namespace = outer_namespace
         self._inner_namespace: str | None = None
 
-        self._codestyle = codestyle
+        self._codestyle = codestyle if codestyle is not None else CodeStyle()
 
         #   Source Components
         self._prelude: str = ""
@@ -121,7 +121,7 @@ class SfgContext:
                 assert False
 
     @property
-    def codestyle(self) -> SfgCodeStyle:
+    def codestyle(self) -> CodeStyle:
         """The code style object for this generation context."""
         return self._codestyle
 
