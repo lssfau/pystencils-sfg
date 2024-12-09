@@ -74,7 +74,7 @@ SCRIPTS = [
             "--sfg-file-extensionss",
             ".c++,.h++",
         ),
-        should_fail=True
+        should_fail=True,
     ),
     ScriptInfo.make(
         "TestExtraCommandLineArgs",
@@ -85,13 +85,19 @@ SCRIPTS = [
             "--precision",
             "float32",
             "test1",
-            "test2"
+            "test2",
         ),
     ),
     ScriptInfo.make("Structural", ("hpp", "cpp")),
     ScriptInfo.make("SimpleJacobi", ("hpp", "cpp"), compilable_output="cpp"),
     ScriptInfo.make("SimpleClasses", ("hpp", "cpp")),
     ScriptInfo.make("Variables", ("hpp", "cpp"), compilable_output="cpp"),
+    ScriptInfo.make(
+        "TestSyclBuffer",
+        ("hpp", "cpp"),
+        compilable_output="cpp" if shutil.which("icpx") else None,
+        compile_cmd="icpx -fsycl -std=c++20" if shutil.which("icpx") else "",
+    ),
 ]
 
 
@@ -113,13 +119,17 @@ def test_generator_script(script_info: ScriptInfo):
         shutil.rmtree(output_dir)
     os.makedirs(output_dir, exist_ok=True)
 
-    args = ["python", script_file, "--sfg-output-dir", output_dir] + list(script_info.args)
+    args = ["python", script_file, "--sfg-output-dir", output_dir] + list(
+        script_info.args
+    )
 
     result = subprocess.run(args)
 
     if script_info.should_fail:
         if result.returncode == 0:
-            pytest.fail(f"Generator script {script_name} was supposed to fail, but didn't.")
+            pytest.fail(
+                f"Generator script {script_name} was supposed to fail, but didn't."
+            )
         return
 
     if result.returncode != 0:

@@ -6,6 +6,8 @@ import re
 from pystencils.types import PsType, PsCustomType
 from pystencils.enums import Target
 
+from pystencilssfg.composer.basic_composer import SequencerArg
+
 from ..exceptions import SfgException
 from ..context import SfgContext
 from ..composer import (
@@ -13,6 +15,7 @@ from ..composer import (
     SfgClassComposer,
     SfgComposer,
     SfgComposerMixIn,
+    make_sequence,
 )
 from ..ir.source_components import SfgKernelHandle, SfgHeaderInclude
 from ..ir import (
@@ -56,20 +59,32 @@ class SyclHandler(AugExpr):
 
         self._ctx = ctx
 
-    def parallel_for(self, range: SfgVar | Sequence[int], kernel: SfgKernelHandle):
+    def parallel_for(
+        self,
+        range: SfgVar | Sequence[int],
+    ):
         """Generate a ``parallel_for`` kernel invocation using this command group handler.
+        The syntax of this uses a chain of two calls to mimic C++ syntax:
+
+        .. code-block:: Python
+
+            sfg.parallel_for(range)(
+                # Body
+            )
+
+        The body is constructed via sequencing (see `make_sequence`).
 
         Args:
             range: Object, or tuple of integers, indicating the kernel's iteration range
-            kernel: Handle to the pystencils-kernel to be executed
         """
         self._ctx.add_include(SfgHeaderInclude("sycl/sycl.hpp", system_header=True))
 
-        kfunc = kernel.get_kernel_function()
-        if kfunc.target != Target.SYCL:
-            raise SfgException(
-                f"Kernel given to `parallel_for` is no SYCL kernel: {kernel.kernel_name}"
-            )
+        def check_kernel(kernel: SfgKernelHandle):
+            kfunc = kernel.get_kernel_function()
+            if kfunc.target != Target.SYCL:
+                raise SfgException(
+                    f"Kernel given to `parallel_for` is no SYCL kernel: {kernel.kernel_name}"
+                )
 
         id_regex = re.compile(r"sycl::(id|item|nd_item)<\s*[0-9]\s*>")
 
@@ -79,12 +94,25 @@ class SyclHandler(AugExpr):
                 and id_regex.search(param.dtype.c_string()) is not None
             )
 
-        id_param = list(filter(filter_id, kernel.scalar_parameters))[0]
+        def sequencer(*args: SequencerArg):
+            id_param = []
+            for arg in args:
+                if isinstance(arg, SfgKernelCallNode):
+                    check_kernel(arg._kernel_handle)
+                    id_param.append(list(filter(filter_id, arg._kernel_handle.scalar_parameters))[0])
 
-        tree = SfgKernelCallNode(kernel)
+            if not all(item == id_param[0] for item in id_param):
+                raise ValueError(
+                    "id_param should be the same for all kernels in parallel_for"
+                )
+            tree = make_sequence(*args)
 
-        kernel_lambda = SfgLambda(("=",), (id_param,), tree, None)
-        return SyclKernelInvoke(self, SyclInvokeType.ParallelFor, range, kernel_lambda)
+            kernel_lambda = SfgLambda(("=",), (id_param[0],), tree, None)
+            return SyclKernelInvoke(
+                self, SyclInvokeType.ParallelFor, range, kernel_lambda
+            )
+
+        return sequencer
 
 
 class SyclGroup(AugExpr):
