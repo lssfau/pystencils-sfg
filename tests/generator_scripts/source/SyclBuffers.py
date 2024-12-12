@@ -1,12 +1,12 @@
 import pystencils as ps
 import sympy as sp
 from pystencilssfg import SourceFileGenerator
-from pystencilssfg.lang.cpp.sycl_accessor import sycl_accessor_ref
 import pystencilssfg.extensions.sycl as sycl
 
 
 with SourceFileGenerator() as sfg:
     sfg = sycl.SyclComposer(sfg)
+    sfg.namespace("gen")
 
     u_src, u_dst, f = ps.fields("u_src, u_dst, f : double[2D]", layout="fzyx")
     h = sp.Symbol("h")
@@ -25,9 +25,9 @@ with SourceFileGenerator() as sfg:
     cgh = sfg.sycl_handler("handler")
     rang = sfg.sycl_range(2, "range")
     mappings = [
-        sfg.map_field(u_src, sycl_accessor_ref(u_src)),
-        sfg.map_field(u_dst, sycl_accessor_ref(u_dst)),
-        sfg.map_field(f, sycl_accessor_ref(f)),
+        sfg.map_field(u_src, sycl.accessor.from_field(u_src)),
+        sfg.map_field(u_dst, sycl.accessor.from_field(u_dst)),
+        sfg.map_field(f, sycl.accessor.from_field(f)),
     ]
 
     sfg.function("jacobiUpdate")(

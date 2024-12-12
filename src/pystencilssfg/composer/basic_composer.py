@@ -30,7 +30,6 @@ from ..ir import (
     SfgSwitch,
 )
 from ..ir.postprocessing import (
-    SfgDeferredParamMapping,
     SfgDeferredParamSetter,
     SfgDeferredFieldMapping,
     SfgDeferredVectorMapping,
@@ -52,11 +51,14 @@ from ..lang import (
     _ExprLike,
     asvar,
     depends,
+    HeaderFile,
+    includes,
     SfgVar,
     AugExpr,
     SrcField,
     IFieldExtraction,
     SrcVector,
+    void,
 )
 from ..exceptions import SfgException
 
@@ -217,7 +219,7 @@ class SfgBasicComposer(SfgIComposer):
                 #include <vector>
                 #include "custom.h"
         """
-        self._ctx.add_include(SfgHeaderInclude.parse(header_file, private))
+        self._ctx.add_include(SfgHeaderInclude(HeaderFile.parse(header_file), private))
 
     def numpy_struct(
         self, name: str, dtype: np.dtype, add_constructor: bool = True
@@ -256,7 +258,7 @@ class SfgBasicComposer(SfgIComposer):
         func = SfgFunction(name, tree)
         self._ctx.add_function(func)
 
-    def function(self, name: str):
+    def function(self, name: str, return_type: UserTypeSpec = void):
         """Add a function.
 
         The syntax of this function adder uses a chain of two calls to mimic C++ syntax:
@@ -274,7 +276,7 @@ class SfgBasicComposer(SfgIComposer):
 
         def sequencer(*args: SequencerArg):
             tree = make_sequence(*args)
-            func = SfgFunction(name, tree)
+            func = SfgFunction(name, tree, return_type=create_type(return_type))
             self._ctx.add_function(func)
 
         return sequencer
@@ -318,11 +320,9 @@ class SfgBasicComposer(SfgIComposer):
         """Use inside a function body to add parameters to the function."""
         return SfgFunctionParams([x.as_variable() for x in args])
 
-    def require(self, *includes: str | SfgHeaderInclude) -> SfgRequireIncludes:
+    def require(self, *incls: str | HeaderFile) -> SfgRequireIncludes:
         """Use inside a function body to require the inclusion of headers."""
-        return SfgRequireIncludes(
-            list(SfgHeaderInclude.parse(incl) for incl in includes)
-        )
+        return SfgRequireIncludes((HeaderFile.parse(incl) for incl in incls))
 
     def cpptype(
         self,
@@ -385,10 +385,12 @@ class SfgBasicComposer(SfgIComposer):
         def parse_args(*args: ExprLike):
             args_str = ", ".join(str(arg) for arg in args)
             deps: set[SfgVar] = reduce(set.union, (depends(arg) for arg in args), set())
+            incls: set[HeaderFile] = reduce(set.union, (includes(arg) for arg in args))
             return SfgStatements(
                 f"{lhs_var.dtype.c_string()} {lhs_var.name} {{ {args_str} }};",
                 (lhs_var,),
                 deps,
+                incls,
             )
 
         return parse_args
@@ -443,9 +445,14 @@ class SfgBasicComposer(SfgIComposer):
         """
         return SfgBranchBuilder()
 
-    def switch(self, switch_arg: ExprLike) -> SfgSwitchBuilder:
-        """Use inside a function to construct a switch-case statement."""
-        return SfgSwitchBuilder(switch_arg)
+    def switch(self, switch_arg: ExprLike, autobreak: bool = True) -> SfgSwitchBuilder:
+        """Use inside a function to construct a switch-case statement.
+
+        Args:
+            switch_arg: Argument to the `switch()` statement
+            autobreak: Whether to automatically print a `break;` at the end of each case block
+        """
+        return SfgSwitchBuilder(switch_arg, autobreak=autobreak)
 
     def map_field(
         self,
@@ -466,30 +473,14 @@ class SfgBasicComposer(SfgIComposer):
         )
 
     def set_param(self, param: VarLike | sp.Symbol, expr: ExprLike):
-        deps = depends(expr)
+        """Set a kernel parameter to an expression.
+
+        Code setting the parameter will only be generated if the parameter
+        is actually alive (i.e. required by some kernel, and not yet set) at
+        the point this method is called.
+        """
         var: SfgVar | sp.Symbol = asvar(param) if isinstance(param, _VarLike) else param
-        return SfgDeferredParamSetter(var, deps, str(expr))
-
-    def map_param(
-        self,
-        param: VarLike | sp.Symbol,
-        depends: VarLike | Sequence[VarLike],
-        mapping: str,
-    ):
-        from warnings import warn
-
-        warn(
-            "The `map_param` method of `SfgBasicComposer` is deprecated and will be removed "
-            "in a future version. Use `sfg.set_param` instead.",
-            FutureWarning,
-        )
-
-        if isinstance(depends, _VarLike):
-            depends = [depends]
-        lhs_var: SfgVar | sp.Symbol = (
-            asvar(param) if isinstance(param, _VarLike) else param
-        )
-        return SfgDeferredParamMapping(lhs_var, set(asvar(v) for v in depends), mapping)
+        return SfgDeferredParamSetter(var, expr)
 
     def map_vector(self, lhs_components: Sequence[VarLike | sp.Symbol], rhs: SrcVector):
         """Extracts scalar numerical values from a vector data type.
@@ -505,7 +496,7 @@ class SfgBasicComposer(SfgIComposer):
 
 
 def make_statements(arg: ExprLike) -> SfgStatements:
-    return SfgStatements(str(arg), (), depends(arg))
+    return SfgStatements(str(arg), (), depends(arg), includes(arg))
 
 
 def make_sequence(*args: SequencerArg) -> SfgSequence:
@@ -613,16 +604,19 @@ class SfgBranchBuilder(SfgNodeBuilder):
 class SfgSwitchBuilder(SfgNodeBuilder):
     """Builder for C++ switches."""
 
-    def __init__(self, switch_arg: ExprLike):
+    def __init__(self, switch_arg: ExprLike, autobreak: bool = True):
         self._switch_arg = switch_arg
         self._cases: dict[str, SfgSequence] = dict()
         self._default: SfgSequence | None = None
+        self._autobreak = autobreak
 
     def case(self, label: str):
         if label in self._cases:
             raise SfgException(f"Duplicate case: {label}")
 
         def sequencer(*args: SequencerArg):
+            if self._autobreak:
+                args += ("break;",)
             tree = make_sequence(*args)
             self._cases[label] = tree
             return self

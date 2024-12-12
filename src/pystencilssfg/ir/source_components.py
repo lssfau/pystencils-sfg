@@ -13,7 +13,7 @@ from pystencils.backend.kernelfunction import (
 )
 from pystencils.types import PsType, PsCustomType
 
-from ..lang import SfgVar
+from ..lang import SfgVar, HeaderFile, void
 from ..exceptions import SfgException
 
 if TYPE_CHECKING:
@@ -33,45 +33,31 @@ class SfgEmptyLines:
 class SfgHeaderInclude:
     """Represent ``#include``-directives."""
 
-    @staticmethod
-    def parse(incl: str | SfgHeaderInclude, private: bool = False):
-        if isinstance(incl, SfgHeaderInclude):
-            return incl
-
-        system_header = False
-        if incl.startswith("<") and incl.endswith(">"):
-            incl = incl[1:-1]
-            system_header = True
-
-        return SfgHeaderInclude(incl, system_header=system_header, private=private)
-
     def __init__(
-        self, header_file: str, system_header: bool = False, private: bool = False
+        self, header_file: HeaderFile, private: bool = False
     ):
         self._header_file = header_file
-        self._system_header = system_header
         self._private = private
 
     @property
     def file(self) -> str:
-        return self._header_file
+        return self._header_file.filepath
 
     @property
     def system_header(self):
-        return self._system_header
+        return self._header_file.system_header
 
     @property
     def private(self):
         return self._private
 
     def __hash__(self) -> int:
-        return hash((self._header_file, self._system_header, self._private))
+        return hash((self._header_file, self._private))
 
     def __eq__(self, other: object) -> bool:
         return (
             isinstance(other, SfgHeaderInclude)
             and self._header_file == other._header_file
-            and self._system_header == other._system_header
             and self._private == other._private
         )
 
@@ -119,7 +105,7 @@ class SfgKernelNamespace:
         self._kernel_functions[astname] = kernel
 
         for header in kernel.required_headers:
-            self._ctx.add_include(SfgHeaderInclude.parse(header, private=True))
+            self._ctx.add_include(SfgHeaderInclude(HeaderFile.parse(header), private=True))
 
         return SfgKernelHandle(self._ctx, astname, self, kernel.parameters)
 
@@ -231,7 +217,7 @@ class SfgFunction:
         self,
         name: str,
         tree: SfgCallTreeNode,
-        return_type: PsType = PsCustomType("void"),
+        return_type: PsType = void,
         _is_method: bool = False,
     ):
         self._name = name
@@ -409,6 +395,8 @@ class SfgMethod(SfgFunction, SfgClassMember):
 
 
 class SfgConstructor(SfgClassMember):
+    __match_args__ = ("parameters", "initializers", "body")
+
     def __init__(
         self,
         parameters: Sequence[SfgVar] = (),

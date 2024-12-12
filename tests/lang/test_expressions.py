@@ -1,7 +1,7 @@
 import pytest
 
 from pystencilssfg import SfgException
-from pystencilssfg.lang import asvar, SfgVar, AugExpr
+from pystencilssfg.lang import asvar, SfgVar, AugExpr, cpptype, HeaderFile
 
 import sympy as sp
 
@@ -93,3 +93,13 @@ def test_augexpr_illegal_format():
     with pytest.raises(ValueError):
         #   Cannot parse expressions containing symbols
         _ = AugExpr.format("{} + {}", x + 3, y / (2 * z))
+
+
+def test_headers():
+    pairtype = cpptype("std::tuple< {}, {} >", "<tuple>")
+
+    var = AugExpr(pairtype("double", "int")).var("x")
+    assert var.includes == {HeaderFile("tuple", system_header=True)}
+
+    expr = AugExpr().bind("std::get< int >({})", var)
+    assert expr.includes == {HeaderFile("tuple", system_header=True)}

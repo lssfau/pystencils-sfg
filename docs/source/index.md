@@ -68,7 +68,7 @@ import sympy as sp
 from pystencils import fields, kernel
 
 from pystencilssfg import SourceFileGenerator
-from pystencilssfg.lang.cpp import mdspan_ref
+from pystencilssfg.lang.cpp import std
 
 with SourceFileGenerator() as sfg:
     u_src, u_dst, f = fields("u_src, u_dst, f(1) : double[2D]", layout="fzyx")
@@ -81,9 +81,9 @@ with SourceFileGenerator() as sfg:
     poisson_kernel = sfg.kernels.create(poisson_jacobi)
 
     sfg.function("jacobi_smooth")(
-        sfg.map_field(u_src, mdspan_ref(u_src)),
-        sfg.map_field(u_dst, mdspan_ref(u_dst)),
-        sfg.map_field(f, mdspan_ref(f)),
+        sfg.map_field(u_src, std.mdspan.from_field(u_src)),
+        sfg.map_field(u_dst, std.mdspan.from_field(u_dst)),
+        sfg.map_field(f, std.mdspan.from_field(f)),
         sfg.call(poisson_kernel)
     )
 ```
@@ -102,11 +102,11 @@ python poisson_smoother.py
 ```
 
 During execution, *pystencils-sfg* assembles the above constructs into an internal representation of the C++ files.
-It then takes the name of your Python script, replaces `.py` with `.cpp` and `.h`,
+It then takes the name of your Python script, replaces `.py` with `.cpp` and `.hpp`,
 and exports the constructed code to the files 
-`poisson_smoother.cpp` and `poisson_smoother.h` into the current directory, ready to be `#include`d.
+`poisson_smoother.cpp` and `poisson_smoother.hpp` into the current directory, ready to be `#include`d.
 
-````{dropdown} poisson_smoother.h
+````{dropdown} poisson_smoother.hpp
 
 ```C++
 #pragma once
@@ -129,7 +129,7 @@ void jacobi_smooth(
 ````{dropdown} poisson_smoother.cpp
 
 ```C++
-#include "poisson_smoother.h"
+#include "poisson_smoother.hpp"
 
 #include <math.h>
 

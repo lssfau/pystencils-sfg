@@ -115,7 +115,7 @@ class SfgHeaderPrinter(SfgGeneralPrinter):
     def function(self, func: SfgFunction):
         params = sorted(list(func.parameters), key=lambda p: p.name)
         param_list = ", ".join(f"{param.dtype.c_string()} {param.name}" for param in params)
-        return f"{func.return_type} {func.name} ( {param_list} );"
+        return f"{func.return_type.c_string()} {func.name} ( {param_list} );"
 
     @visit.case(SfgClass)
     def sfg_class(self, cls: SfgClass):
@@ -241,7 +241,7 @@ class SfgImplPrinter(SfgGeneralPrinter):
     def function(self, func: SfgFunction) -> str:
         inline_prefix = "inline " if self._inline_impl else ""
         code = (
-            f"{inline_prefix} {func.return_type} {func.name} ({self.param_list(func)})"
+            f"{inline_prefix} {func.return_type.c_string()} {func.name} ({self.param_list(func)})"
         )
         code += (
             "{\n" + self._ctx.codestyle.indent(func.tree.get_code(self._ctx)) + "}\n"

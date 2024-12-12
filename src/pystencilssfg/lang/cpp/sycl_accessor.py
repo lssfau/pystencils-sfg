@@ -1,35 +1,42 @@
 from ...lang import SrcField, IFieldExtraction
-from ...ir.source_components import SfgHeaderInclude
 
 from pystencils import Field
-from pystencils.types import (
-    PsType,
-    PsCustomType,
-)
+from pystencils.types import UserTypeSpec, create_type
 
-from pystencilssfg.lang.expressions import AugExpr
+from ...lang import AugExpr, cpptype, Ref
 
 
 class SyclAccessor(SrcField):
+    """Represent a
+    `SYCL Accessor <https://registry.khronos.org/SYCL/specs/sycl-2020/html/sycl-2020.html#subsec:accessors>`_.
+
+    .. note::
+
+        Sycl Accessor do not expose information about strides, so the linearization is done under
+        the assumption that the underlying memory is contiguous, as descibed
+        `here <https://registry.khronos.org/SYCL/specs/sycl-2020/html/sycl-2020.html#_multi_dimensional_objects_and_linearization>`_
+    """  # noqa: E501
+
+    _template = cpptype("sycl::accessor< {T}, {dims} >", "<sycl/sycl.hpp>")
+
     def __init__(
         self,
-        T: PsType,
+        T: UserTypeSpec,
         dimensions: int,
-        reference: bool = False,
+        ref: bool = False,
+        const: bool = False,
     ):
-        cpp_typestr = T.c_string()
-        if 3 < dimensions:
+        T = create_type(T)
+        if dimensions > 3:
             raise ValueError("sycl accessors can only have dims 1, 2 or 3")
-        typestring = (
-            f"sycl::accessor< {cpp_typestr}, {dimensions} > {'&' if reference else ''}"
-        )
-        super().__init__(PsCustomType(typestring))
+        dtype = self._template(T=T, dims=dimensions, const=const)
+        if ref:
+            dtype = Ref(dtype)
+
+        super().__init__(dtype)
+
         self._dim = dimensions
         self._inner_stride = 1
-
-    @property
-    def required_includes(self) -> set[SfgHeaderInclude]:
-        return {SfgHeaderInclude("sycl/sycl.hpp", system_header=True)}
 
     def get_extraction(self) -> IFieldExtraction:
         accessor = self
@@ -66,14 +73,12 @@ class SyclAccessor(SrcField):
 
         return Extraction()
 
+    @staticmethod
+    def from_field(field: Field, ref: bool = True):
+        """Creates a `sycl::accessor &` for a given pystencils field."""
 
-def sycl_accessor_ref(field: Field):
-    """Creates a `sycl::accessor &` for a given pystencils field."""
-    # Sycl Accessor do not expose information about strides, so the linearization is like here
-    # https://registry.khronos.org/SYCL/specs/sycl-2020/html/sycl-2020.html#_multi_dimensional_objects_and_linearization
-
-    return SyclAccessor(
-        field.dtype,
-        field.spatial_dimensions + field.index_dimensions,
-        reference=True,
-    ).var(field.name)
+        return SyclAccessor(
+            field.dtype,
+            field.spatial_dimensions + field.index_dimensions,
+            ref=ref,
+        ).var(field.name)

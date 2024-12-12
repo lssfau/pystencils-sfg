@@ -23,10 +23,13 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project.optional-dependencies]
-testing = [
+tests = [
     "flake8>=6.1.0",
     "mypy>=1.7.0",
-    "black"
+    "black",
+    "pyyaml",
+    "requests",
+    "fasteners",
 ]
 docs = [
     "sphinx",
@@ -53,4 +56,11 @@ omit = [
     "setup.py",
     "src/pystencilssfg/_version.py",
     "integration/*"
+]
+
+[tool.coverage.report]
+exclude_also = [
+    "\\.\\.\\.",
+    "if TYPE_CHECKING:",
+    "@(abc\\.)?abstractmethod",
 ]

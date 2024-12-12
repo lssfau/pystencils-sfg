@@ -1,28 +1,31 @@
 from pystencils.field import Field
-from pystencils.types import PsType, PsCustomType
+from pystencils.types import UserTypeSpec, create_type, PsType
 
-from ...lang import SrcField, SrcVector, AugExpr, IFieldExtraction
-from ...ir.source_components import SfgHeaderInclude
+from ...lang import SrcField, SrcVector, AugExpr, IFieldExtraction, cpptype, Ref
 
 
 class StdVector(SrcVector, SrcField):
+    _template = cpptype("std::vector< {T} >", "<vector>")
+
     def __init__(
         self,
-        T: PsType,
+        T: UserTypeSpec,
         unsafe: bool = False,
-        reference: bool = True,
+        ref: bool = False,
+        const: bool = False,
     ):
-        typestring = f"std::vector< {(T.c_string())} > {'&' if reference else ''}"
-        super(StdVector, self).__init__(PsCustomType(typestring))
+        T = create_type(T)
+        dtype = self._template(T=T, const=const)
+        if ref:
+            dtype = Ref(dtype)
+        super().__init__(dtype)
 
         self._element_type = T
         self._unsafe = unsafe
 
     @property
-    def required_includes(self) -> set[SfgHeaderInclude]:
-        return {
-            SfgHeaderInclude("vector", system_header=True),
-        }
+    def element_type(self) -> PsType:
+        return self._element_type
 
     def get_extraction(self) -> IFieldExtraction:
         vec = self
@@ -51,6 +54,21 @@ class StdVector(SrcVector, SrcField):
         else:
             return AugExpr.format("{}.at({})", self, coordinate)
 
+    @staticmethod
+    def from_field(field: Field, ref: bool = True, const: bool = False):
+        if field.spatial_dimensions > 1 or field.index_shape not in ((), (1,)):
+            raise ValueError(
+                f"Cannot create std::vector from more-than-one-dimensional field {field}."
+            )
+
+        return StdVector(field.dtype, unsafe=False, ref=ref, const=const).var(field.name)
+
 
 def std_vector_ref(field: Field):
-    return StdVector(field.dtype, unsafe=False, reference=True).var(field.name)
+    from warnings import warn
+
+    warn(
+        "`std_vector_ref` is deprecated and will be removed in version 0.1. Use `std.vector.from_field` instead.",
+        FutureWarning,
+    )
+    return StdVector.from_field(field, ref=True)

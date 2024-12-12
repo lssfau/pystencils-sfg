@@ -16,7 +16,16 @@ from ..exceptions import SfgException
 
 from .call_tree import SfgCallTreeNode, SfgCallTreeLeaf, SfgSequence, SfgStatements
 from ..ir.source_components import SfgKernelParamVar
-from ..lang import SfgVar, IFieldExtraction, SrcField, SrcVector, AugExpr
+from ..lang import (
+    SfgVar,
+    IFieldExtraction,
+    SrcField,
+    SrcVector,
+    ExprLike,
+    AugExpr,
+    depends,
+    includes,
+)
 
 if TYPE_CHECKING:
     from ..context import SfgContext
@@ -210,31 +219,16 @@ class SfgDeferredNode(SfgCallTreeNode, ABC):
         )
 
 
-class SfgDeferredParamMapping(SfgDeferredNode):
-    def __init__(self, lhs: SfgVar | sp.Symbol, depends: set[SfgVar], mapping: str):
-        self._lhs = lhs
-        self._depends = depends
-        self._mapping = mapping
-
-    def expand(self, ppc: PostProcessingContext) -> SfgCallTreeNode:
-        live_var = ppc.get_live_variable(self._lhs.name)
-        if live_var is not None:
-            return SfgStatements(self._mapping, (live_var,), tuple(self._depends))
-        else:
-            return SfgSequence([])
-
-
 class SfgDeferredParamSetter(SfgDeferredNode):
-    def __init__(self, param: SfgVar | sp.Symbol, depends: set[SfgVar], rhs_expr: str):
+    def __init__(self, param: SfgVar | sp.Symbol, rhs: ExprLike):
         self._lhs = param
-        self._depends = depends
-        self._rhs_expr = rhs_expr
+        self._rhs = rhs
 
     def expand(self, ppc: PostProcessingContext) -> SfgCallTreeNode:
         live_var = ppc.get_live_variable(self._lhs.name)
         if live_var is not None:
-            code = f"{live_var.dtype.c_string()} {live_var.name} = {self._rhs_expr};"
-            return SfgStatements(code, (live_var,), tuple(self._depends))
+            code = f"{live_var.dtype.c_string()} {live_var.name} = {self._rhs};"
+            return SfgStatements(code, (live_var,), depends(self._rhs), includes(self._rhs))
         else:
             return SfgSequence([])
 
@@ -291,13 +285,18 @@ class SfgDeferredFieldMapping(SfgDeferredNode):
             expr = self._extraction.ptr()
             nodes.append(
                 SfgStatements(
-                    f"{ptr.dtype.c_string()} {ptr.name} {{ {expr} }};", (ptr,), expr.depends
+                    f"{ptr.dtype.c_string()} {ptr.name} {{ {expr} }};",
+                    (ptr,),
+                    depends(expr),
+                    includes(expr),
                 )
             )
 
         def maybe_cast(expr: AugExpr, target_type: PsType) -> AugExpr:
             if self._cast_indexing_symbols:
-                return AugExpr(target_type).bind("{}( {} )", deconstify(target_type).c_string(), expr)
+                return AugExpr(target_type).bind(
+                    "{}( {} )", deconstify(target_type).c_string(), expr
+                )
             else:
                 return expr
 
@@ -313,7 +312,10 @@ class SfgDeferredFieldMapping(SfgDeferredNode):
                 done.add(symb)
                 expr = maybe_cast(expr, symb.dtype)
                 return SfgStatements(
-                    f"{symb.dtype.c_string()} {symb.name} {{ {expr} }};", (symb,), expr.depends
+                    f"{symb.dtype.c_string()} {symb.name} {{ {expr} }};",
+                    (symb,),
+                    depends(expr),
+                    includes(expr),
                 )
             else:
                 return SfgStatements(f"/* {expr} == {symb} */", (), ())
@@ -330,7 +332,10 @@ class SfgDeferredFieldMapping(SfgDeferredNode):
                 done.add(symb)
                 expr = maybe_cast(expr, symb.dtype)
                 return SfgStatements(
-                    f"{symb.dtype.c_string()} {symb.name} {{ {expr} }};", (symb,), expr.depends
+                    f"{symb.dtype.c_string()} {symb.name} {{ {expr} }};",
+                    (symb,),
+                    depends(expr),
+                    includes(expr),
                 )
             else:
                 return SfgStatements(f"/* {expr} == {symb} */", (), ())
@@ -357,7 +362,8 @@ class SfgDeferredVectorMapping(SfgDeferredNode):
                     SfgStatements(
                         f"{param.dtype.c_string()} {param.name} {{ {expr} }};",
                         (param,),
-                        expr.depends,
+                        depends(expr),
+                        includes(expr),
                     )
                 )
 

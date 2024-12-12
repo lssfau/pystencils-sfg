@@ -1,3 +1,5 @@
+from .headers import HeaderFile
+
 from .expressions import (
     SfgVar,
     AugExpr,
@@ -7,14 +9,16 @@ from .expressions import (
     _ExprLike,
     asvar,
     depends,
+    includes,
     IFieldExtraction,
     SrcField,
     SrcVector,
 )
 
-from .types import Ref, strip_ptr_ref
+from .types import cpptype, void, Ref, strip_ptr_ref
 
 __all__ = [
+    "HeaderFile",
     "SfgVar",
     "AugExpr",
     "VarLike",
@@ -23,9 +27,12 @@ __all__ = [
     "_ExprLike",
     "asvar",
     "depends",
+    "includes",
     "IFieldExtraction",
     "SrcField",
     "SrcVector",
+    "cpptype",
+    "void",
     "Ref",
     "strip_ptr_ref"
 ]

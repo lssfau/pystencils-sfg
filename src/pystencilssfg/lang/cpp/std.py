@@ -1,12 +1,9 @@
-from .std_span import std_span_ref
-from .std_mdspan import mdspan_ref
-from .std_vector import std_vector_ref
+from .std_span import StdSpan
+from .std_mdspan import StdMdspan
+from .std_vector import StdVector
+from .std_tuple import StdTuple
 
-span = std_span_ref
-"""Create an ``std::span`` reference for a 1D pystencils field"""
-
-mdspan = mdspan_ref
-"""Create an ``std::mdspan`` reference for a pystencils field"""
-
-vector = std_vector_ref
-"""Create an ``std::vector`` reference for a 1D pystencils field"""
+span = StdSpan
+mdspan = StdMdspan
+vector = StdVector
+tuple = StdTuple

@@ -1,0 +1,78 @@
+# This file acts as an index for the generator script test suite.
+# For information about its structure and valid parameters, refer to the Readme.md in this folder.
+
+# Configuration
+
+TestConfigModule:
+  sfg-args:
+    file-extensions: [h++, c++]
+    config-module: "config/TestConfigModule_cfg.py"
+
+TestExtraCommandLineArgs:
+  sfg-args:
+    file-extensions: [h++, c++]
+  extra-args: [--precision, float32, test1, test2]
+
+TestIllegalArgs:
+  extra-args: [--sfg-file-extensionss, ".c++,.h++"]
+  expect-failure: true
+
+# Basic Composer Functionality
+
+BasicDefinitions:
+  sfg-args:
+    output-mode: header-only
+  expect-code:
+    hpp:
+      - regex: >-
+          #include\s\"config\.h\"\s*
+          namespace\s+awesome\s+{\s+.+\s+
+          #define\sPI\s3\.1415\s+
+          using\snamespace\sstd\;\s+
+          }\s\/\/\s+namespace\sawesome
+        strip-whitespace: true
+
+SimpleClasses:
+  sfg-args:
+    output-mode: header-only
+
+Conditionals:
+  expect-code:
+    cpp:
+      - regex: switch\s*\(\s*noodle\s*\)\s*\{\s*
+        count: 2
+      - regex: case\s+Noodles::[A-Z]+:\s*\{\s*.*\s*break;\s*\}
+        count: 2
+      - regex: case\s+Noodles::[A-Z]+:\s*\{\s*return\s[0-9]+;\s*\}
+        count: 4
+      - regex: if\s*\(\s*noodle\s==\sNoodles::RIGATONI\s\|\|\snoodle\s==\sNoodles::SPAGHETTI\s*\)
+        count: 1
+
+# Kernel Generation
+
+ScaleKernel:
+JacobiMdspan:
+StlContainers1D:
+
+# SYCL
+
+SyclKernels:
+  sfg-args:
+    output-mode: inline
+    file-extensions: [hpp, ipp]
+  expect-code:
+    ipp:
+      - regex: >-
+          cgh\.parallel_for\(range,\s*\[=\]\s*\(const\s+sycl::item<\s*2\s*>\s+sycl_item\s*\)\s*\{\s*kernels::kernel\(.*\);\s*\}\);
+
+SyclBuffers:
+  compile:
+    cxx: icpx
+    cxx-flags:
+      - -fsycl
+      - -std=c++20
+      - -Wall
+      - -Werror
+    link-flags:
+      - -fsycl
+    skip-if-not-found: true
