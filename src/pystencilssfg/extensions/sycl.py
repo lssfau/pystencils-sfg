@@ -3,8 +3,8 @@ from typing import Sequence
 from enum import Enum
 import re
 
-from pystencils.types import PsType, PsCustomType
-from pystencils.enums import Target
+from pystencils.types import UserTypeSpec, PsType, PsCustomType, create_type
+from pystencils import Target
 
 from pystencilssfg.composer.basic_composer import SequencerArg
 
@@ -17,14 +17,18 @@ from ..composer import (
     SfgComposerMixIn,
     make_sequence,
 )
-from ..ir.source_components import SfgKernelHandle, SfgHeaderInclude
+from ..ir.source_components import SfgKernelHandle
 from ..ir import (
     SfgCallTreeNode,
     SfgCallTreeLeaf,
     SfgKernelCallNode,
 )
 
-from ..lang import SfgVar, AugExpr
+from ..lang import SfgVar, AugExpr, cpptype, Ref, VarLike, _VarLike, asvar
+from ..lang.cpp.sycl_accessor import SyclAccessor
+
+
+accessor = SyclAccessor
 
 
 class SyclComposerMixIn(SfgComposerMixIn):
@@ -38,9 +42,8 @@ class SyclComposerMixIn(SfgComposerMixIn):
         """Obtain a `SyclHandler`, which represents a ``sycl::handler`` object."""
         return SyclGroup(dims, self._ctx).var(name)
 
-    def sycl_range(self, dims: int, name: str, ref: bool = False) -> SfgVar:
-        ref_str = " &" if ref else ""
-        return SfgVar(name, PsCustomType(f"sycl::range< {dims} >{ref_str}"))
+    def sycl_range(self, dims: int, name: str, ref: bool = False) -> SyclRange:
+        return SyclRange(dims, ref=ref).var(name)
 
 
 class SyclComposer(SfgBasicComposer, SfgClassComposer, SyclComposerMixIn):
@@ -50,18 +53,30 @@ class SyclComposer(SfgBasicComposer, SfgClassComposer, SyclComposerMixIn):
         super().__init__(sfg)
 
 
+class SyclRange(AugExpr):
+    _template = cpptype("sycl::range< {dims} >", "<sycl/sycl.hpp>")
+
+    def __init__(self, dims: int, const: bool = False, ref: bool = False):
+        dtype = self._template(dims=dims, const=const)
+        if ref:
+            dtype = Ref(dtype)
+        super().__init__(dtype)
+
+
 class SyclHandler(AugExpr):
     """Represents a SYCL command group handler (``sycl::handler``)."""
 
+    _type = cpptype("sycl::handler", "<sycl/sycl.hpp>")
+
     def __init__(self, ctx: SfgContext):
-        dtype = PsCustomType("sycl::handler &")
+        dtype = Ref(self._type())
         super().__init__(dtype)
 
         self._ctx = ctx
 
     def parallel_for(
         self,
-        range: SfgVar | Sequence[int],
+        range: VarLike | Sequence[int],
     ):
         """Generate a ``parallel_for`` kernel invocation using this command group handler.
         The syntax of this uses a chain of two calls to mimic C++ syntax:
@@ -77,7 +92,8 @@ class SyclHandler(AugExpr):
         Args:
             range: Object, or tuple of integers, indicating the kernel's iteration range
         """
-        self._ctx.add_include(SfgHeaderInclude("sycl/sycl.hpp", system_header=True))
+        if isinstance(range, _VarLike):
+            range = asvar(range)
 
         def check_kernel(kernel: SfgKernelHandle):
             kfunc = kernel.get_kernel_function()
@@ -99,7 +115,9 @@ class SyclHandler(AugExpr):
             for arg in args:
                 if isinstance(arg, SfgKernelCallNode):
                     check_kernel(arg._kernel_handle)
-                    id_param.append(list(filter(filter_id, arg._kernel_handle.scalar_parameters))[0])
+                    id_param.append(
+                        list(filter(filter_id, arg._kernel_handle.scalar_parameters))[0]
+                    )
 
             if not all(item == id_param[0] for item in id_param):
                 raise ValueError(
@@ -118,15 +136,17 @@ class SyclHandler(AugExpr):
 class SyclGroup(AugExpr):
     """Represents a SYCL group (``sycl::group``)."""
 
+    _template = cpptype("sycl::group< {dims} >", "<sycl/sycl.hpp>")
+
     def __init__(self, dimensions: int, ctx: SfgContext):
-        dtype = PsCustomType(f"sycl::group< {dimensions} > &")
+        dtype = Ref(self._template(dims=dimensions))
         super().__init__(dtype)
 
         self._dimensions = dimensions
         self._ctx = ctx
 
     def parallel_for_work_item(
-        self, range: SfgVar | Sequence[int], kernel: SfgKernelHandle
+        self, range: VarLike | Sequence[int], kernel: SfgKernelHandle
     ):
         """Generate a ``parallel_for_work_item` kernel invocation on this group.`
 
@@ -134,8 +154,8 @@ class SyclGroup(AugExpr):
             range: Object, or tuple of integers, indicating the kernel's iteration range
             kernel: Handle to the pystencils-kernel to be executed
         """
-
-        self._ctx.add_include(SfgHeaderInclude("sycl/sycl.hpp", system_header=True))
+        if isinstance(range, _VarLike):
+            range = asvar(range)
 
         kfunc = kernel.get_kernel_function()
         if kfunc.target != Target.SYCL:
@@ -156,18 +176,15 @@ class SyclGroup(AugExpr):
 
         comp = SfgComposer(self._ctx)
         tree = comp.seq(
-            comp.map_param(
-                id_param,
-                h_item,
-                f"{id_param.dtype.c_string()} {id_param.name} = {h_item}.get_local_id();",
-            ),
+            comp.set_param(id_param, AugExpr.format("{}.get_local_id()", h_item)),
             SfgKernelCallNode(kernel),
         )
 
         kernel_lambda = SfgLambda(("=",), (h_item,), tree, None)
-        return SyclKernelInvoke(
+        invoke = SyclKernelInvoke(
             self, SyclInvokeType.ParallelForWorkItem, range, kernel_lambda
         )
+        return invoke
 
 
 class SfgLambda:
@@ -178,12 +195,14 @@ class SfgLambda:
         captures: Sequence[str],
         params: Sequence[SfgVar],
         tree: SfgCallTreeNode,
-        return_type: PsType | None = None,
+        return_type: UserTypeSpec | None = None,
     ) -> None:
         self._captures = tuple(captures)
         self._params = tuple(params)
         self._tree = tree
-        self._return_type = return_type
+        self._return_type: PsType | None = (
+            create_type(return_type) if return_type is not None else None
+        )
 
         from ..ir.postprocessing import CallTreePostProcessing
 
@@ -262,7 +281,7 @@ class SyclKernelInvoke(SfgCallTreeLeaf):
         )
         self._lambda = lamb
 
-        self._required_params = invoker.depends | lamb.required_parameters
+        self._required_params = set(invoker.depends | lamb.required_parameters)
 
         if isinstance(range, SfgVar):
             self._required_params.add(range)

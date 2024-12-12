@@ -31,6 +31,7 @@ from .source_components import (
     SfgConstructor,
     SfgClass,
 )
+from .analysis import collect_includes
 
 __all__ = [
     "SfgCallTreeNode",
@@ -61,4 +62,5 @@ __all__ = [
     "SfgMethod",
     "SfgConstructor",
     "SfgClass",
+    "collect_includes"
 ]

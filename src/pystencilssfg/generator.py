@@ -74,9 +74,10 @@ class SourceFileGenerator:
             project_info=cli_params.get_project_info(),
         )
 
-        from pystencilssfg.ir import SfgHeaderInclude
+        from .lang import HeaderFile
+        from .ir import SfgHeaderInclude
 
-        self._context.add_include(SfgHeaderInclude("cstdint", system_header=True))
+        self._context.add_include(SfgHeaderInclude(HeaderFile("cstdint", system_header=True)))
         self._context.add_definition("#define RESTRICT __restrict__")
 
         output_mode = config.get_option("output_mode")
@@ -114,4 +115,9 @@ class SourceFileGenerator:
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is None:
+            #    Collect header files for inclusion
+            from .ir import SfgHeaderInclude, collect_includes
+            for header in collect_includes(self._context):
+                self._context.add_include(SfgHeaderInclude(header))
+
             self._emitter.write_files(self._context)

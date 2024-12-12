@@ -80,7 +80,7 @@ def test_find_sympy_symbols():
     assert call_tree.children[1].code_string == "const double y = x / a;"
 
 
-class TestFieldExtraction(IFieldExtraction):
+class DemoFieldExtraction(IFieldExtraction):
     def __init__(self, name: str):
         self.obj = AugExpr(PsCustomType("MyField")).var(name)
 
@@ -108,7 +108,7 @@ def test_field_extraction():
 
     khandle = sfg.kernels.create(set_constant)
 
-    extraction = TestFieldExtraction("f")
+    extraction = DemoFieldExtraction("f")
     call_tree = make_sequence(sfg.map_field(f, extraction, cast_indexing_symbols=False), sfg.call(khandle))
 
     pp = CallTreePostProcessing()
@@ -143,8 +143,8 @@ def test_duplicate_field_shapes():
     khandle = sfg.kernels.create(set_constant)
 
     call_tree = make_sequence(
-        sfg.map_field(g, TestFieldExtraction("g"), cast_indexing_symbols=False),
-        sfg.map_field(f, TestFieldExtraction("f"), cast_indexing_symbols=False),
+        sfg.map_field(g, DemoFieldExtraction("g"), cast_indexing_symbols=False),
+        sfg.map_field(f, DemoFieldExtraction("f"), cast_indexing_symbols=False),
         sfg.call(khandle),
     )
 

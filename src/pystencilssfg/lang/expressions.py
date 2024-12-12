@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Iterable, TypeAlias, Any, TYPE_CHECKING
+from typing import Iterable, TypeAlias, Any
 from itertools import chain
 from abc import ABC, abstractmethod
 
@@ -9,10 +9,8 @@ from pystencils import TypedSymbol
 from pystencils.types import PsType, UserTypeSpec, create_type
 
 from ..exceptions import SfgException
-
-if TYPE_CHECKING:
-    from ..ir.source_components import SfgHeaderInclude
-
+from .headers import HeaderFile
+from .types import strip_ptr_ref, CppType
 
 __all__ = [
     "SfgVar",
@@ -41,17 +39,9 @@ class SfgVar:
         self,
         name: str,
         dtype: UserTypeSpec,
-        required_includes: set[SfgHeaderInclude] | None = None,
     ):
-        #   TODO: Replace `required_includes` by using a property
-        #   Includes attached this way may currently easily be lost during postprocessing,
-        #   since they are not part of `_args`
         self._name = name
         self._dtype = create_type(dtype)
-
-        self._required_includes = (
-            required_includes if required_includes is not None else set()
-        )
 
     @property
     def name(self) -> str:
@@ -73,10 +63,6 @@ class SfgVar:
     def __hash__(self) -> int:
         return hash(self._args())
 
-    @property
-    def required_includes(self) -> set[SfgHeaderInclude]:
-        return self._required_includes
-
     def name_and_type(self) -> str:
         return f"{self._name}: {self._dtype}"
 
@@ -88,29 +74,51 @@ class SfgVar:
 
 
 class DependentExpression:
+    """Wrapper around a C++ expression code string,
+    annotated with a set of variables and a set of header files this expression depends on.
+
+    Args:
+        expr: C++ Code string of the expression
+        depends: Iterable of variables and/or `AugExpr`s from which variable and header dependencies are collected
+        includes: Iterable of header files which this expression additionally depends on
+    """
+
     __match_args__ = ("expr", "depends")
 
-    def __init__(self, expr: str, depends: Iterable[SfgVar | AugExpr]):
+    def __init__(
+        self,
+        expr: str,
+        depends: Iterable[SfgVar | AugExpr],
+        includes: Iterable[HeaderFile] | None = None,
+    ):
         self._expr: str = expr
         deps: set[SfgVar] = set()
+        incls: set[HeaderFile] = set(includes) if includes is not None else set()
+
         for obj in depends:
             if isinstance(obj, AugExpr):
                 deps |= obj.depends
+                incls |= obj.includes
             else:
                 deps.add(obj)
 
-        self._depends = tuple(deps)
+        self._depends = frozenset(deps)
+        self._includes = frozenset(incls)
 
     @property
     def expr(self) -> str:
         return self._expr
 
     @property
-    def depends(self) -> set[SfgVar]:
-        return set(self._depends)
+    def depends(self) -> frozenset[SfgVar]:
+        return self._depends
+
+    @property
+    def includes(self) -> frozenset[HeaderFile]:
+        return self._includes
 
     def __hash_contents__(self):
-        return (self._expr, self._depends)
+        return (self._expr, self._depends, self._includes)
 
     def __eq__(self, other: object):
         if not isinstance(other, DependentExpression):
@@ -125,13 +133,26 @@ class DependentExpression:
         return self.expr
 
     def __add__(self, other: DependentExpression):
-        return DependentExpression(self.expr + other.expr, self.depends | other.depends)
+        return DependentExpression(
+            self.expr + other.expr,
+            self.depends | other.depends,
+            self._includes | other._includes,
+        )
 
 
 class VarExpr(DependentExpression):
     def __init__(self, var: SfgVar):
         self._var = var
-        super().__init__(var.name, (var,))
+        base_type = strip_ptr_ref(var.dtype)
+        incls: Iterable[HeaderFile]
+        match base_type:
+            case CppType():
+                incls = base_type.includes
+            case _:
+                incls = (
+                    HeaderFile.parse(header) for header in var.dtype.required_headers
+                )
+        super().__init__(var.name, (var,), incls)
 
     @property
     def variable(self) -> SfgVar:
@@ -142,11 +163,35 @@ class AugExpr:
     """C++ expression augmented with variable dependencies and a type-dependent interface.
 
     `AugExpr` is the primary class for modelling C++ expressions in *pystencils-sfg*.
-    It stores both an expression's code string and the set of variables (`SfgVar`)
-    the expression depends on. This dependency information is used by the postprocessing
-    system to infer function parameter lists.
+    It stores both an expression's code string,
+    the set of variables (`SfgVar`) the expression depends on,
+    as well as any headers that must be included for the expression to be evaluated.
+    This dependency information is used by the composer and postprocessing system
+    to infer function parameter lists and automatic header inclusions.
 
-    In addition, subclasses of `AugExpr` can mimic C++ APIs by defining factory methods that
+    **Construction and Binding**
+
+    Constructing an `AugExpr` is a two-step process comprising *construction* and *binding*.
+    An `AugExpr` can be constructed with our without an associated data type.
+    After construction, the `AugExpr` object is still *unbound*;
+    it does not yet hold any syntax.
+
+    Syntax binding can happen in two ways:
+
+    - Calling `var <AugExpr.var>` on an unbound `AugExpr` turns it into a *variable* with the given name.
+      This variable expression takes its set of required header files from the
+      `required_headers <PsType.required_headers>` field of the data type of the `AugExpr`.
+    - Using `bind <AugExpr.bind>`, an unbound `AugExpr` can be bound to an arbitrary string
+      of code. The `bind` method mirrors the interface of `str.format` to combine sub-expressions
+      and collect their dependencies.
+      The `format <AugExpr.format>` static method is a wrapper around `bind` for expressions
+      without a type.
+
+    An `AugExpr` can be bound only once.
+
+    **C++ API Mirroring**
+
+    Subclasses of `AugExpr` can mimic C++ APIs by defining factory methods that
     build expressions for C++ method calls, etc., from a list of argument expressions.
 
     Args:
@@ -161,7 +206,7 @@ class AugExpr:
         self._is_variable = False
 
     def var(self, name: str):
-        v = SfgVar(name, self.get_dtype(), self.required_includes)
+        v = SfgVar(name, self.get_dtype())
         expr = VarExpr(v)
         return self._bind(expr)
 
@@ -177,18 +222,22 @@ class AugExpr:
     def bind(self, fmt: str | AugExpr, *deps, **kwdeps):
         if isinstance(fmt, AugExpr):
             if bool(deps) or bool(kwdeps):
-                raise ValueError("Binding to another AugExpr does not permit additional arguments")
+                raise ValueError(
+                    "Binding to another AugExpr does not permit additional arguments"
+                )
             if fmt._bound is None:
                 raise ValueError("Cannot rebind to unbound AugExpr.")
             self._bind(fmt._bound)
         else:
             dependencies: set[SfgVar] = set()
+            incls: set[HeaderFile] = set()
 
             from pystencils.sympyextensions import is_constant
 
             for expr in chain(deps, kwdeps.values()):
                 if isinstance(expr, _ExprLike):
                     dependencies |= depends(expr)
+                    incls |= includes(expr)
                 elif isinstance(expr, sp.Expr) and not is_constant(expr):
                     raise ValueError(
                         f"Cannot parse SymPy expression as C++ expression: {expr}\n"
@@ -197,14 +246,8 @@ class AugExpr:
                     )
 
             code = fmt.format(*deps, **kwdeps)
-            self._bind(DependentExpression(code, dependencies))
+            self._bind(DependentExpression(code, dependencies, incls))
         return self
-
-    def expr(self) -> DependentExpression:
-        if self._bound is None:
-            raise SfgException("No syntax bound to this AugExpr.")
-
-        return self._bound
 
     @property
     def code(self) -> str:
@@ -213,11 +256,18 @@ class AugExpr:
         return str(self._bound)
 
     @property
-    def depends(self) -> set[SfgVar]:
+    def depends(self) -> frozenset[SfgVar]:
         if self._bound is None:
             raise SfgException("No syntax bound to this AugExpr.")
 
         return self._bound.depends
+
+    @property
+    def includes(self) -> frozenset[HeaderFile]:
+        if self._bound is None:
+            raise SfgException("No syntax bound to this AugExpr.")
+
+        return self._bound.includes
 
     @property
     def dtype(self) -> PsType | None:
@@ -237,10 +287,6 @@ class AugExpr:
         if not isinstance(self._bound, VarExpr):
             raise SfgException("This expression is not a variable")
         return self._bound.variable
-
-    @property
-    def required_includes(self) -> set[SfgHeaderInclude]:
-        return set()
 
     def __str__(self) -> str:
         if self._bound is None:
@@ -339,7 +385,33 @@ def depends(expr: ExprLike) -> set[SfgVar]:
         case TypedSymbol():
             return {asvar(expr)}
         case AugExpr():
-            return expr.depends
+            return set(expr.depends)
+        case _:
+            raise ValueError(f"Invalid expression: {expr}")
+
+
+def includes(expr: ExprLike) -> set[HeaderFile]:
+    """Determine the set of header files an expression depends on.
+
+    Args:
+        expr: Expression-like object to examine
+
+    Returns:
+        set[HeaderFile]: Set of headers the expression depends on
+
+    Raises:
+        ValueError: If the argument was not a valid variable or expression
+    """
+
+    match expr:
+        case SfgVar(_, dtype):
+            return set(HeaderFile.parse(h) for h in dtype.required_headers)
+        case TypedSymbol():
+            return includes(asvar(expr))
+        case str():
+            return set()
+        case AugExpr():
+            return set(expr.includes)
         case _:
             raise ValueError(f"Invalid expression: {expr}")
 
@@ -350,15 +422,15 @@ class IFieldExtraction(ABC):
 
     @abstractmethod
     def ptr(self) -> AugExpr:
-        pass
+        ...
 
     @abstractmethod
     def size(self, coordinate: int) -> AugExpr | None:
-        pass
+        ...
 
     @abstractmethod
     def stride(self, coordinate: int) -> AugExpr | None:
-        pass
+        ...
 
 
 class SrcField(AugExpr):
@@ -370,7 +442,7 @@ class SrcField(AugExpr):
 
     @abstractmethod
     def get_extraction(self) -> IFieldExtraction:
-        pass
+        ...
 
 
 class SrcVector(AugExpr, ABC):
@@ -382,4 +454,4 @@ class SrcVector(AugExpr, ABC):
 
     @abstractmethod
     def extract_component(self, coordinate: int) -> AugExpr:
-        pass
+        ...

@@ -2,10 +2,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Sequence, Iterable, NewType
 
 from abc import ABC, abstractmethod
-from itertools import chain
 
-from .source_components import SfgHeaderInclude, SfgKernelHandle
-from ..lang import SfgVar
+from .source_components import SfgKernelHandle
+from ..lang import SfgVar, HeaderFile
 
 if TYPE_CHECKING:
     from ..context import SfgContext
@@ -27,6 +26,8 @@ class SfgCallTreeNode(ABC):
     the branching structure through the `children` property and the `child` and `set_child`
     methods is possible, if necessary by overriding the property and methods.
     """
+    def __init__(self) -> None:
+        self._includes: set[HeaderFile] = set()
 
     @property
     @abstractmethod
@@ -41,9 +42,9 @@ class SfgCallTreeNode(ABC):
         """
 
     @property
-    def required_includes(self) -> set[SfgHeaderInclude]:
+    def required_includes(self) -> set[HeaderFile]:
         """Return a set of header includes required by this node"""
-        return set()
+        return self._includes
 
 
 class SfgCallTreeLeaf(SfgCallTreeNode, ABC):
@@ -99,6 +100,7 @@ class SfgStatements(SfgCallTreeLeaf):
         code_string: str,
         defines: Iterable[SfgVar],
         depends: Iterable[SfgVar],
+        includes: Iterable[HeaderFile] = (),
     ):
         super().__init__()
 
@@ -106,11 +108,7 @@ class SfgStatements(SfgCallTreeLeaf):
 
         self._defines = set(defines)
         self._depends = set(depends)
-
-        self._required_includes = set()
-        for obj in chain(depends, defines):
-            if isinstance(obj, SfgVar):
-                self._required_includes |= obj.required_includes
+        self._includes = set(includes)
 
     @property
     def depends(self) -> set[SfgVar]:
@@ -119,10 +117,6 @@ class SfgStatements(SfgCallTreeLeaf):
     @property
     def defines(self) -> set[SfgVar]:
         return self._defines
-
-    @property
-    def required_includes(self) -> set[SfgHeaderInclude]:
-        return self._required_includes
 
     @property
     def code_string(self) -> str:
@@ -137,38 +131,26 @@ class SfgFunctionParams(SfgEmptyNode):
         super().__init__()
         self._params = set(parameters)
 
-        self._required_includes = set()
-        for obj in parameters:
-            if isinstance(obj, SfgVar):
-                self._required_includes |= obj.required_includes
-
     @property
     def depends(self) -> set[SfgVar]:
         return self._params
 
-    @property
-    def required_includes(self) -> set[SfgHeaderInclude]:
-        return self._required_includes
-
 
 class SfgRequireIncludes(SfgEmptyNode):
-    def __init__(self, includes: Sequence[SfgHeaderInclude]):
+    def __init__(self, includes: Iterable[HeaderFile]):
         super().__init__()
-        self._required_includes = set(includes)
+        self._includes = set(includes)
 
     @property
     def depends(self) -> set[SfgVar]:
         return set()
-
-    @property
-    def required_includes(self) -> set[SfgHeaderInclude]:
-        return self._required_includes
 
 
 class SfgSequence(SfgCallTreeNode):
     __match_args__ = ("children",)
 
     def __init__(self, children: Sequence[SfgCallTreeNode]):
+        super().__init__()
         self._children = list(children)
 
     @property
@@ -191,6 +173,7 @@ class SfgSequence(SfgCallTreeNode):
 
 class SfgBlock(SfgCallTreeNode):
     def __init__(self, seq: SfgSequence):
+        super().__init__()
         self._seq = seq
 
     @property
@@ -282,6 +265,7 @@ class SfgBranch(SfgCallTreeNode):
         branch_true: SfgSequence,
         branch_false: SfgSequence | None = None,
     ):
+        super().__init__()
         self._cond = cond
         self._branch_true = branch_true
         self._branch_false = branch_false
@@ -323,6 +307,7 @@ class SfgSwitchCase(SfgCallTreeNode):
     Default = DefaultCaseType(object())
 
     def __init__(self, label: str | SfgSwitchCase.DefaultCaseType, body: SfgSequence):
+        super().__init__()
         self._label = label
         self._body = body
 
@@ -349,7 +334,7 @@ class SfgSwitchCase(SfgCallTreeNode):
         else:
             code += f"case {self._label}: {{\n"
         code += ctx.codestyle.indent(self.body.get_code(ctx))
-        code += "\nbreak;\n}"
+        code += "\n}"
         return code
 
 
@@ -360,6 +345,7 @@ class SfgSwitch(SfgCallTreeNode):
         cases_dict: dict[str, SfgSequence],
         default: SfgSequence | None = None,
     ):
+        super().__init__()
         self._cases = [SfgSwitchCase(label, body) for label, body in cases_dict.items()]
         if default is not None:
             # invariant: the default case is always the last child
@@ -419,6 +405,6 @@ class SfgSwitch(SfgCallTreeNode):
 
     def get_code(self, ctx: SfgContext) -> str:
         code = f"switch({self._switch_arg.get_code(ctx)}) {{\n"
-        code += "\n".join(c.get_code(ctx) for c in self.children)
+        code += "\n".join(c.get_code(ctx) for c in self._cases)
         code += "}"
         return code

@@ -2,7 +2,6 @@ from typing import Sequence
 from os import path, makedirs
 
 from ..context import SfgContext
-from .prepare import prepare_context
 from .printers import SfgHeaderPrinter
 from ..config import ClangFormatOptions
 from .clang_format import invoke_clang_format
@@ -28,8 +27,6 @@ class HeaderOnlyEmitter(AbstractEmitter):
         return (path.join(self._output_directory, self._header_filename),)
 
     def write_files(self, ctx: SfgContext):
-        ctx = prepare_context(ctx)
-
         header_printer = SfgHeaderPrinter(ctx, self._ospec)
         header = header_printer.get_code()
         if self._clang_format is not None:

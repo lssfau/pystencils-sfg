@@ -37,9 +37,9 @@ testsuite:
     - docker
   before_script:
     - pip install "git+https://i10git.cs.fau.de/pycodegen/pystencils.git@v2.0-dev"
-    - pip install -e .
+    - pip install -e .[tests]
   script:
-    - pytest -v --cov=src/pystencilssfg --cov-report=term
+    - pytest -v --cov=src/pystencilssfg --cov-report=term --cov-config=pyproject.toml
     - coverage html
     - coverage xml
   coverage: '/TOTAL.*\s+(\d+%)$/'

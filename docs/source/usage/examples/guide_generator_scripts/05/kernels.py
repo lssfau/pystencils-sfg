@@ -21,8 +21,8 @@ with SourceFileGenerator() as sfg:
     sfg.include("<span>")
     
     sfg.function("scale_kernel")(
-        sfg.map_field(src, std.vector(src)),
-        sfg.map_field(dst, std.span(dst)),
+        sfg.map_field(src, std.vector.from_field(src)),
+        sfg.map_field(dst, std.span.from_field(dst)),
         sfg.call(scale_kernel)
     )
     #   end

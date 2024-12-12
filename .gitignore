@@ -18,9 +18,6 @@ dist
 *.egg-info
 
 # tests and coverage
-.coverage
+.coverage*
 htmlcov
 coverage.xml                
-
-#   mkdocs
-site

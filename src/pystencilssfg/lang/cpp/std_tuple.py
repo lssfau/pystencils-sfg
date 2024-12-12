@@ -1,28 +1,28 @@
 from typing import Sequence
 
-from pystencils.types import PsType, PsCustomType
-from pystencils.backend.kernelfunction import KernelParameter
+from pystencils.types import UserTypeSpec, create_type
 
-from ...lang import SrcVector, AugExpr
-from ...ir.source_components import SfgHeaderInclude
+from ...lang import SrcVector, AugExpr, cpptype, Ref
 
 
 class StdTuple(SrcVector):
+    _template = cpptype("std::tuple< {ts} >", "<tuple>")
+
     def __init__(
         self,
-        element_types: Sequence[PsType],
+        element_types: Sequence[UserTypeSpec],
         const: bool = False,
         ref: bool = False,
     ):
-        self._element_types = element_types
+        self._element_types = tuple(create_type(t) for t in element_types)
         self._length = len(element_types)
         elt_type_strings = tuple(t.c_string() for t in self._element_types)
-        tuple_type = f"{'const' if const else ''} std::tuple< {', '.join(elt_type_strings)} > {'&' if ref else ''}"
-        super().__init__(PsCustomType(tuple_type))
 
-    @property
-    def required_includes(self) -> set[SfgHeaderInclude]:
-        return {SfgHeaderInclude("tuple", system_header=True)}
+        dtype = self._template(ts=", ".join(elt_type_strings), const=const)
+        if ref:
+            dtype = Ref(dtype)
+
+        super().__init__(dtype)
 
     def extract_component(self, coordinate: int) -> AugExpr:
         if coordinate < 0 or coordinate >= self._length:
@@ -31,10 +31,3 @@ class StdTuple(SrcVector):
             )
 
         return AugExpr.format("std::get< {} >({})", coordinate, self)
-
-
-def std_tuple_ref(
-    identifier: str, components: Sequence[KernelParameter], const: bool = True
-):
-    elt_types = tuple(c.dtype for c in components)
-    return StdTuple(elt_types, const=const, ref=True).var(identifier)
