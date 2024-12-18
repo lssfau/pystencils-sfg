@@ -65,12 +65,15 @@ html_theme_options = {
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3.8", None),
-    "numpy": ("https://docs.scipy.org/doc/numpy/", None),
-    "matplotlib": ("https://matplotlib.org/", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
     "sympy": ("https://docs.sympy.org/latest/", None),
     "pystencils": ("https://da15siwa.pages.i10git.cs.fau.de/dev-docs/pystencils-nbackend/", None),
 }
 
+#   References
+
+#   Treat `single-quoted` code blocks as references to any
+default_role = "any"
 
 #   Autodoc options
 

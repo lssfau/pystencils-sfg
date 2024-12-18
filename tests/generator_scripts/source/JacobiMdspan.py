@@ -20,8 +20,8 @@ with SourceFileGenerator() as sfg:
     poisson_kernel = sfg.kernels.create(poisson_jacobi)
 
     sfg.function("jacobi_smooth")(
-        sfg.map_field(u_src, mdspan.from_field(u_src)),
-        sfg.map_field(u_dst, mdspan.from_field(u_dst)),
-        sfg.map_field(f, mdspan.from_field(f)),
+        sfg.map_field(u_src, mdspan.from_field(u_src, layout_policy="layout_left")),
+        sfg.map_field(u_dst, mdspan.from_field(u_dst, layout_policy="layout_left")),
+        sfg.map_field(f, mdspan.from_field(f, layout_policy="layout_left")),
         sfg.call(poisson_kernel)
     )

@@ -54,6 +54,11 @@ ScaleKernel:
 JacobiMdspan:
 StlContainers1D:
 
+# std::mdspan
+
+MdSpanFixedShapeLayouts:
+MdSpanLbStreaming:
+
 # SYCL
 
 SyclKernels:
