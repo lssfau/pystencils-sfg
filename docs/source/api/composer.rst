@@ -1,6 +1,6 @@
-***************************************
-Composer API (`pystencilssfg.composer`)
-***************************************
+*****************************************
+Composer API (``pystencilssfg.composer``)
+*****************************************
 
 .. autoclass:: pystencilssfg.composer.SfgComposer
     :members:

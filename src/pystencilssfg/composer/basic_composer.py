@@ -286,7 +286,7 @@ class SfgBasicComposer(SfgIComposer):
 
         When using `call`, the given kernel will simply be called as a function.
         To invoke a GPU kernel on a specified launch grid, use `cuda_invoke`
-        or the interfaces of `pystencilssfg.extensions.sycl` instead.
+        or the interfaces of ``pystencilssfg.extensions.sycl`` instead.
 
         Args:
             kernel_handle: Handle to a kernel previously added to some kernel namespace.
@@ -300,6 +300,7 @@ class SfgBasicComposer(SfgIComposer):
         threads_per_block: ExprLike,
         stream: ExprLike | None,
     ):
+        """Dispatch a CUDA kernel to the device."""
         num_blocks_str = str(num_blocks)
         tpb_str = str(threads_per_block)
         stream_str = str(stream) if stream is not None else None

@@ -9,8 +9,20 @@ Expressions
 .. automodule:: pystencilssfg.lang.expressions
     :members:
 
-C++ Standard Library (`pystencilssfg.lang.cpp`)
------------------------------------------------
+Header Files
+------------
+
+.. automodule:: pystencilssfg.lang.headers
+    :members:
+
+Data Types
+----------
+
+.. automodule:: pystencilssfg.lang.types
+    :members:
+
+C++ Standard Library (``pystencilssfg.lang.cpp``)
+-------------------------------------------------
 
 Quick Access
 ^^^^^^^^^^^^

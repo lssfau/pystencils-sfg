@@ -180,7 +180,7 @@ class AugExpr:
 
     - Calling `var <AugExpr.var>` on an unbound `AugExpr` turns it into a *variable* with the given name.
       This variable expression takes its set of required header files from the
-      `required_headers <PsType.required_headers>` field of the data type of the `AugExpr`.
+      `required_headers <pystencils.types.PsType.required_headers>` field of the data type of the `AugExpr`.
     - Using `bind <AugExpr.bind>`, an unbound `AugExpr` can be bound to an arbitrary string
       of code. The `bind` method mirrors the interface of `str.format` to combine sub-expressions
       and collect their dependencies.
@@ -206,6 +206,7 @@ class AugExpr:
         self._is_variable = False
 
     def var(self, name: str):
+        """Bind an unbound `AugExpr` instance as a new variable of given name."""
         v = SfgVar(name, self.get_dtype())
         expr = VarExpr(v)
         return self._bind(expr)
@@ -220,6 +221,7 @@ class AugExpr:
         return AugExpr().bind(fmt, *deps, **kwdeps)
 
     def bind(self, fmt: str | AugExpr, *deps, **kwdeps):
+        """Bind an unbound `AugExpr` instance to an expression."""
         if isinstance(fmt, AugExpr):
             if bool(deps) or bool(kwdeps):
                 raise ValueError(
@@ -342,7 +344,8 @@ def asvar(var: VarLike) -> SfgVar:
 
     Raises:
         ValueError: If given a non-variable `AugExpr`,
-            a `TypedSymbol` with a `DynamicType`,
+            a `TypedSymbol <pystencils.TypedSymbol>`
+            with a `DynamicType <pystencils.sympyextensions.typed_sympy.DynamicType>`,
             or any non-variable-like object.
     """
     match var:

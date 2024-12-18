@@ -29,7 +29,8 @@ def invoke_clang_format(code: str, options: ClangFormatOptions) -> str:
 
     binary = options.get_option("binary")
     force = options.get_option("force")
-    args = [binary, f"--style={options.code_style}"]
+    style = options.get_option("code_style")
+    args = [binary, f"--style={style}"]
 
     if not shutil.which(binary):
         if force:
