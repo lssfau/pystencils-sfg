@@ -24,6 +24,9 @@ class HeaderFile:
             return header
 
         system_header = False
+        if header.startswith('"') and header.endswith('"'):
+            header = header[1:-1]
+
         if header.startswith("<") and header.endswith(">"):
             header = header[1:-1]
             system_header = True
