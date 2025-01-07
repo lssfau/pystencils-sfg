@@ -9,7 +9,7 @@ dependencies = [
 ]
 requires-python = ">=3.10"
 readme = "README.md"
-license = { file = "COPYING.txt" }
+license = { file = "LICENSE" }
 dynamic = ["version"]
 
 [project.scripts]

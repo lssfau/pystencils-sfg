@@ -74,6 +74,7 @@ find_package( PystencilsSfg )
 Make sure to set the `Python_ROOT_DIR` cache variable to point to the correct Python interpreter
 (i.e. the virtual environment you have installed *pystencils-sfg* into).
 
+(cmake_add_generator_scripts)=
 ### Add generator scripts
 
 The primary interaction point in CMake is the function `pystencilssfg_generate_target_sources`,
@@ -85,6 +86,7 @@ pystencilssfg_generate_target_sources( <target>
     [DEPENDS dependency1.py [dependency2.py...]]
     [FILE_EXTENSIONS <header-extension> <impl-extension>]
     [OUTPUT_MODE <standalone|inline|header-only>]
+    [CONFIG_MODULE <path-to-config-module.py>]
 )
 ```
 
@@ -97,6 +99,9 @@ The function takes the following options:
  - `DEPENDS`: A list of dependencies for the generator scripts
  - `FILE_EXTENSION`: The desired extensions for the generated files
  - `OUTPUT_MODE`: Sets the output mode of the code generator; see {any}`SfgConfig.output_mode`.
+ - `CONFIG_MODULE`: Set the configuration module for all scripts registered with this call.
+   If set, this overrides the value of `PystencilsSfg_CONFIG_MODULE`
+   in the current scope (see [](#cmake_set_config_module))
 
 ### Include generated files
 
@@ -110,9 +115,13 @@ path, such that generated header files for a target `<target>` may be included v
 (cmake_set_config_module)=
 ### Set a Configuration Module
 
-To specify a [configuration module](#config_module) for your project,
-set the scoped variable `PystencilsSfg_CONFIG_MODULE` to point at the respective Python file.
-The pystencils-sfg CMake system will then pass that module to each generator script invocation.
+There are two ways of specifying a [configuration module](#config_module) for generator scripts
+registered with CMake:
+- To set a configuration module for scripts registered with a single call to `pystencilssfg_generate_target_sources`,
+  use the `CONFIG_MODULE` function parameter (see [](#cmake_add_generator_scripts)).
+- To set a config module for all generator scripts within the current CMake directory and its subdirectories,
+  set the scoped variable `PystencilsSfg_CONFIG_MODULE` to point at the respective Python file, e.g.
+  `set( PystencilsSfg_CONFIG_MODULE ProjectConfig.py )`.
 
 You might want to populate your configuration module with information about the current
 build setup and environment.
