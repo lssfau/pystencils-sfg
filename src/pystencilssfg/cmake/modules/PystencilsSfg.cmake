@@ -20,6 +20,9 @@ function(_pssfg_add_gen_source target script)
                     OUTPUT_VARIABLE generatedSources RESULT_VARIABLE _pssfg_result
                     ERROR_VARIABLE _pssfg_stderr)
 
+    execute_process(COMMAND ${Python_EXECUTABLE} -c "from pystencils.include import get_pystencils_include_path; print(get_pystencils_include_path(), end='')"
+                    OUTPUT_VARIABLE _Pystencils_INCLUDE_DIR)
+
     if(NOT (${_pssfg_result} EQUAL 0))
         message( FATAL_ERROR ${_pssfg_stderr} )
     endif()
@@ -37,7 +40,7 @@ function(_pssfg_add_gen_source target script)
                        WORKING_DIRECTORY "${generatedSourcesDir}")
 
     target_sources(${target} PRIVATE ${generatedSourcesAbsolute})
-    target_include_directories(${target} PRIVATE ${PystencilsSfg_GENERATED_SOURCES_DIR})
+    target_include_directories(${target} PRIVATE ${PystencilsSfg_GENERATED_SOURCES_DIR} ${_Pystencils_INCLUDE_DIR})
 endfunction()
 
 
