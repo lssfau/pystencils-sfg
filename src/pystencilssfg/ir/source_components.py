@@ -7,10 +7,7 @@ from dataclasses import replace
 from itertools import chain
 
 from pystencils import CreateKernelConfig, create_kernel, Field
-from pystencils.backend.kernelfunction import (
-    KernelFunction,
-    KernelParameter,
-)
+from pystencils.codegen import Kernel, Parameter
 from pystencils.types import PsType, PsCustomType
 
 from ..lang import SfgVar, HeaderFile, void
@@ -68,7 +65,7 @@ class SfgKernelNamespace:
     def __init__(self, ctx: SfgContext, name: str):
         self._ctx = ctx
         self._name = name
-        self._kernel_functions: dict[str, KernelFunction] = dict()
+        self._kernel_functions: dict[str, Kernel] = dict()
 
     @property
     def name(self):
@@ -78,7 +75,7 @@ class SfgKernelNamespace:
     def kernel_functions(self):
         yield from self._kernel_functions.values()
 
-    def get_kernel_function(self, khandle: SfgKernelHandle) -> KernelFunction:
+    def get_kernel_function(self, khandle: SfgKernelHandle) -> Kernel:
         if khandle.kernel_namespace is not self:
             raise ValueError(
                 f"Kernel handle does not belong to this namespace: {khandle}"
@@ -86,7 +83,7 @@ class SfgKernelNamespace:
 
         return self._kernel_functions[khandle.kernel_name]
 
-    def add(self, kernel: KernelFunction, name: str | None = None):
+    def add(self, kernel: Kernel, name: str | None = None):
         """Adds an existing pystencils AST to this namespace.
         If a name is specified, the AST's function name is changed."""
         if name is not None:
@@ -142,7 +139,7 @@ class SfgKernelHandle:
         ctx: SfgContext,
         name: str,
         namespace: SfgKernelNamespace,
-        parameters: Sequence[KernelParameter],
+        parameters: Sequence[Parameter],
     ):
         self._ctx = ctx
         self._name = name
@@ -186,11 +183,11 @@ class SfgKernelHandle:
     def fields(self):
         return self._fields
 
-    def get_kernel_function(self) -> KernelFunction:
+    def get_kernel_function(self) -> Kernel:
         return self._namespace.get_kernel_function(self)
 
 
-SymbolLike_T = TypeVar("SymbolLike_T", bound=KernelParameter)
+SymbolLike_T = TypeVar("SymbolLike_T", bound=Parameter)
 
 
 class SfgKernelParamVar(SfgVar):
@@ -198,12 +195,12 @@ class SfgKernelParamVar(SfgVar):
 
     """Cast pystencils- or SymPy-native symbol-like objects as a `SfgVar`."""
 
-    def __init__(self, param: KernelParameter):
+    def __init__(self, param: Parameter):
         self._param = param
         super().__init__(param.name, param.dtype)
 
     @property
-    def wrapped(self) -> KernelParameter:
+    def wrapped(self) -> Parameter:
         return self._param
 
     def _args(self):

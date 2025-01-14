@@ -6,7 +6,7 @@ import sympy as sp
 from functools import reduce
 
 from pystencils import Field
-from pystencils.backend import KernelFunction
+from pystencils.codegen import Kernel
 from pystencils.types import (
     create_type,
     UserTypeSpec,
@@ -237,7 +237,7 @@ class SfgBasicComposer(SfgIComposer):
         return cls
 
     def kernel_function(
-        self, name: str, ast_or_kernel_handle: KernelFunction | SfgKernelHandle
+        self, name: str, ast_or_kernel_handle: Kernel | SfgKernelHandle
     ):
         """Create a function comprising just a single kernel call.
 
@@ -247,7 +247,7 @@ class SfgBasicComposer(SfgIComposer):
         if self._ctx.get_function(name) is not None:
             raise ValueError(f"Function {name} already exists.")
 
-        if isinstance(ast_or_kernel_handle, KernelFunction):
+        if isinstance(ast_or_kernel_handle, Kernel):
             khandle = self._ctx.default_kernel_namespace.add(ast_or_kernel_handle)
             tree = SfgKernelCallNode(khandle)
         elif isinstance(ast_or_kernel_handle, SfgKernelHandle):

@@ -3,7 +3,7 @@ from __future__ import annotations
 from textwrap import indent
 from itertools import chain, repeat, cycle
 
-from pystencils import KernelFunction
+from pystencils.codegen import Kernel
 from pystencils.backend.emission import emit_code
 
 from ..context import SfgContext
@@ -233,8 +233,8 @@ class SfgImplPrinter(SfgGeneralPrinter):
         code += f"\n}} // namespace {kns.name}\n"
         return code
 
-    @visit.case(KernelFunction)
-    def kernel(self, kfunc: KernelFunction) -> str:
+    @visit.case(Kernel)
+    def kernel(self, kfunc: Kernel) -> str:
         return emit_code(kfunc)
 
     @visit.case(SfgFunction)
