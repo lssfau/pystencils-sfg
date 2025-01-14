@@ -4,44 +4,31 @@ stages:
   - "Documentation"
   - deploy
 
-linter:
-  stage: "Code Quality"
-  needs: []
-  except:
-    variables:
-      - $ENABLE_NIGHTLY_BUILDS
-  image: i10git.cs.fau.de:5005/pycodegen/pycodegen/full
-  script:
-    - flake8 src/pystencilssfg
+.nox-base:
+  image: i10git.cs.fau.de:5005/pycodegen/pycodegen/nox:alpine
   tags:
     - docker
+
+linter:
+  extends: .nox-base
+  stage: "Code Quality"
+  needs: []
+  script:
+    - nox --session lint
 
 typechecker:
+  extends: .nox-base
   stage: "Code Quality"
   needs: []
-  except:
-    variables:
-      - $ENABLE_NIGHTLY_BUILDS
-  image: i10git.cs.fau.de:5005/pycodegen/pycodegen/full
   script:
-    - pip install mypy
-    - mypy src/pystencilssfg 
-  tags:
-    - docker
+    - nox --session typecheck
 
 testsuite:
+  extends: .nox-base
   stage: "Tests"
-  image: i10git.cs.fau.de:5005/pycodegen/pycodegen/full
   needs: []
-  tags:
-    - docker
-  before_script:
-    - pip install "git+https://i10git.cs.fau.de/pycodegen/pystencils.git@v2.0-dev"
-    - pip install -e .[tests]
   script:
-    - pytest -v --cov=src/pystencilssfg --cov-report=term --cov-config=pyproject.toml
-    - coverage html
-    - coverage xml
+    - nox --session testsuite
   coverage: '/TOTAL.*\s+(\d+%)$/'
   artifacts:
     when: always
@@ -54,23 +41,17 @@ testsuite:
         path: coverage.xml
 
 build-documentation:
+  extends: .nox-base
   stage: "Documentation"
-  image: i10git.cs.fau.de:5005/pycodegen/pycodegen/full
   needs: []
-  before_script:
-    - pip install "git+https://i10git.cs.fau.de/pycodegen/pystencils.git@v2.0-dev"
-    - pip install -e .[docs]
   script:
-    - cd docs
-    - make html
-  tags:
-    - docker
+    - nox --session docs
   artifacts:
     paths:
       - docs/build/html
 
 pages:
-  image: i10git.cs.fau.de:5005/pycodegen/pycodegen/full
+  image: alpine:latest
   stage: deploy
   script:
     - ls -l

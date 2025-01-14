@@ -23,10 +23,15 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project.optional-dependencies]
-tests = [
-    "flake8>=6.1.0",
-    "mypy>=1.7.0",
+dev = [
+    "flake8",
+    "mypy",
     "black",
+    "clang-format",
+]
+testsuite = [
+    "pytest",
+    "pytest-cov",
     "pyyaml",
     "requests",
     "fasteners",
@@ -60,7 +65,7 @@ omit = [
 
 [tool.coverage.report]
 exclude_also = [
-    "\\.\\.\\.",
+    "\\.\\.\\.\n",
     "if TYPE_CHECKING:",
     "@(abc\\.)?abstractmethod",
 ]
