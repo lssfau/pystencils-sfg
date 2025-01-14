@@ -10,7 +10,7 @@ import sympy as sp
 
 from pystencils import Field
 from pystencils.types import deconstify, PsType
-from pystencils.backend.properties import FieldBasePtr, FieldShape, FieldStride
+from pystencils.codegen.properties import FieldBasePtr, FieldShape, FieldStride
 
 from ..exceptions import SfgException
 

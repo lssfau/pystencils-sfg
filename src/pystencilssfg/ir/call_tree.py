@@ -226,10 +226,10 @@ class SfgCudaKernelInvocation(SfgCallTreeLeaf):
         depends: set[SfgVar],
     ):
         from pystencils import Target
-        from pystencils.backend.kernelfunction import GpuKernelFunction
+        from pystencils.codegen import GpuKernel
 
         func = kernel_handle.get_kernel_function()
-        if not (isinstance(func, GpuKernelFunction) and func.target == Target.CUDA):
+        if not (isinstance(func, GpuKernel) and func.target == Target.CUDA):
             raise ValueError(
                 "An `SfgCudaKernelInvocation` node can only call a CUDA kernel."
             )
