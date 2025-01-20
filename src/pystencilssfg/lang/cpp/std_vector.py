@@ -1,7 +1,7 @@
 from pystencils.field import Field
 from pystencils.types import UserTypeSpec, create_type, PsType
 
-from ...lang import SrcField, SrcVector, AugExpr, IFieldExtraction, cpptype, Ref
+from ...lang import SrcField, SrcVector, AugExpr, IFieldExtraction, cpptype
 
 
 class StdVector(SrcVector, SrcField):
@@ -15,9 +15,7 @@ class StdVector(SrcVector, SrcField):
         const: bool = False,
     ):
         T = create_type(T)
-        dtype = self._template(T=T, const=const)
-        if ref:
-            dtype = Ref(dtype)
+        dtype = self._template(T=T, const=const, ref=ref)
         super().__init__(dtype)
 
         self._element_type = T

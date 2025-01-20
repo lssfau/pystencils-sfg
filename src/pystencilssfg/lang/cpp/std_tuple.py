@@ -2,7 +2,7 @@ from typing import Sequence
 
 from pystencils.types import UserTypeSpec, create_type
 
-from ...lang import SrcVector, AugExpr, cpptype, Ref
+from ...lang import SrcVector, AugExpr, cpptype
 
 
 class StdTuple(SrcVector):
@@ -18,10 +18,7 @@ class StdTuple(SrcVector):
         self._length = len(element_types)
         elt_type_strings = tuple(t.c_string() for t in self._element_types)
 
-        dtype = self._template(ts=", ".join(elt_type_strings), const=const)
-        if ref:
-            dtype = Ref(dtype)
-
+        dtype = self._template(ts=", ".join(elt_type_strings), const=const, ref=ref)
         super().__init__(dtype)
 
     def extract_component(self, coordinate: int) -> AugExpr:

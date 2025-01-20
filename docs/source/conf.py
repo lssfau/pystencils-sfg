@@ -24,7 +24,7 @@ html_title = f"pystencils-sfg v{version} Documentation"
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    "myst_parser",
+    "myst_nb",
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
     "sphinx.ext.autosummary",
@@ -37,16 +37,8 @@ extensions = [
 
 templates_path = ["_templates"]
 exclude_patterns = []
-source_suffix = {
-    ".rst": "restructuredtext",
-    ".md": "markdown",
-}
 master_doc = "index"
 nitpicky = True
-myst_enable_extensions = [
-    "colon_fence",
-    "dollarmath"
-]
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -88,6 +80,15 @@ from pystencilssfg import SfgContext, SfgComposer
 sfg = SfgComposer(SfgContext())
 '''
 
+
+# -- Options for MyST / MyST-NB ----------------------------------------------
+
+nb_execution_mode = "cache"  # do not execute notebooks by default
+
+myst_enable_extensions = [
+    "dollarmath",
+    "colon_fence",
+]
 
 #   Prepare code generation examples
 

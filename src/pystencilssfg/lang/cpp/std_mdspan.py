@@ -11,7 +11,7 @@ from pystencils.types import (
 
 from pystencilssfg.lang.expressions import AugExpr
 
-from ...lang import SrcField, IFieldExtraction, cpptype, Ref, HeaderFile, ExprLike
+from ...lang import SrcField, IFieldExtraction, cpptype, HeaderFile, ExprLike
 
 
 class StdMdspan(SrcField):
@@ -111,11 +111,8 @@ class StdMdspan(SrcField):
             layout_policy = f"{self._namespace}::{layout_policy}"
 
         dtype = self._template(
-            T=T, extents=extents_str, layout_policy=layout_policy, const=const
+            T=T, extents=extents_str, layout_policy=layout_policy, const=const, ref=ref
         )
-
-        if ref:
-            dtype = Ref(dtype)
         super().__init__(dtype)
 
         self._extents_type = extents_str

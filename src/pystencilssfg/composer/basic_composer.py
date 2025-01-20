@@ -7,13 +7,7 @@ from functools import reduce
 
 from pystencils import Field
 from pystencils.codegen import Kernel
-from pystencils.types import (
-    create_type,
-    UserTypeSpec,
-    PsCustomType,
-    PsPointerType,
-    PsType,
-)
+from pystencils.types import create_type, UserTypeSpec
 
 from ..context import SfgContext
 from .custom import CustomGenerator
@@ -324,30 +318,6 @@ class SfgBasicComposer(SfgIComposer):
     def require(self, *incls: str | HeaderFile) -> SfgRequireIncludes:
         """Use inside a function body to require the inclusion of headers."""
         return SfgRequireIncludes((HeaderFile.parse(incl) for incl in incls))
-
-    def cpptype(
-        self,
-        typename: UserTypeSpec,
-        ptr: bool = False,
-        ref: bool = False,
-        const: bool = False,
-    ) -> PsType:
-        if ptr and ref:
-            raise SfgException("Create either a pointer, or a ref type, not both!")
-
-        ref_qual = "&" if ref else ""
-        try:
-            base_type = create_type(typename)
-        except ValueError:
-            if not isinstance(typename, str):
-                raise ValueError(f"Could not parse type: {typename}")
-
-            base_type = PsCustomType(typename + ref_qual, const=const)
-
-        if ptr:
-            return PsPointerType(base_type)
-        else:
-            return base_type
 
     def var(self, name: str, dtype: UserTypeSpec) -> AugExpr:
         """Create a variable with given name and data type."""

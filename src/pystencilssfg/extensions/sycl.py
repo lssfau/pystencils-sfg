@@ -57,9 +57,7 @@ class SyclRange(AugExpr):
     _template = cpptype("sycl::range< {dims} >", "<sycl/sycl.hpp>")
 
     def __init__(self, dims: int, const: bool = False, ref: bool = False):
-        dtype = self._template(dims=dims, const=const)
-        if ref:
-            dtype = Ref(dtype)
+        dtype = self._template(dims=dims, const=const, ref=ref)
         super().__init__(dtype)
 
 

@@ -16,7 +16,7 @@ with SourceFileGenerator() as sfg:
             .init(y_)(y)
             .init(z_)(z),
 
-            sfg.method("getX", returns="const int64_t &", const=True, inline=True)(
+            sfg.method("getX", returns="const int64_t", const=True, inline=True)(
                 "return this->x_;"
             )
         ),

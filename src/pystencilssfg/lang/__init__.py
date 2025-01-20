@@ -10,6 +10,7 @@ from .expressions import (
     asvar,
     depends,
     includes,
+    CppClass,
     IFieldExtraction,
     SrcField,
     SrcVector,
@@ -32,7 +33,8 @@ __all__ = [
     "SrcField",
     "SrcVector",
     "cpptype",
+    "CppClass",
     "void",
     "Ref",
-    "strip_ptr_ref"
+    "strip_ptr_ref",
 ]
