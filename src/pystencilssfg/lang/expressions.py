@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Iterable, TypeAlias, Any
+from typing import Iterable, TypeAlias, Any, cast
 from itertools import chain
 from abc import ABC, abstractmethod
 
@@ -10,11 +10,12 @@ from pystencils.types import PsType, UserTypeSpec, create_type
 
 from ..exceptions import SfgException
 from .headers import HeaderFile
-from .types import strip_ptr_ref, CppType
+from .types import strip_ptr_ref, CppType, CppTypeFactory
 
 __all__ = [
     "SfgVar",
     "AugExpr",
+    "CppClass",
     "VarLike",
     "ExprLike",
     "asvar",
@@ -147,7 +148,7 @@ class VarExpr(DependentExpression):
         incls: Iterable[HeaderFile]
         match base_type:
             case CppType():
-                incls = base_type.includes
+                incls = base_type.class_includes
             case _:
                 incls = (
                     HeaderFile.parse(header) for header in var.dtype.required_headers
@@ -220,7 +221,13 @@ class AugExpr:
         """Create a new `AugExpr` by combining existing expressions."""
         return AugExpr().bind(fmt, *deps, **kwdeps)
 
-    def bind(self, fmt: str | AugExpr, *deps, **kwdeps):
+    def bind(
+        self,
+        fmt: str | AugExpr,
+        *deps,
+        require_headers: Iterable[str | HeaderFile] = (),
+        **kwdeps,
+    ):
         """Bind an unbound `AugExpr` instance to an expression."""
         if isinstance(fmt, AugExpr):
             if bool(deps) or bool(kwdeps):
@@ -232,7 +239,7 @@ class AugExpr:
             self._bind(fmt._bound)
         else:
             dependencies: set[SfgVar] = set()
-            incls: set[HeaderFile] = set()
+            incls: set[HeaderFile] = set(HeaderFile.parse(h) for h in require_headers)
 
             from pystencils.sympyextensions import is_constant
 
@@ -308,6 +315,40 @@ class AugExpr:
 
     def is_bound(self) -> bool:
         return self._bound is not None
+
+
+class CppClass(AugExpr):
+    """Convenience base class for C++ API mirroring.
+
+    Example:
+        To reflect a C++ class (template) in pystencils-sfg, you may create a subclass
+        of `CppClass` like this:
+
+        >>> class MyClassTemplate(CppClass):
+        ...     template = lang.cpptype("mynamespace::MyClassTemplate< {T} >", "MyHeader.hpp")
+
+
+        Then use `AugExpr` initialization and binding to create variables or expressions with
+        this class:
+
+        >>> var = MyClassTemplate(T="float").var("myObj")
+        >>> var
+        myObj
+
+        >>> str(var.dtype).strip()
+        'mynamespace::MyClassTemplate< float >'
+    """
+
+    template: CppTypeFactory
+
+    def __init__(self, *args, const: bool = False, ref: bool = False, **kwargs):
+        dtype = self.template(*args, **kwargs, const=const, ref=ref)
+        super().__init__(dtype)
+
+    def ctor_bind(self, *args):
+        fstr = self.get_dtype().c_string() + "{{" + ", ".join(["{}"] * len(args)) + "}}"
+        dtype = cast(CppType, self.get_dtype())
+        return self.bind(fstr, *args, require_headers=dtype.includes)
 
 
 _VarLike = (AugExpr, SfgVar, TypedSymbol)
@@ -408,7 +449,11 @@ def includes(expr: ExprLike) -> set[HeaderFile]:
 
     match expr:
         case SfgVar(_, dtype):
-            return set(HeaderFile.parse(h) for h in dtype.required_headers)
+            match dtype:
+                case CppType():
+                    return set(dtype.includes)
+                case _:
+                    return set(HeaderFile.parse(h) for h in dtype.required_headers)
         case TypedSymbol():
             return includes(asvar(expr))
         case str():
@@ -424,16 +469,13 @@ class IFieldExtraction(ABC):
     from high-level data structures."""
 
     @abstractmethod
-    def ptr(self) -> AugExpr:
-        ...
+    def ptr(self) -> AugExpr: ...
 
     @abstractmethod
-    def size(self, coordinate: int) -> AugExpr | None:
-        ...
+    def size(self, coordinate: int) -> AugExpr | None: ...
 
     @abstractmethod
-    def stride(self, coordinate: int) -> AugExpr | None:
-        ...
+    def stride(self, coordinate: int) -> AugExpr | None: ...
 
 
 class SrcField(AugExpr):
@@ -444,8 +486,7 @@ class SrcField(AugExpr):
     """
 
     @abstractmethod
-    def get_extraction(self) -> IFieldExtraction:
-        ...
+    def get_extraction(self) -> IFieldExtraction: ...
 
 
 class SrcVector(AugExpr, ABC):
@@ -456,5 +497,4 @@ class SrcVector(AugExpr, ABC):
     """
 
     @abstractmethod
-    def extract_component(self, coordinate: int) -> AugExpr:
-        ...
+    def extract_component(self, coordinate: int) -> AugExpr: ...

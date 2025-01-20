@@ -1,7 +1,7 @@
 from pystencils.field import Field
 from pystencils.types import UserTypeSpec, create_type, PsType
 
-from ...lang import SrcField, IFieldExtraction, AugExpr, cpptype, Ref
+from ...lang import SrcField, IFieldExtraction, AugExpr, cpptype
 
 
 class StdSpan(SrcField):
@@ -9,10 +9,7 @@ class StdSpan(SrcField):
 
     def __init__(self, T: UserTypeSpec, ref=False, const=False):
         T = create_type(T)
-        dtype = self._template(T=T, const=const)
-        if ref:
-            dtype = Ref(dtype)
-
+        dtype = self._template(T=T, const=const, ref=ref)
         self._element_type = T
         super().__init__(dtype)
 

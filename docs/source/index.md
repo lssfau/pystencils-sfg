@@ -6,6 +6,7 @@
 :caption: User Guide
 
 usage/generator_scripts
+C++ API Modelling <usage/api_modelling>
 usage/project_integration
 usage/tips_n_tricks
 ```

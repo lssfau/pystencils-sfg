@@ -166,7 +166,7 @@ class SfgHeaderPrinter(SfgGeneralPrinter):
 
     @visit.case(SfgMethod)
     def sfg_method(self, method: SfgMethod):
-        code = f"{method.return_type} {method.name} ({self.param_list(method)})"
+        code = f"{method.return_type.c_string()} {method.name} ({self.param_list(method)})"
         code += "const" if method.const else ""
         if method.inline:
             code += (

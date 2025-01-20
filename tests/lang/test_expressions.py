@@ -1,11 +1,12 @@
 import pytest
 
 from pystencilssfg import SfgException
-from pystencilssfg.lang import asvar, SfgVar, AugExpr, cpptype, HeaderFile
+from pystencilssfg.lang import asvar, SfgVar, AugExpr, cpptype, HeaderFile, CppClass
 
 import sympy as sp
 
 from pystencils import TypedSymbol, DynamicType
+from pystencils.types import PsCustomType
 
 
 def test_asvar():
@@ -103,3 +104,17 @@ def test_headers():
 
     expr = AugExpr().bind("std::get< int >({})", var)
     assert expr.includes == {HeaderFile("tuple", system_header=True)}
+
+
+def test_cppclass():
+    class MyClass(CppClass):
+        template = cpptype("mynamespace::MyClass< {T} >", "MyHeader.hpp")
+
+        def ctor(self, arg: AugExpr):
+            return self.ctor_bind(arg)
+
+    unbound = MyClass(T="bogus")
+    assert unbound.get_dtype() == MyClass.template(T="bogus")
+
+    ctor_expr = unbound.ctor(AugExpr(PsCustomType("bogus")).var("foo"))
+    assert str(ctor_expr).strip() == r"mynamespace::MyClass< bogus >{foo}"

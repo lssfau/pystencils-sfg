@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Sequence
 
-from pystencils.types import PsCustomType, UserTypeSpec
+from pystencils.types import PsCustomType, UserTypeSpec, create_type
 
 from ..lang import (
     _VarLike,
@@ -177,7 +177,7 @@ class SfgClassComposer(SfgComposerMixIn):
             return SfgMethod(
                 name,
                 tree,
-                return_type=self._composer.cpptype(returns),
+                return_type=create_type(returns),
                 inline=inline,
                 const=const,
             )

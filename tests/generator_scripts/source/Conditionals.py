@@ -1,4 +1,5 @@
 from pystencilssfg import SourceFileGenerator
+from pystencils.types import PsCustomType
 
 with SourceFileGenerator() as sfg:
     sfg.namespace("gen")
@@ -6,7 +7,7 @@ with SourceFileGenerator() as sfg:
     sfg.include("<iostream>")
     sfg.code(r"enum class Noodles { RIGATONI, RAMEN, SPAETZLE, SPAGHETTI };")
 
-    noodle = sfg.var("noodle", sfg.cpptype("Noodles"))
+    noodle = sfg.var("noodle", PsCustomType("Noodles"))
 
     sfg.function("printOpinion")(
         sfg.switch(noodle)

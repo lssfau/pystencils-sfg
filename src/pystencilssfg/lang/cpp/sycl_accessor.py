@@ -3,7 +3,7 @@ from ...lang import SrcField, IFieldExtraction
 from pystencils import Field
 from pystencils.types import UserTypeSpec, create_type
 
-from ...lang import AugExpr, cpptype, Ref
+from ...lang import AugExpr, cpptype
 
 
 class SyclAccessor(SrcField):
@@ -29,9 +29,7 @@ class SyclAccessor(SrcField):
         T = create_type(T)
         if dimensions > 3:
             raise ValueError("sycl accessors can only have dims 1, 2 or 3")
-        dtype = self._template(T=T, dims=dimensions, const=const)
-        if ref:
-            dtype = Ref(dtype)
+        dtype = self._template(T=T, dims=dimensions, const=const, ref=ref)
 
         super().__init__(dtype)
 
