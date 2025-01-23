@@ -361,7 +361,7 @@ class CommandLineParameters:
         extensions = tuple((ext[1:] if ext[0] == "." else ext) for ext in extensions)
 
         HEADER_FILE_EXTENSIONS = {"h", "hpp", "hxx", "h++", "cuh"}
-        IMPL_FILE_EXTENSIONS = {"c", "cpp", "cxx", "c++", "cu", ".impl.h", "ipp"}
+        IMPL_FILE_EXTENSIONS = {"c", "cpp", "cxx", "c++", "cu", ".impl.h", "ipp", "hip"}
 
         for ext in extensions:
             if ext in HEADER_FILE_EXTENSIONS:
