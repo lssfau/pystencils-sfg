@@ -23,12 +23,10 @@ typechecker:
   script:
     - nox --session typecheck
 
-testsuite:
+.testsuite-base:
   extends: .nox-base
   stage: "Tests"
   needs: []
-  script:
-    - nox --session testsuite
   coverage: '/TOTAL.*\s+(\d+%)$/'
   artifacts:
     when: always
@@ -39,6 +37,16 @@ testsuite:
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
+
+"testsuite-py3.10":
+  extends: .testsuite-base
+  script:
+    - nox --session testsuite-3.10
+
+"testsuite-py3.13":
+  extends: .testsuite-base
+  script:
+    - nox --session testsuite-3.13
 
 build-documentation:
   extends: .nox-base
