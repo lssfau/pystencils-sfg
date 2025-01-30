@@ -5,6 +5,10 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 
 find_package( PystencilsSfg REQUIRED )
 
+if(NOT ${PystencilsSfg_FOUND})
+    message( FATAL_ERROR "PystencilsSfg_FOUND was not set even though find_package returned successfully. This is an error." )
+endif()
+
 set( UseGlobalCfgModule OFF CACHE BOOL "Specify config module globally" )
 set( UseLocalCfgModule OFF CACHE BOOL "Specify config module locally" )
 
@@ -26,3 +30,17 @@ else()
         SCRIPTS GenTest.py
     )
 endif()
+
+pystencilssfg_generate_target_sources(
+    TestApp
+    SCRIPTS CliTest.py
+    SCRIPT_ARGS apples bananas unicorns
+    OUTPUT_MODE header-only
+)
+
+pystencilssfg_generate_target_sources(
+    TestApp
+    SCRIPTS CustomDirTest.py
+    OUTPUT_DIRECTORY my-output
+    OUTPUT_MODE header-only
+)

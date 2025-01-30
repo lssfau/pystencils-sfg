@@ -77,9 +77,9 @@ class ClangFormatOptions(ConfigBase):
     """Options affecting the invocation of ``clang-format`` for automatic code formatting."""
 
     code_style: BasicOption[str] = BasicOption("file")
-    """Code style to be used by clang-format. Passed verbatim to `--style` argument of the clang-format CLI.
+    """Code style to be used by clang-format. Passed verbatim to ``--style`` argument of the clang-format CLI.
 
-    Similar to clang-format itself, the default value is `file`, such that a `.clang-format` file found in the build
+    Similar to clang-format itself, the default value is ``file``, such that a ``.clang-format`` file found in the build
     tree will automatically be used.
     """
 

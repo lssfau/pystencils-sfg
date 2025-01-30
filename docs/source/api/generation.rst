@@ -30,7 +30,3 @@ Categories, Parameter Types, and Special Values
 .. autoclass:: ClangFormatOptions
     :members:
 
-Option Descriptors
-------------------
-
-.. autoclass:: Option

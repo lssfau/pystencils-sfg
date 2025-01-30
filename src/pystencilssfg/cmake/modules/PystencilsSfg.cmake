@@ -1,27 +1,37 @@
+#[[
+pystencils-sfg CMake module.
 
-set(PystencilsSfg_GENERATED_SOURCES_DIR "${CMAKE_BINARY_DIR}/sfg_sources" CACHE PATH "Output directory for genenerated sources" )
+Do not include this module directly; instead use the CMake find-module of pystencils-sfg
+to dynamically locate it.
+#]]
 
-mark_as_advanced(PystencilsSfg_GENERATED_SOURCES_DIR)
 
-file(MAKE_DIRECTORY "${PystencilsSfg_GENERATED_SOURCES_DIR}")
+#   This cache variable definition is a duplicate of the one in FindPystencilsSfg.cmake
+if(NOT DEFINED CACHE{PystencilsSfg_PYTHON_INTERPRETER})
+    set(PystencilsSfg_PYTHON_INTERPRETER ${Python_EXECUTABLE} CACHE PATH "Path to the Python executable used to run pystencils-sfg")
+endif()
 
-function(_pssfg_add_gen_source target script)
+if(NOT DEFINED CACHE{_Pystencils_Include_Dir})
+    execute_process(
+        COMMAND ${PystencilsSfg_PYTHON_INTERPRETER} -c "from pystencils.include import get_pystencils_include_path; print(get_pystencils_include_path(), end='')"
+        OUTPUT_VARIABLE _pystencils_includepath_result
+    )
+    set(_Pystencils_Include_Dir ${_pystencils_includepath_result} CACHE PATH "")
+endif()
+
+function(_pssfg_add_gen_source target script outputDirectory)
     set(options)
     set(oneValueArgs)
-    set(multiValueArgs GENERATOR_ARGS DEPENDS)
+    set(multiValueArgs GENERATOR_ARGS USER_ARGS DEPENDS)
 
     cmake_parse_arguments(_pssfg "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    set(generatedSourcesDir ${PystencilsSfg_GENERATED_SOURCES_DIR}/gen/${target})
     get_filename_component(basename ${script} NAME_WLE)
     cmake_path(ABSOLUTE_PATH script OUTPUT_VARIABLE scriptAbsolute)
 
-    execute_process(COMMAND ${Python_EXECUTABLE} -m pystencilssfg list-files "--sep=;" --no-newline ${_pssfg_GENERATOR_ARGS} ${script}
+    execute_process(COMMAND ${PystencilsSfg_PYTHON_INTERPRETER} -m pystencilssfg list-files "--sep=;" --no-newline ${_pssfg_GENERATOR_ARGS} ${script}
                     OUTPUT_VARIABLE generatedSources RESULT_VARIABLE _pssfg_result
                     ERROR_VARIABLE _pssfg_stderr)
-
-    execute_process(COMMAND ${Python_EXECUTABLE} -c "from pystencils.include import get_pystencils_include_path; print(get_pystencils_include_path(), end='')"
-                    OUTPUT_VARIABLE _Pystencils_INCLUDE_DIR)
 
     if(NOT (${_pssfg_result} EQUAL 0))
         message( FATAL_ERROR ${_pssfg_stderr} )
@@ -29,25 +39,24 @@ function(_pssfg_add_gen_source target script)
 
     set(generatedSourcesAbsolute)
     foreach (filename ${generatedSources})
-        list(APPEND generatedSourcesAbsolute "${generatedSourcesDir}/${filename}")
+        list(APPEND generatedSourcesAbsolute "${outputDirectory}/${filename}")
     endforeach ()
 
-    file(MAKE_DIRECTORY "${generatedSourcesDir}")
+    file(MAKE_DIRECTORY ${outputDirectory})
 
     add_custom_command(OUTPUT ${generatedSourcesAbsolute}
                        DEPENDS ${scriptAbsolute} ${_pssfg_DEPENDS}
-                       COMMAND ${Python_EXECUTABLE} ${scriptAbsolute} ${_pssfg_GENERATOR_ARGS}
-                       WORKING_DIRECTORY "${generatedSourcesDir}")
+                       COMMAND ${PystencilsSfg_PYTHON_INTERPRETER} ${scriptAbsolute} ${_pssfg_GENERATOR_ARGS} ${_pssfg_USER_ARGS}
+                       WORKING_DIRECTORY "${outputDirectory}")
 
     target_sources(${target} PRIVATE ${generatedSourcesAbsolute})
-    target_include_directories(${target} PRIVATE ${PystencilsSfg_GENERATED_SOURCES_DIR} ${_Pystencils_INCLUDE_DIR})
 endfunction()
 
 
 function(pystencilssfg_generate_target_sources TARGET)
     set(options)
-    set(oneValueArgs OUTPUT_MODE CONFIG_MODULE)
-    set(multiValueArgs SCRIPTS DEPENDS FILE_EXTENSIONS)
+    set(oneValueArgs OUTPUT_MODE CONFIG_MODULE OUTPUT_DIRECTORY)
+    set(multiValueArgs SCRIPTS DEPENDS FILE_EXTENSIONS SCRIPT_ARGS)
     cmake_parse_arguments(_pssfg "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     set(generatorArgs)
@@ -79,14 +88,39 @@ function(pystencilssfg_generate_target_sources TARGET)
         endif()
     endif()
 
+    if(DEFINED _pssfg_OUTPUT_DIRECTORY)
+        cmake_path(IS_RELATIVE _pssfg_OUTPUT_DIRECTORY _pssfg_output_dir_is_relative)
+        if(_pssfg_output_dir_is_relative)
+            set(outputDirectory ${CMAKE_CURRENT_BINARY_DIR}/${_pssfg_OUTPUT_DIRECTORY})
+        else()
+            set(outputDirectory ${_pssfg_OUTPUT_DIRECTORY})
+        endif()
+    else()
+        set(generatedSourcesIncludeDir ${CMAKE_CURRENT_BINARY_DIR}/_gen/${TARGET})
+        set(outputDirectory ${generatedSourcesIncludeDir}/gen)
+        target_include_directories(${TARGET} PRIVATE ${generatedSourcesIncludeDir})
+    endif()
+
     if(DEFINED _pssfg_FILE_EXTENSIONS)
         string(JOIN "," extensionsString ${_pssfg_FILE_EXTENSIONS})
 
         list(APPEND generatorArgs "--sfg-file-extensions=${extensionsString}")
     endif()
 
+    if(DEFINED _pssfg_SCRIPT_ARGS)
+        #   User has provided custom command line arguments
+        set(userArgs ${_pssfg_SCRIPT_ARGS})
+    endif()
+
     foreach(codegenScript ${_pssfg_SCRIPTS})
-        _pssfg_add_gen_source(${TARGET} ${codegenScript} GENERATOR_ARGS ${generatorArgs} DEPENDS ${_pssfg_DEPENDS})
+        _pssfg_add_gen_source(
+            ${TARGET} ${codegenScript} ${outputDirectory}
+            GENERATOR_ARGS ${generatorArgs}
+            USER_ARGS ${userArgs}
+            DEPENDS ${_pssfg_DEPENDS}
+        )
     endforeach()
+
+    target_include_directories(${TARGET} PRIVATE ${_Pystencils_Include_Dir})
     
 endfunction()
