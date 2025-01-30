@@ -10,6 +10,7 @@
 #   dev environment
 **/.venv
 **/venv
+**/.nox
 
 #   build artifacts
 dist

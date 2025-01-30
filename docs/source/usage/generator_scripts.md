@@ -320,6 +320,7 @@ with the `--help` flag:
 $ python kernels.py --help
 ```
 
+(custom_cli_args)=
 ## Adding Custom Command-Line Options
 
 Sometimes, you might want to add your own command-line options to a generator script
