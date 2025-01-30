@@ -1,6 +1,6 @@
 from ...lang import SrcField, IFieldExtraction
 
-from pystencils import Field
+from pystencils import Field, DynamicType
 from pystencils.types import UserTypeSpec, create_type
 
 from ...lang import AugExpr, cpptype
@@ -74,6 +74,9 @@ class SyclAccessor(SrcField):
     @staticmethod
     def from_field(field: Field, ref: bool = True):
         """Creates a `sycl::accessor &` for a given pystencils field."""
+
+        if isinstance(field.dtype, DynamicType):
+            raise ValueError("Cannot map dynamically typed field to sycl::accessor")
 
         return SyclAccessor(
             field.dtype,

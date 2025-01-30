@@ -1,4 +1,4 @@
-from pystencils.field import Field
+from pystencils import Field, DynamicType
 from pystencils.types import UserTypeSpec, create_type, PsType
 
 from ...lang import SrcField, IFieldExtraction, AugExpr, cpptype
@@ -44,6 +44,9 @@ class StdSpan(SrcField):
             raise ValueError(
                 "Only one-dimensional fields with trivial index dimensions can be mapped onto `std::span`"
             )
+        if isinstance(field.dtype, DynamicType):
+            raise ValueError("Cannot map dynamically typed field to std::span")
+
         return StdSpan(field.dtype, ref=ref, const=const).var(field.name)
 
 
