@@ -1,7 +1,7 @@
 from typing import cast
 from sympy import Symbol
 
-from pystencils import Field
+from pystencils import Field, DynamicType
 from pystencils.types import (
     PsType,
     PsUnsignedIntegerType,
@@ -115,9 +115,14 @@ class StdMdspan(SrcField):
         )
         super().__init__(dtype)
 
+        self._element_type = T
         self._extents_type = extents_str
         self._layout_type = layout_policy
         self._dim = len(extents)
+
+    @property
+    def element_type(self) -> PsType:
+        return self._element_type
 
     @property
     def extents_type(self) -> str:
@@ -166,6 +171,9 @@ class StdMdspan(SrcField):
         const: bool = False,
     ):
         """Creates a `std::mdspan` instance for a given pystencils field."""
+        if isinstance(field.dtype, DynamicType):
+            raise ValueError("Cannot map dynamically typed field to std::mdspan")
+
         extents: list[str | int] = []
 
         for s in field.spatial_shape:

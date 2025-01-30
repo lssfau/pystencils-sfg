@@ -31,6 +31,17 @@ def test_stl_containers():
     assert includes(expr) == {HeaderFile.parse("<span>")}
 
 
+def test_mdspan_from_field():
+    f = ps.fields("f: float32[3D]")
+    f_mdspan = std.mdspan.from_field(f)
+
+    assert f_mdspan.element_type == ps.create_type("float32")
+
+    f = ps.fields("f: dyn[3D]")
+    with pytest.raises(ValueError):
+        f_mdspan = std.mdspan.from_field(f)
+
+
 def test_vector_from_field():
     f = ps.fields("f: float32[1D]")
     f_vec = std.vector.from_field(f)
@@ -49,6 +60,10 @@ def test_vector_from_field():
         std.vector.from_field(f)
 
     f = ps.fields("f(1): float32[2D]")
+    with pytest.raises(ValueError):
+        std.vector.from_field(f)
+
+    f = ps.fields("f(1): dyn[1D]")
     with pytest.raises(ValueError):
         std.vector.from_field(f)
 
@@ -71,5 +86,9 @@ def test_span_from_field():
         std.span.from_field(f)
 
     f = ps.fields("f(1): float32[2D]")
+    with pytest.raises(ValueError):
+        std.span.from_field(f)
+
+    f = ps.fields("f(1): dyn[1D]")
     with pytest.raises(ValueError):
         std.span.from_field(f)

@@ -1,4 +1,4 @@
-from pystencils.field import Field
+from pystencils import Field, DynamicType
 from pystencils.types import UserTypeSpec, create_type, PsType
 
 from ...lang import SrcField, SrcVector, AugExpr, IFieldExtraction, cpptype
@@ -59,7 +59,12 @@ class StdVector(SrcVector, SrcField):
                 f"Cannot create std::vector from more-than-one-dimensional field {field}."
             )
 
-        return StdVector(field.dtype, unsafe=False, ref=ref, const=const).var(field.name)
+        if isinstance(field.dtype, DynamicType):
+            raise ValueError("Cannot map dynamically typed field to std::vector")
+
+        return StdVector(field.dtype, unsafe=False, ref=ref, const=const).var(
+            field.name
+        )
 
 
 def std_vector_ref(field: Field):
