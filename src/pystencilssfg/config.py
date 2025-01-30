@@ -3,101 +3,27 @@ from __future__ import annotations
 from argparse import ArgumentParser
 
 from types import ModuleType
-from typing import Generic, TypeVar, Callable, Any, Sequence
-from abc import ABC
-from dataclasses import dataclass, fields, field
+from typing import Any, Sequence
+from dataclasses import dataclass
 from enum import Enum, auto
 from os import path
 from importlib import util as iutil
 
 
+from pystencils.codegen.config import ConfigBase, BasicOption, Category
+
+
 class SfgConfigException(Exception): ...  # noqa: E701
-
-
-Option_T = TypeVar("Option_T")
-
-
-class Option(Generic[Option_T]):
-    """Option descriptor.
-
-    This descriptor is used to model configuration options.
-    It maintains a default value for the option that is used when no value
-    was specified by the user.
-
-    In configuration options, the value `None` stands for `unset`.
-    It can therefore not be used to set an option to the meaning "not any", or "empty"
-    - for these, special values need to be used.
-    """
-
-    def __init__(
-        self,
-        default: Option_T | None = None,
-        validator: Callable[[Any, Option_T | None], Option_T | None] | None = None,
-    ) -> None:
-        self._default = default
-        self._validator = validator
-        self._name: str
-        self._lookup: str
-
-    def validate(self, validator: Callable[[Any, Any], Any] | None):
-        self._validator = validator
-        return validator
-
-    @property
-    def default(self) -> Option_T | None:
-        return self._default
-
-    def get(self, obj) -> Option_T | None:
-        val = getattr(obj, self._lookup, None)
-        if val is None:
-            return self._default
-        else:
-            return val
-
-    def __set_name__(self, owner, name: str):
-        self._name = name
-        self._lookup = f"_{name}"
-
-    def __get__(self, obj, objtype=None) -> Option_T | None:
-        if obj is None:
-            return None
-
-        return getattr(obj, self._lookup, None)
-
-    def __set__(self, obj, value: Option_T | None):
-        if self._validator is not None:
-            value = self._validator(obj, value)
-        setattr(obj, self._lookup, value)
-
-    def __delete__(self, obj):
-        delattr(obj, self._lookup)
-
-
-class ConfigBase(ABC):
-    def get_option(self, name: str) -> Any:
-        """Get the value set for the specified option, or the option's default value if none has been set."""
-        descr: Option = type(self).__dict__[name]
-        return descr.get(self)
-
-    def override(self, other: ConfigBase):
-        for f in fields(self):  # type: ignore
-            fvalue = getattr(self, f.name)
-            if isinstance(fvalue, ConfigBase):  # type: ignore
-                fvalue.override(getattr(other, f.name))
-            else:
-                new_val = getattr(other, f.name)
-                if new_val is not None:
-                    setattr(self, f.name, new_val)
 
 
 @dataclass
 class FileExtensions(ConfigBase):
-    """Option category containing output file extensions."""
+    """BasicOption category containing output file extensions."""
 
-    header: Option[str] = Option("hpp")
+    header: BasicOption[str] = BasicOption("hpp")
     """File extension for generated header file."""
 
-    impl: Option[str] = Option()
+    impl: BasicOption[str] = BasicOption()
     """File extension for generated implementation file."""
 
     @header.validate
@@ -132,7 +58,7 @@ class OutputMode(Enum):
 class CodeStyle(ConfigBase):
     """Options affecting the code style used by the source file generator."""
 
-    indent_width: Option[int] = Option(2)
+    indent_width: BasicOption[int] = BasicOption(2)
     """The number of spaces successively nested blocks should be indented with"""
 
     #   TODO possible future options:
@@ -150,20 +76,20 @@ class CodeStyle(ConfigBase):
 class ClangFormatOptions(ConfigBase):
     """Options affecting the invocation of ``clang-format`` for automatic code formatting."""
 
-    code_style: Option[str] = Option("file")
+    code_style: BasicOption[str] = BasicOption("file")
     """Code style to be used by clang-format. Passed verbatim to `--style` argument of the clang-format CLI.
 
     Similar to clang-format itself, the default value is `file`, such that a `.clang-format` file found in the build
     tree will automatically be used.
     """
 
-    force: Option[bool] = Option(False)
+    force: BasicOption[bool] = BasicOption(False)
     """If set to ``True``, abort code generation if ``clang-format`` binary cannot be found."""
 
-    skip: Option[bool] = Option(False)
+    skip: BasicOption[bool] = BasicOption(False)
     """If set to ``True``, skip formatting using ``clang-format``."""
 
-    binary: Option[str] = Option("clang-format")
+    binary: BasicOption[str] = BasicOption("clang-format")
     """Path to the clang-format executable"""
 
     @force.validate
@@ -194,7 +120,7 @@ GLOBAL_NAMESPACE = _GlobalNamespace()
 class SfgConfig(ConfigBase):
     """Configuration options for the `SourceFileGenerator`."""
 
-    extensions: FileExtensions = field(default_factory=FileExtensions)
+    extensions: Category[FileExtensions] = Category(FileExtensions())
     """File extensions of the generated files
 
     Options in this category:
@@ -203,7 +129,7 @@ class SfgConfig(ConfigBase):
             FileExtensions.impl
     """
 
-    output_mode: Option[OutputMode] = Option(OutputMode.STANDALONE)
+    output_mode: BasicOption[OutputMode] = BasicOption(OutputMode.STANDALONE)
     """The generator's output mode; defines which files to generate, and the set of legal file extensions.
 
     Possible parameters:
@@ -213,7 +139,7 @@ class SfgConfig(ConfigBase):
             OutputMode.HEADER_ONLY
     """
 
-    outer_namespace: Option[str | _GlobalNamespace] = Option(GLOBAL_NAMESPACE)
+    outer_namespace: BasicOption[str | _GlobalNamespace] = BasicOption(GLOBAL_NAMESPACE)
     """The outermost namespace in the generated file. May be a valid C++ nested namespace qualifier
     (like ``a::b::c``) or `GLOBAL_NAMESPACE` if no outer namespace should be generated.
 
@@ -221,7 +147,7 @@ class SfgConfig(ConfigBase):
         GLOBAL_NAMESPACE
     """
 
-    codestyle: CodeStyle = field(default_factory=CodeStyle)
+    codestyle: Category[CodeStyle] = Category(CodeStyle())
     """Options affecting the code style emitted by pystencils-sfg.
 
     Options in this category:
@@ -229,7 +155,7 @@ class SfgConfig(ConfigBase):
             CodeStyle.indent_width
     """
 
-    clang_format: ClangFormatOptions = field(default_factory=ClangFormatOptions)
+    clang_format: Category[ClangFormatOptions] = Category(ClangFormatOptions())
     """Options governing the code style used by the code generator
 
     Options in this category:
@@ -240,7 +166,7 @@ class SfgConfig(ConfigBase):
             ClangFormatOptions.binary
     """
 
-    output_directory: Option[str] = Option(".")
+    output_directory: BasicOption[str] = BasicOption(".")
     """Directory to which the generated files should be written."""
 
 

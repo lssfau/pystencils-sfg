@@ -11,7 +11,14 @@ def add_pystencils_git(session: nox.Session):
     cache_dir = session.cache_dir
 
     pystencils_dir = cache_dir / "pystencils"
-    if not pystencils_dir.exists():
+    if pystencils_dir.exists():
+        with session.chdir(pystencils_dir):
+            session.run_install(
+                "git",
+                "pull",
+                external=True
+            )
+    else:
         session.run_install(
             "git",
             "clone",
@@ -50,7 +57,7 @@ def typecheck(session: nox.Session):
     session.run("mypy", "src/pystencilssfg")
 
 
-@nox.session(python=["3.10"], tags=["tests"])
+@nox.session(python=["3.10", "3.11", "3.12", "3.13"], tags=["tests"])
 def testsuite(session: nox.Session):
     """Run the testsuite and measure coverage."""
     editable_install(session, ["testsuite"])
