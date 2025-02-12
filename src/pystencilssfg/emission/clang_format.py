@@ -5,14 +5,16 @@ from ..config import ClangFormatOptions
 from ..exceptions import SfgException
 
 
-def invoke_clang_format(code: str, options: ClangFormatOptions) -> str:
+def invoke_clang_format(
+    code: str, options: ClangFormatOptions, sort_includes: str | None = None
+) -> str:
     """Call the `clang-format` command-line tool to format the given code string
     according to the given style arguments.
 
     Args:
         code: Code string to format
-        codestyle: [SfgCodeStyle][pystencilssfg.configuration.SfgCodeStyle] object
-            defining the `clang-format` binary and the desired code style.
+        options: Options controlling the clang-format invocation
+        sort_includes: Option to be passed on to clang-format's ``--sort-includes`` argument
 
     Returns:
         The formatted code, if `clang-format` was run sucessfully.
@@ -31,6 +33,9 @@ def invoke_clang_format(code: str, options: ClangFormatOptions) -> str:
     force = options.get_option("force")
     style = options.get_option("code_style")
     args = [binary, f"--style={style}"]
+
+    if sort_includes is not None:
+        args += ["--sort-includes", sort_includes]
 
     if not shutil.which(binary):
         if force:

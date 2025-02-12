@@ -17,6 +17,17 @@ TestIllegalArgs:
   extra-args: [--sfg-file-extensionss, ".c++,.h++"]
   expect-failure: true
 
+TestIncludeSorting:
+  sfg-args:
+    output-mode: header-only
+  expect-code:
+    hpp:
+      - regex: >-
+          #include\s\<memory>\s*
+          #include\s<vector>\s*
+          #include\s<array>
+        strip-whitespace: true
+
 # Basic Composer Functionality
 
 BasicDefinitions:
@@ -25,7 +36,7 @@ BasicDefinitions:
   expect-code:
     hpp:
       - regex: >-
-          #include\s\"config\.h\"\s*
+          #include\s\"config\.h\"(\s|.)*
           namespace\s+awesome\s+{\s+.+\s+
           #define\sPI\s3\.1415\s+
           using\snamespace\sstd\;\s+
@@ -47,6 +58,10 @@ Conditionals:
         count: 4
       - regex: if\s*\(\s*noodle\s==\sNoodles::RIGATONI\s\|\|\snoodle\s==\sNoodles::SPAGHETTI\s*\)
         count: 1
+
+NestedNamespaces:
+  sfg-args:
+    output-mode: header-only
 
 # Kernel Generation
 

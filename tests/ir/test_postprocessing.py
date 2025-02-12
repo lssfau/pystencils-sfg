@@ -2,7 +2,6 @@ import sympy as sp
 from pystencils import fields, kernel, TypedSymbol, Field, FieldType, create_type
 from pystencils.types import PsCustomType
 
-from pystencilssfg import SfgContext, SfgComposer
 from pystencilssfg.composer import make_sequence
 
 from pystencilssfg.lang import IFieldExtraction, AugExpr
@@ -11,10 +10,7 @@ from pystencilssfg.ir import SfgStatements, SfgSequence
 from pystencilssfg.ir.postprocessing import CallTreePostProcessing
 
 
-def test_live_vars():
-    ctx = SfgContext()
-    sfg = SfgComposer(ctx)
-
+def test_live_vars(sfg):
     f, g = fields("f, g(2): double[2D]")
     x, y = [TypedSymbol(n, "double") for n in "xy"]
     z = sp.Symbol("z")
@@ -42,10 +38,7 @@ def test_live_vars():
     assert free_vars == expected
 
 
-def test_find_sympy_symbols():
-    ctx = SfgContext()
-    sfg = SfgComposer(ctx)
-
+def test_find_sympy_symbols(sfg):
     f, g = fields("f, g(2): double[2D]")
     x, y, z = sp.symbols("x, y, z")
 
@@ -94,7 +87,7 @@ class DemoFieldExtraction(IFieldExtraction):
         return AugExpr.format("{}.stride({})", self.obj, coordinate)
 
 
-def test_field_extraction():
+def test_field_extraction(sfg):
     sx, sy, tx, ty = [
         TypedSymbol(n, create_type("int64")) for n in ("sx", "sy", "tx", "ty")
     ]
@@ -103,8 +96,6 @@ def test_field_extraction():
     @kernel
     def set_constant():
         f.center @= 13.2
-
-    sfg = SfgComposer(SfgContext())
 
     khandle = sfg.kernels.create(set_constant)
 
@@ -129,7 +120,7 @@ def test_field_extraction():
         assert stmt.code_string == line
 
 
-def test_duplicate_field_shapes():
+def test_duplicate_field_shapes(sfg):
     N, tx, ty = [TypedSymbol(n, create_type("int64")) for n in ("N", "tx", "ty")]
     f = Field("f", FieldType.GENERIC, "double", (1, 0), (N, N), (tx, ty))
     g = Field("g", FieldType.GENERIC, "double", (1, 0), (N, N), (tx, ty))
@@ -137,8 +128,6 @@ def test_duplicate_field_shapes():
     @kernel
     def set_constant():
         f.center @= g.center(0)
-
-    sfg = SfgComposer(SfgContext())
 
     khandle = sfg.kernels.create(set_constant)
 

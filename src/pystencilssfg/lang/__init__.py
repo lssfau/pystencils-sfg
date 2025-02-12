@@ -2,6 +2,7 @@ from .headers import HeaderFile
 
 from .expressions import (
     SfgVar,
+    SfgKernelParamVar,
     AugExpr,
     VarLike,
     _VarLike,
@@ -21,6 +22,7 @@ from .types import cpptype, void, Ref, strip_ptr_ref
 __all__ = [
     "HeaderFile",
     "SfgVar",
+    "SfgKernelParamVar",
     "AugExpr",
     "VarLike",
     "_VarLike",

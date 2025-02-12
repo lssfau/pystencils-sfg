@@ -14,23 +14,32 @@ from .call_tree import (
     SfgSwitch,
 )
 
-from .source_components import (
-    SfgHeaderInclude,
-    SfgEmptyLines,
+from .entities import (
+    SfgCodeEntity,
+    SfgNamespace,
+    SfgGlobalNamespace,
     SfgKernelNamespace,
     SfgKernelHandle,
-    SfgKernelParamVar,
     SfgFunction,
     SfgVisibility,
     SfgClassKeyword,
     SfgClassMember,
-    SfgVisibilityBlock,
-    SfgInClassDefinition,
     SfgMemberVariable,
     SfgMethod,
     SfgConstructor,
     SfgClass,
 )
+
+from .syntax import (
+    SfgEntityDecl,
+    SfgEntityDef,
+    SfgVisibilityBlock,
+    SfgNamespaceBlock,
+    SfgClassBody,
+    SfgSourceFileType,
+    SfgSourceFile,
+)
+
 from .analysis import collect_includes
 
 __all__ = [
@@ -47,20 +56,25 @@ __all__ = [
     "SfgBranch",
     "SfgSwitchCase",
     "SfgSwitch",
-    "SfgHeaderInclude",
-    "SfgEmptyLines",
+    "SfgCodeEntity",
+    "SfgNamespace",
+    "SfgGlobalNamespace",
     "SfgKernelNamespace",
     "SfgKernelHandle",
-    "SfgKernelParamVar",
     "SfgFunction",
     "SfgVisibility",
     "SfgClassKeyword",
     "SfgClassMember",
-    "SfgVisibilityBlock",
-    "SfgInClassDefinition",
     "SfgMemberVariable",
     "SfgMethod",
     "SfgConstructor",
     "SfgClass",
-    "collect_includes"
+    "SfgEntityDecl",
+    "SfgEntityDef",
+    "SfgVisibilityBlock",
+    "SfgNamespaceBlock",
+    "SfgClassBody",
+    "SfgSourceFileType",
+    "SfgSourceFile",
+    "collect_includes",
 ]

@@ -1,4 +1,5 @@
 import pytest
+from pathlib import Path
 
 from pystencilssfg.config import (
     SfgConfig,
@@ -86,7 +87,7 @@ def test_from_commandline(sample_config_module):
     cli_args = CommandLineParameters(args)
     cfg = cli_args.get_config()
 
-    assert cfg.output_directory == ".out"
+    assert cfg.output_directory == Path(".out")
     assert cfg.extensions.header == "h++"
     assert cfg.extensions.impl == "c++"
 
@@ -100,7 +101,7 @@ def test_from_commandline(sample_config_module):
     assert cfg.clang_format.code_style == "llvm"
     assert cfg.clang_format.skip is True
     assert (
-        cfg.output_directory == "gen_sources"
+        cfg.output_directory == Path("gen_sources")
     )  # value from config module overridden by commandline
     assert cfg.outer_namespace == "myproject"
     assert cfg.extensions.header == "hpp"

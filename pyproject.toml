@@ -59,6 +59,7 @@ parentdir_prefix = "pystencilssfg-"
 [tool.coverage.run]
 omit = [
     "setup.py",
+    "noxfile.py",
     "src/pystencilssfg/_version.py",
     "integration/*"
 ]
@@ -68,4 +69,5 @@ exclude_also = [
     "\\.\\.\\.\n",
     "if TYPE_CHECKING:",
     "@(abc\\.)?abstractmethod",
+    "assert False"
 ]

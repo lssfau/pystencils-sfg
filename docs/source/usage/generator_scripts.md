@@ -64,7 +64,6 @@ Structure and Verbatim Code:
   SfgBasicComposer.include
   SfgBasicComposer.namespace
   SfgBasicComposer.code
-  SfgBasicComposer.define_once
 ```
 
 Kernels and Kernel Namespaces:

@@ -1,12 +1,10 @@
 import pytest
-from pystencilssfg import SourceFileGenerator
 import pystencilssfg.extensions.sycl as sycl
 import pystencils as ps
-from pystencilssfg import SfgContext
 
 
-def test_parallel_for_1_kernels():
-    sfg = sycl.SyclComposer(SfgContext())
+def test_parallel_for_1_kernels(sfg):
+    sfg = sycl.SyclComposer(sfg)
     data_type = "double"
     dim = 2
     f, g, h, i = ps.fields(f"f,g,h,i:{data_type}[{dim}D]")
@@ -24,8 +22,8 @@ def test_parallel_for_1_kernels():
     )
 
 
-def test_parallel_for_2_kernels():
-    sfg = sycl.SyclComposer(SfgContext())
+def test_parallel_for_2_kernels(sfg):
+    sfg = sycl.SyclComposer(sfg)
     data_type = "double"
     dim = 2
     f, g, h, i = ps.fields(f"f,g,h,i:{data_type}[{dim}D]")
@@ -43,8 +41,8 @@ def test_parallel_for_2_kernels():
     )
 
 
-def test_parallel_for_2_kernels_fail():
-    sfg = sycl.SyclComposer(SfgContext())
+def test_parallel_for_2_kernels_fail(sfg):
+    sfg = sycl.SyclComposer(sfg)
     data_type = "double"
     dim = 2
     f, g = ps.fields(f"f,g:{data_type}[{dim}D]")

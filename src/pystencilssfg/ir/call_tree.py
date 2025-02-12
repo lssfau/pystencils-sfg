@@ -3,11 +3,11 @@ from typing import TYPE_CHECKING, Sequence, Iterable, NewType
 
 from abc import ABC, abstractmethod
 
-from .source_components import SfgKernelHandle
+from .entities import SfgKernelHandle
 from ..lang import SfgVar, HeaderFile
 
 if TYPE_CHECKING:
-    from ..context import SfgContext
+    from ..config import CodeStyle
 
 
 class SfgCallTreeNode(ABC):
@@ -35,7 +35,7 @@ class SfgCallTreeNode(ABC):
         """This node's children"""
 
     @abstractmethod
-    def get_code(self, ctx: SfgContext) -> str:
+    def get_code(self, cstyle: CodeStyle) -> str:
         """Returns the code of this node.
 
         By convention, the code block emitted by this function should not contain a trailing newline.
@@ -75,7 +75,7 @@ class SfgEmptyNode(SfgCallTreeLeaf):
     def __init__(self):
         super().__init__()
 
-    def get_code(self, ctx: SfgContext) -> str:
+    def get_code(self, cstyle: CodeStyle) -> str:
         return ""
 
 
@@ -122,7 +122,7 @@ class SfgStatements(SfgCallTreeLeaf):
     def code_string(self) -> str:
         return self._code_string
 
-    def get_code(self, ctx: SfgContext) -> str:
+    def get_code(self, cstyle: CodeStyle) -> str:
         return self._code_string
 
 
@@ -167,8 +167,8 @@ class SfgSequence(SfgCallTreeNode):
     def __setitem__(self, idx: int, c: SfgCallTreeNode):
         self._children[idx] = c
 
-    def get_code(self, ctx: SfgContext) -> str:
-        return "\n".join(c.get_code(ctx) for c in self._children)
+    def get_code(self, cstyle: CodeStyle) -> str:
+        return "\n".join(c.get_code(cstyle) for c in self._children)
 
 
 class SfgBlock(SfgCallTreeNode):
@@ -184,8 +184,8 @@ class SfgBlock(SfgCallTreeNode):
     def children(self) -> Sequence[SfgCallTreeNode]:
         return (self._seq,)
 
-    def get_code(self, ctx: SfgContext) -> str:
-        seq_code = ctx.codestyle.indent(self._seq.get_code(ctx))
+    def get_code(self, cstyle: CodeStyle) -> str:
+        seq_code = cstyle.indent(self._seq.get_code(cstyle))
 
         return "{\n" + seq_code + "\n}"
 
@@ -208,9 +208,9 @@ class SfgKernelCallNode(SfgCallTreeLeaf):
     def depends(self) -> set[SfgVar]:
         return set(self._kernel_handle.parameters)
 
-    def get_code(self, ctx: SfgContext) -> str:
+    def get_code(self, cstyle: CodeStyle) -> str:
         ast_params = self._kernel_handle.parameters
-        fnc_name = self._kernel_handle.fully_qualified_name
+        fnc_name = self._kernel_handle.fqname
         call_parameters = ", ".join([p.name for p in ast_params])
 
         return f"{fnc_name}({call_parameters});"
@@ -228,8 +228,8 @@ class SfgCudaKernelInvocation(SfgCallTreeLeaf):
         from pystencils import Target
         from pystencils.codegen import GpuKernel
 
-        func = kernel_handle.get_kernel_function()
-        if not (isinstance(func, GpuKernel) and func.target == Target.CUDA):
+        kernel = kernel_handle.kernel
+        if not (isinstance(kernel, GpuKernel) and kernel.target == Target.CUDA):
             raise ValueError(
                 "An `SfgCudaKernelInvocation` node can only call a CUDA kernel."
             )
@@ -245,9 +245,9 @@ class SfgCudaKernelInvocation(SfgCallTreeLeaf):
     def depends(self) -> set[SfgVar]:
         return set(self._kernel_handle.parameters) | self._depends
 
-    def get_code(self, ctx: SfgContext) -> str:
+    def get_code(self, cstyle: CodeStyle) -> str:
         ast_params = self._kernel_handle.parameters
-        fnc_name = self._kernel_handle.fully_qualified_name
+        fnc_name = self._kernel_handle.fqname
         call_parameters = ", ".join([p.name for p in ast_params])
 
         grid_args = [self._num_blocks, self._threads_per_block]
@@ -289,14 +289,14 @@ class SfgBranch(SfgCallTreeNode):
             self._branch_true,
         ) + ((self.branch_false,) if self.branch_false is not None else ())
 
-    def get_code(self, ctx: SfgContext) -> str:
-        code = f"if({self.condition.get_code(ctx)}) {{\n"
-        code += ctx.codestyle.indent(self.branch_true.get_code(ctx))
+    def get_code(self, cstyle: CodeStyle) -> str:
+        code = f"if({self.condition.get_code(cstyle)}) {{\n"
+        code += cstyle.indent(self.branch_true.get_code(cstyle))
         code += "\n}"
 
         if self.branch_false is not None:
             code += "else {\n"
-            code += ctx.codestyle.indent(self.branch_false.get_code(ctx))
+            code += cstyle.indent(self.branch_false.get_code(cstyle))
             code += "\n}"
 
         return code
@@ -327,13 +327,13 @@ class SfgSwitchCase(SfgCallTreeNode):
     def is_default(self) -> bool:
         return self._label == SfgSwitchCase.Default
 
-    def get_code(self, ctx: SfgContext) -> str:
+    def get_code(self, cstyle: CodeStyle) -> str:
         code = ""
         if self._label == SfgSwitchCase.Default:
             code += "default: {\n"
         else:
             code += f"case {self._label}: {{\n"
-        code += ctx.codestyle.indent(self.body.get_code(ctx))
+        code += cstyle.indent(self.body.get_code(cstyle))
         code += "\n}"
         return code
 
@@ -403,8 +403,8 @@ class SfgSwitch(SfgCallTreeNode):
         else:
             self._children[idx] = c
 
-    def get_code(self, ctx: SfgContext) -> str:
-        code = f"switch({self._switch_arg.get_code(ctx)}) {{\n"
-        code += "\n".join(c.get_code(ctx) for c in self._cases)
+    def get_code(self, cstyle: CodeStyle) -> str:
+        code = f"switch({self._switch_arg.get_code(cstyle)}) {{\n"
+        code += "\n".join(c.get_code(cstyle) for c in self._cases)
         code += "}"
         return code
