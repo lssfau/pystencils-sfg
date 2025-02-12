@@ -1,67 +1,97 @@
 from __future__ import annotations
-from typing import Any
 
-from functools import reduce
-
-from ..exceptions import SfgException
 from ..lang import HeaderFile, includes
+from .syntax import (
+    SfgSourceFile,
+    SfgNamespaceElement,
+    SfgClassBodyElement,
+    SfgNamespaceBlock,
+    SfgEntityDecl,
+    SfgEntityDef,
+    SfgClassBody,
+    SfgVisibilityBlock,
+)
 
 
-def collect_includes(obj: Any) -> set[HeaderFile]:
-    from ..context import SfgContext
+def collect_includes(file: SfgSourceFile) -> set[HeaderFile]:
     from .call_tree import SfgCallTreeNode
-    from .source_components import (
+    from .entities import (
+        SfgCodeEntity,
+        SfgKernelHandle,
         SfgFunction,
-        SfgClass,
+        SfgMethod,
+        SfgClassMember,
         SfgConstructor,
         SfgMemberVariable,
-        SfgInClassDefinition,
     )
 
-    match obj:
-        case SfgContext():
-            headers = set()
-            for func in obj.functions():
-                headers |= collect_includes(func)
+    def visit_decl(entity: SfgCodeEntity | SfgClassMember) -> set[HeaderFile]:
+        match entity:
+            case (
+                SfgKernelHandle(_, parameters)
+                | SfgFunction(_, _, parameters)
+                | SfgMethod(_, _, parameters)
+                | SfgConstructor(_, parameters, _, _)
+            ):
+                incls: set[HeaderFile] = set().union(*(includes(p) for p in parameters))
+                if isinstance(entity, (SfgFunction, SfgMethod)):
+                    incls |= includes(entity.return_type)
+                return incls
 
-            for cls in obj.classes():
-                headers |= collect_includes(cls)
+            case SfgMemberVariable():
+                return includes(entity)
 
-            return headers
+            case _:
+                assert False, "unexpected entity"
 
-        case SfgCallTreeNode():
-            return reduce(
-                lambda accu, child: accu | collect_includes(child),
-                obj.children,
-                obj.required_includes,
-            )
+    def walk_syntax(
+        obj: (
+            SfgNamespaceElement
+            | SfgClassBodyElement
+            | SfgVisibilityBlock
+            | SfgCallTreeNode
+        ),
+    ) -> set[HeaderFile]:
+        match obj:
+            case str():
+                return set()
 
-        case SfgFunction(_, tree, parameters):
-            param_headers: set[HeaderFile] = reduce(
-                set.union, (includes(p) for p in parameters), set()
-            )
-            return param_headers | collect_includes(tree)
+            case SfgCallTreeNode():
+                return obj.required_includes.union(
+                    *(walk_syntax(child) for child in obj.children),
+                )
 
-        case SfgClass():
-            return reduce(
-                lambda accu, member: accu | (collect_includes(member)),
-                obj.members(),
-                set(),
-            )
+            case SfgEntityDecl(entity):
+                return visit_decl(entity)
 
-        case SfgConstructor(parameters):
-            param_headers = reduce(
-                set.union, (includes(p) for p in parameters), set()
-            )
-            return param_headers
+            case SfgEntityDef(entity):
+                match entity:
+                    case SfgKernelHandle(kernel, _):
+                        return (
+                            set(HeaderFile.parse(h) for h in kernel.required_headers)
+                            | {HeaderFile.parse("<cstdint>")}
+                            | visit_decl(entity)
+                        )
 
-        case SfgMemberVariable():
-            return includes(obj)
+                    case SfgFunction(_, tree, _) | SfgMethod(_, tree, _):
+                        return walk_syntax(tree) | visit_decl(entity)
 
-        case SfgInClassDefinition():
-            return set()
+                    case SfgConstructor():
+                        return visit_decl(entity)
 
-        case _:
-            raise SfgException(
-                f"Can't collect includes from object of type {type(obj)}"
-            )
+                    case SfgMemberVariable():
+                        return includes(entity)
+
+                    case _:
+                        assert False, "unexpected entity"
+
+            case SfgNamespaceBlock(_, elements) | SfgVisibilityBlock(_, elements):
+                return set().union(*(walk_syntax(elem) for elem in elements))  # type: ignore
+
+            case SfgClassBody(_, vblocks):
+                return set().union(*(walk_syntax(vb) for vb in vblocks))
+
+            case _:
+                assert False, "unexpected syntax element"
+
+    return set().union(*(walk_syntax(elem) for elem in file.elements))

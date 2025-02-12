@@ -1,11 +1,11 @@
 from __future__ import annotations
 from typing import Sequence, TypeAlias
 from abc import ABC, abstractmethod
-import numpy as np
 import sympy as sp
 from functools import reduce
+from warnings import warn
 
-from pystencils import Field
+from pystencils import Field, CreateKernelConfig, create_kernel
 from pystencils.codegen import Kernel
 from pystencils.types import create_type, UserTypeSpec
 
@@ -28,15 +28,13 @@ from ..ir.postprocessing import (
     SfgDeferredFieldMapping,
     SfgDeferredVectorMapping,
 )
-from ..ir.source_components import (
+from ..ir import (
     SfgFunction,
-    SfgHeaderInclude,
     SfgKernelNamespace,
     SfgKernelHandle,
-    SfgClass,
-    SfgConstructor,
-    SfgMemberVariable,
-    SfgClassKeyword,
+    SfgEntityDecl,
+    SfgEntityDef,
+    SfgNamespaceBlock,
 )
 from ..lang import (
     VarLike,
@@ -60,6 +58,7 @@ from ..exceptions import SfgException
 class SfgIComposer(ABC):
     def __init__(self, ctx: SfgContext):
         self._ctx = ctx
+        self._cursor = ctx.cursor
 
     @property
     def context(self):
@@ -79,6 +78,68 @@ SequencerArg: TypeAlias = tuple | ExprLike | SfgCallTreeNode | SfgNodeBuilder
 """Valid arguments to `make_sequence` and any sequencer that uses it."""
 
 
+class KernelsAdder:
+    def __init__(self, ctx: SfgContext, loc: SfgNamespaceBlock):
+        self._ctx = ctx
+        self._loc = loc
+        assert isinstance(loc.namespace, SfgKernelNamespace)
+        self._kernel_namespace = loc.namespace
+
+    def add(self, kernel: Kernel, name: str | None = None):
+        """Adds an existing pystencils AST to this namespace.
+        If a name is specified, the AST's function name is changed."""
+        if name is None:
+            kernel_name = kernel.name
+        else:
+            kernel_name = name
+
+        if self._kernel_namespace.find_kernel(kernel_name) is not None:
+            raise ValueError(
+                f"Duplicate kernels: A kernel called {kernel_name} already exists "
+                f"in namespace {self._kernel_namespace.fqname}"
+            )
+
+        if name is not None:
+            kernel.name = kernel_name
+
+        khandle = SfgKernelHandle(kernel_name, self._kernel_namespace, kernel)
+        self._kernel_namespace.add_kernel(khandle)
+
+        self._loc.elements.append(SfgEntityDef(khandle))
+
+        for header in kernel.required_headers:
+            assert self._ctx.impl_file is not None
+            self._ctx.impl_file.includes.append(HeaderFile.parse(header))
+
+        return khandle
+
+    def create(
+        self,
+        assignments,
+        name: str | None = None,
+        config: CreateKernelConfig | None = None,
+    ):
+        """Creates a new pystencils kernel from a list of assignments and a configuration.
+        This is a wrapper around `pystencils.create_kernel`
+        with a subsequent call to `add`.
+        """
+        if config is None:
+            config = CreateKernelConfig()
+
+        if name is not None:
+            if self._kernel_namespace.find_kernel(name) is not None:
+                raise ValueError(
+                    f"Duplicate kernels: A kernel called {name} already exists "
+                    f"in namespace {self._kernel_namespace.fqname}"
+                )
+
+            config.function_name = name
+
+        # type: ignore
+        kernel = create_kernel(assignments, config=config)
+        return self.add(kernel)
+
+
 class SfgBasicComposer(SfgIComposer):
     """Composer for basic source components, and base class for all composer mix-ins."""
 
@@ -86,7 +147,7 @@ class SfgBasicComposer(SfgIComposer):
         ctx: SfgContext = sfg if isinstance(sfg, SfgContext) else sfg.context
         super().__init__(ctx)
 
-    def prelude(self, content: str):
+    def prelude(self, content: str, end: str = "\n"):
         """Append a string to the prelude comment, to be printed at the top of both generated files.
 
         The string should not contain C/C++ comment delimiters, since these will be added automatically
@@ -104,7 +165,11 @@ class SfgBasicComposer(SfgIComposer):
                  */
 
         """
-        self._ctx.append_to_prelude(content)
+        for f in self._ctx.files:
+            if f.prelude is None:
+                f.prelude = content + end
+            else:
+                f.prelude += content + end
 
     def code(self, *code: str):
         """Add arbitrary lines of code to the generated header file.
@@ -125,7 +190,7 @@ class SfgBasicComposer(SfgIComposer):
 
         """
         for c in code:
-            self._ctx.add_definition(c)
+            self._cursor.write_header(c)
 
     def define(self, *definitions: str):
         from warnings import warn
@@ -138,34 +203,41 @@ class SfgBasicComposer(SfgIComposer):
 
         self.code(*definitions)
 
-    def define_once(self, *definitions: str):
-        """Add unique definitions to the header file.
-
-        Each code string given to `define_once` will only be added if the exact same string
-        was not already added before.
-        """
-        for definition in definitions:
-            if all(d != definition for d in self._ctx.definitions()):
-                self._ctx.add_definition(definition)
-
     def namespace(self, namespace: str):
-        """Set the inner code namespace. Throws an exception if a namespace was already set.
+        """Enter a new namespace block.
+
+        Calling `namespace` as a regular function will open a new namespace as a child of the
+        currently active namespace; this new namespace will then become active instead.
+        Using `namespace` as a context manager will instead activate the given namespace
+        only for the length of the ``with`` block.
+
+        Args:
+            namespace: Qualified name of the namespace
 
         :Example:
 
-            After adding the following to your generator script:
+        The following calls will set the current namespace to ``outer::inner``
+        for the remaining code generation run:
 
-            >>> sfg.namespace("codegen_is_awesome")
+        .. code-block::
 
-            All generated code will be placed within that namespace:
+            sfg.namespace("outer")
+            sfg.namespace("inner")
 
-            .. code-block:: C++
+        Subsequent calls to `namespace` can only create further nested namespaces.
 
-                namespace codegen_is_awesome {
-                    /* all generated code */
-                }
+        To step back out of a namespace, `namespace` can also be used as a context manager:
+
+        .. code-block::
+
+            with sfg.namespace("detail"):
+                ...
+
+        This way, code generated inside the ``with`` region is placed in the ``detail`` namespace,
+        and code after this block will again live in the enclosing namespace.
+
         """
-        self._ctx.set_namespace(namespace)
+        return self._cursor.enter_namespace(namespace)
 
     def generate(self, generator: CustomGenerator):
         """Invoke a custom code generator with the underlying context."""
@@ -174,7 +246,7 @@ class SfgBasicComposer(SfgIComposer):
         generator.generate(SfgComposer(self))
 
     @property
-    def kernels(self) -> SfgKernelNamespace:
+    def kernels(self) -> KernelsAdder:
         """The default kernel namespace.
 
         Add kernels like::
@@ -182,18 +254,24 @@ class SfgBasicComposer(SfgIComposer):
             sfg.kernels.add(ast, "kernel_name")
             sfg.kernels.create(assignments, "kernel_name", config)
         """
-        return self._ctx._default_kernel_namespace
+        return self.kernel_namespace("kernels")
 
-    def kernel_namespace(self, name: str) -> SfgKernelNamespace:
+    def kernel_namespace(self, name: str) -> KernelsAdder:
         """Return the kernel namespace of the given name, creating it if it does not exist yet."""
-        kns = self._ctx.get_kernel_namespace(name)
+        kns = self._cursor.get_entity("kernels")
         if kns is None:
-            kns = SfgKernelNamespace(self._ctx, name)
-            self._ctx.add_kernel_namespace(kns)
+            kns = SfgKernelNamespace("kernels", self._cursor.current_namespace)
+            self._cursor.add_entity(kns)
+        elif not isinstance(kns, SfgKernelNamespace):
+            raise ValueError(
+                f"The existing entity {kns.fqname} is not a kernel namespace"
+            )
 
-        return kns
+        kns_block = SfgNamespaceBlock(kns)
+        self._cursor.write_impl(kns_block)
+        return KernelsAdder(self._ctx, kns_block)
 
-    def include(self, header_file: str, private: bool = False):
+    def include(self, header: str | HeaderFile, private: bool = False):
         """Include a header file.
 
         Args:
@@ -213,46 +291,37 @@ class SfgBasicComposer(SfgIComposer):
                 #include <vector>
                 #include "custom.h"
         """
-        self._ctx.add_include(SfgHeaderInclude(HeaderFile.parse(header_file), private))
+        header_file = HeaderFile.parse(header)
 
-    def numpy_struct(
-        self, name: str, dtype: np.dtype, add_constructor: bool = True
-    ) -> SfgClass:
-        """Add a numpy structured data type as a C++ struct
+        if private:
+            if self._ctx.impl_file is None:
+                raise ValueError(
+                    "Cannot emit a private include since no implementation file is being generated"
+                )
+            self._ctx.impl_file.includes.append(header_file)
+        else:
+            self._ctx.header_file.includes.append(header_file)
 
-        Returns:
-            The created class object
-        """
-        if self._ctx.get_class(name) is not None:
-            raise SfgException(f"Class with name {name} already exists.")
-
-        cls = _struct_from_numpy_dtype(name, dtype, add_constructor=add_constructor)
-        self._ctx.add_class(cls)
-        return cls
-
-    def kernel_function(
-        self, name: str, ast_or_kernel_handle: Kernel | SfgKernelHandle
-    ):
+    def kernel_function(self, name: str, kernel: Kernel | SfgKernelHandle):
         """Create a function comprising just a single kernel call.
 
         Args:
             ast_or_kernel_handle: Either a pystencils AST, or a kernel handle for an already registered AST.
         """
-        if self._ctx.get_function(name) is not None:
-            raise ValueError(f"Function {name} already exists.")
-
-        if isinstance(ast_or_kernel_handle, Kernel):
-            khandle = self._ctx.default_kernel_namespace.add(ast_or_kernel_handle)
-            tree = SfgKernelCallNode(khandle)
-        elif isinstance(ast_or_kernel_handle, SfgKernelHandle):
-            tree = SfgKernelCallNode(ast_or_kernel_handle)
+        if isinstance(kernel, Kernel):
+            khandle = self.kernels.add(kernel, name)
         else:
-            raise TypeError("Invalid type of argument `ast_or_kernel_handle`!")
+            khandle = kernel
 
-        func = SfgFunction(name, tree)
-        self._ctx.add_function(func)
+        self.function(name)(self.call(khandle))
 
-    def function(self, name: str, return_type: UserTypeSpec = void):
+    def function(
+        self,
+        name: str,
+        returns: UserTypeSpec = void,
+        inline: bool = False,
+        return_type: UserTypeSpec | None = None,
+    ):
         """Add a function.
 
         The syntax of this function adder uses a chain of two calls to mimic C++ syntax:
@@ -265,13 +334,31 @@ class SfgBasicComposer(SfgIComposer):
 
         The function body is constructed via sequencing (see `make_sequence`).
         """
-        if self._ctx.get_function(name) is not None:
-            raise ValueError(f"Function {name} already exists.")
+        if return_type is not None:
+            warn(
+                "The parameter `return_type` to `function()` is deprecated and will be removed by version 0.1. "
+                "Setting it will override the value of the `returns` parameter. "
+                "Use `returns` instead.",
+                FutureWarning,
+            )
+            returns = return_type
 
         def sequencer(*args: SequencerArg):
             tree = make_sequence(*args)
-            func = SfgFunction(name, tree, return_type=create_type(return_type))
-            self._ctx.add_function(func)
+            func = SfgFunction(
+                name,
+                self._cursor.current_namespace,
+                tree,
+                return_type=create_type(returns),
+                inline=inline,
+            )
+            self._cursor.add_entity(func)
+
+            if inline:
+                self._cursor.write_header(SfgEntityDef(func))
+            else:
+                self._cursor.write_header(SfgEntityDecl(func))
+                self._cursor.write_impl(SfgEntityDef(func))
 
         return sequencer
 
@@ -610,33 +697,3 @@ class SfgSwitchBuilder(SfgNodeBuilder):
 
     def resolve(self) -> SfgCallTreeNode:
         return SfgSwitch(make_statements(self._switch_arg), self._cases, self._default)
-
-
-def _struct_from_numpy_dtype(
-    struct_name: str, dtype: np.dtype, add_constructor: bool = True
-):
-    cls = SfgClass(struct_name, class_keyword=SfgClassKeyword.STRUCT)
-
-    fields = dtype.fields
-    if fields is None:
-        raise SfgException(f"Numpy dtype {dtype} is not a structured type.")
-
-    constr_params = []
-    constr_inits = []
-
-    for member_name, type_info in fields.items():
-        member_type = create_type(type_info[0])
-
-        member = SfgMemberVariable(member_name, member_type)
-
-        arg = SfgVar(f"{member_name}_", member_type)
-
-        cls.default.append_member(member)
-
-        constr_params.append(arg)
-        constr_inits.append(f"{member}({arg})")
-
-    if add_constructor:
-        cls.default.append_member(SfgConstructor(constr_params, constr_inits))
-
-    return cls

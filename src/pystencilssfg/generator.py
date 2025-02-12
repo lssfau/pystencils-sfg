@@ -1,11 +1,17 @@
-import os
-from os import path
+from pathlib import Path
 
-from .config import SfgConfig, CommandLineParameters, OutputMode, GLOBAL_NAMESPACE
+from typing import Callable, Any
+from .config import (
+    SfgConfig,
+    CommandLineParameters,
+    OutputMode,
+    _GlobalNamespace,
+)
 from .context import SfgContext
 from .composer import SfgComposer
-from .emission import AbstractEmitter, OutputSpec
+from .emission import SfgCodeEmitter
 from .exceptions import SfgException
+from .lang import HeaderFile
 
 
 class SourceFileGenerator:
@@ -27,7 +33,9 @@ class SourceFileGenerator:
     """
 
     def __init__(
-        self, sfg_config: SfgConfig | None = None, keep_unknown_argv: bool = False
+        self,
+        sfg_config: SfgConfig | None = None,
+        keep_unknown_argv: bool = False,
     ):
         if sfg_config and not isinstance(sfg_config, SfgConfig):
             raise TypeError("sfg_config is not an SfgConfiguration.")
@@ -41,9 +49,9 @@ class SourceFileGenerator:
                 "without a valid entry point, such as a REPL or a multiprocessing fork."
             )
 
-        scriptpath = __main__.__file__
-        scriptname = path.split(scriptpath)[1]
-        basename = path.splitext(scriptname)[0]
+        scriptpath = Path(__main__.__file__)
+        scriptname = scriptpath.name
+        basename = scriptname.rsplit(".")[0]
 
         from argparse import ArgumentParser
 
@@ -67,47 +75,76 @@ class SourceFileGenerator:
             cli_params.find_conflicts(sfg_config)
             config.override(sfg_config)
 
+        self._output_mode: OutputMode = config.get_option("output_mode")
+        self._output_dir: Path = config.get_option("output_directory")
+
+        output_files = config._get_output_files(basename)
+
+        from .ir import SfgSourceFile, SfgSourceFileType
+
+        self._header_file = SfgSourceFile(
+            output_files[0].name, SfgSourceFileType.HEADER
+        )
+        self._impl_file: SfgSourceFile | None
+
+        match self._output_mode:
+            case OutputMode.HEADER_ONLY:
+                self._impl_file = None
+            case OutputMode.STANDALONE:
+                self._impl_file = SfgSourceFile(
+                    output_files[1].name, SfgSourceFileType.TRANSLATION_UNIT
+                )
+                self._impl_file.includes.append(
+                    HeaderFile.parse(self._header_file.name)
+                )
+            case OutputMode.INLINE:
+                self._impl_file = SfgSourceFile(
+                    output_files[1].name, SfgSourceFileType.HEADER
+                )
+
+        #   TODO: Find a way to not hard-code the restrict qualifier in pystencils
+        self._header_file.elements.append("#define RESTRICT __restrict__")
+
+        outer_namespace: str | _GlobalNamespace = config.get_option("outer_namespace")
+
+        namespace: str | None
+        if isinstance(outer_namespace, _GlobalNamespace):
+            namespace = None
+        else:
+            namespace = outer_namespace
+
         self._context = SfgContext(
-            None if config.outer_namespace is GLOBAL_NAMESPACE else config.outer_namespace,  # type: ignore
+            self._header_file,
+            self._impl_file,
+            namespace,
             config.codestyle,
             argv=script_args,
             project_info=cli_params.get_project_info(),
         )
 
-        from .lang import HeaderFile
-        from .ir import SfgHeaderInclude
+        self._emitter = SfgCodeEmitter(
+            self._output_dir, config.codestyle, config.clang_format
+        )
 
-        self._context.add_include(SfgHeaderInclude(HeaderFile("cstdint", system_header=True)))
-        self._context.add_definition("#define RESTRICT __restrict__")
+        sort_key = config.codestyle.get_option("includes_sorting_key")
+        if sort_key is None:
 
-        output_mode = config.get_option("output_mode")
-        output_spec = OutputSpec.create(config, basename)
+            def default_key(h: HeaderFile):
+                return str(h)
 
-        self._emitter: AbstractEmitter
-        match output_mode:
-            case OutputMode.HEADER_ONLY:
-                from .emission import HeaderOnlyEmitter
+            sort_key = default_key
 
-                self._emitter = HeaderOnlyEmitter(
-                    output_spec, clang_format=config.clang_format
-                )
-            case OutputMode.INLINE:
-                from .emission import HeaderImplPairEmitter
-
-                self._emitter = HeaderImplPairEmitter(
-                    output_spec, inline_impl=True, clang_format=config.clang_format
-                )
-            case OutputMode.STANDALONE:
-                from .emission import HeaderImplPairEmitter
-
-                self._emitter = HeaderImplPairEmitter(
-                    output_spec, clang_format=config.clang_format
-                )
+        self._include_sort_key: Callable[[HeaderFile], Any] = sort_key
 
     def clean_files(self):
-        for file in self._emitter.output_files:
-            if path.exists(file):
-                os.remove(file)
+        header_path = self._output_dir / self._header_file.name
+        if header_path.exists():
+            header_path.unlink()
+
+        if self._impl_file is not None:
+            impl_path = self._output_dir / self._impl_file.name
+            if impl_path.exists():
+                impl_path.unlink()
 
     def __enter__(self) -> SfgComposer:
         self.clean_files()
@@ -115,9 +152,27 @@ class SourceFileGenerator:
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is None:
-            #    Collect header files for inclusion
-            from .ir import SfgHeaderInclude, collect_includes
-            for header in collect_includes(self._context):
-                self._context.add_include(SfgHeaderInclude(header))
+            if self._output_mode == OutputMode.INLINE:
+                assert self._impl_file is not None
+                self._header_file.elements.append(f'#include "{self._impl_file.name}"')
 
-            self._emitter.write_files(self._context)
+            from .ir import collect_includes
+
+            header_includes = collect_includes(self._header_file)
+            self._header_file.includes = list(
+                set(self._header_file.includes) | header_includes
+            )
+            self._header_file.includes.sort(key=self._include_sort_key)
+
+            if self._impl_file is not None:
+                impl_includes = collect_includes(self._impl_file)
+                #   If some header is already included by the generated header file, do not duplicate that inclusion
+                impl_includes -= header_includes
+                self._impl_file.includes = list(
+                    set(self._impl_file.includes) | impl_includes
+                )
+                self._impl_file.includes.sort(key=self._include_sort_key)
+
+            self._emitter.emit(self._header_file)
+            if self._impl_file is not None:
+                self._emitter.emit(self._impl_file)

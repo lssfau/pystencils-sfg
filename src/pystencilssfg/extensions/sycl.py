@@ -8,6 +8,7 @@ from pystencils import Target
 
 from pystencilssfg.composer.basic_composer import SequencerArg
 
+from ..config import CodeStyle
 from ..exceptions import SfgException
 from ..context import SfgContext
 from ..composer import (
@@ -17,8 +18,8 @@ from ..composer import (
     SfgComposerMixIn,
     make_sequence,
 )
-from ..ir.source_components import SfgKernelHandle
 from ..ir import (
+    SfgKernelHandle,
     SfgCallTreeNode,
     SfgCallTreeLeaf,
     SfgKernelCallNode,
@@ -93,11 +94,11 @@ class SyclHandler(AugExpr):
         if isinstance(range, _VarLike):
             range = asvar(range)
 
-        def check_kernel(kernel: SfgKernelHandle):
-            kfunc = kernel.get_kernel_function()
+        def check_kernel(khandle: SfgKernelHandle):
+            kfunc = khandle.kernel
             if kfunc.target != Target.SYCL:
                 raise SfgException(
-                    f"Kernel given to `parallel_for` is no SYCL kernel: {kernel.kernel_name}"
+                    f"Kernel given to `parallel_for` is no SYCL kernel: {khandle.fqname}"
                 )
 
         id_regex = re.compile(r"sycl::(id|item|nd_item)<\s*[0-9]\s*>")
@@ -144,7 +145,7 @@ class SyclGroup(AugExpr):
         self._ctx = ctx
 
     def parallel_for_work_item(
-        self, range: VarLike | Sequence[int], kernel: SfgKernelHandle
+        self, range: VarLike | Sequence[int], khandle: SfgKernelHandle
     ):
         """Generate a ``parallel_for_work_item` kernel invocation on this group.`
 
@@ -155,10 +156,10 @@ class SyclGroup(AugExpr):
         if isinstance(range, _VarLike):
             range = asvar(range)
 
-        kfunc = kernel.get_kernel_function()
+        kfunc = khandle.kernel
         if kfunc.target != Target.SYCL:
             raise SfgException(
-                f"Kernel given to `parallel_for` is no SYCL kernel: {kernel.kernel_name}"
+                f"Kernel given to `parallel_for` is no SYCL kernel: {khandle.fqname}"
             )
 
         id_regex = re.compile(r"sycl::id<\s*[0-9]\s*>")
@@ -169,13 +170,13 @@ class SyclGroup(AugExpr):
                 and id_regex.search(param.dtype.c_string()) is not None
             )
 
-        id_param = list(filter(filter_id, kernel.scalar_parameters))[0]
+        id_param = list(filter(filter_id, khandle.scalar_parameters))[0]
         h_item = SfgVar("item", PsCustomType("sycl::h_item< 3 >"))
 
         comp = SfgComposer(self._ctx)
         tree = comp.seq(
             comp.set_param(id_param, AugExpr.format("{}.get_local_id()", h_item)),
-            SfgKernelCallNode(kernel),
+            SfgKernelCallNode(khandle),
         )
 
         kernel_lambda = SfgLambda(("=",), (h_item,), tree, None)
@@ -229,11 +230,11 @@ class SfgLambda:
     def required_parameters(self) -> set[SfgVar]:
         return self._required_params
 
-    def get_code(self, ctx: SfgContext):
+    def get_code(self, cstyle: CodeStyle):
         captures = ", ".join(self._captures)
         params = ", ".join(f"{p.dtype.c_string()} {p.name}" for p in self._params)
-        body = self._tree.get_code(ctx)
-        body = ctx.codestyle.indent(body)
+        body = self._tree.get_code(cstyle)
+        body = cstyle.indent(body)
         rtype = (
             f"-> {self._return_type.c_string()} "
             if self._return_type is not None
@@ -300,13 +301,13 @@ class SyclKernelInvoke(SfgCallTreeLeaf):
     def depends(self) -> set[SfgVar]:
         return self._required_params
 
-    def get_code(self, ctx: SfgContext) -> str:
+    def get_code(self, cstyle: CodeStyle) -> str:
         if isinstance(self._range, SfgVar):
             range_code = self._range.name
         else:
             range_code = "{ " + ", ".join(str(r) for r in self._range) + " }"
 
-        kernel_code = self._lambda.get_code(ctx)
+        kernel_code = self._lambda.get_code(cstyle)
         invoker = str(self._invoker)
         method = self._invoke_type.method
 

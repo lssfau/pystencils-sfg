@@ -3,14 +3,16 @@ from __future__ import annotations
 from argparse import ArgumentParser
 
 from types import ModuleType
-from typing import Any, Sequence
+from typing import Any, Sequence, Callable
 from dataclasses import dataclass
 from enum import Enum, auto
 from os import path
 from importlib import util as iutil
+from pathlib import Path
 
+from pystencils.codegen.config import ConfigBase, Option, BasicOption, Category
 
-from pystencils.codegen.config import ConfigBase, BasicOption, Category
+from .lang import HeaderFile
 
 
 class SfgConfigException(Exception): ...  # noqa: E701
@@ -60,6 +62,12 @@ class CodeStyle(ConfigBase):
 
     indent_width: BasicOption[int] = BasicOption(2)
     """The number of spaces successively nested blocks should be indented with"""
+
+    includes_sorting_key: BasicOption[Callable[[HeaderFile], Any]] = BasicOption()
+    """Key function that will be used to sort `#include` statements in generated files.
+
+    Pystencils-sfg will instruct clang-tidy to forego include sorting if this option is set.
+    """
 
     #   TODO possible future options:
     #    - newline before opening {
@@ -166,8 +174,33 @@ class SfgConfig(ConfigBase):
             ClangFormatOptions.binary
     """
 
-    output_directory: BasicOption[str] = BasicOption(".")
+    output_directory: Option[Path, str | Path] = Option(Path("."))
     """Directory to which the generated files should be written."""
+
+    @output_directory.validate
+    def _validate_output_directory(self, pth: str | Path) -> Path:
+        return Path(pth)
+
+    def _get_output_files(self, basename: str):
+        output_dir: Path = self.get_option("output_directory")
+
+        header_ext = self.extensions.get_option("header")
+        impl_ext = self.extensions.get_option("impl")
+        output_files = [output_dir / f"{basename}.{header_ext}"]
+        output_mode = self.get_option("output_mode")
+
+        if impl_ext is None:
+            match output_mode:
+                case OutputMode.INLINE:
+                    impl_ext = "ipp"
+                case OutputMode.STANDALONE:
+                    impl_ext = "cpp"
+
+        if output_mode != OutputMode.HEADER_ONLY:
+            assert impl_ext is not None
+            output_files.append(output_dir / f"{basename}.{impl_ext}")
+
+        return tuple(output_files)
 
 
 class CommandLineParameters:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ..context import SfgContext
+from ..context import SfgContext, SfgCursor
 from .basic_composer import SfgBasicComposer
 
 
@@ -14,6 +14,7 @@ class SfgComposerMixIn:
 
     def __init__(self) -> None:
         self._ctx: SfgContext
+        self._cursor: SfgCursor
 
     @property
     def _composer(self) -> SfgBasicComposer:

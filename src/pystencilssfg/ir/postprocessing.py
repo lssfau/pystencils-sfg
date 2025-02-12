@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Sequence, Iterable
+from typing import Sequence, Iterable
 import warnings
 from functools import reduce
 from dataclasses import dataclass
@@ -13,9 +13,10 @@ from pystencils.types import deconstify, PsType
 from pystencils.codegen.properties import FieldBasePtr, FieldShape, FieldStride
 
 from ..exceptions import SfgException
+from ..config import CodeStyle
 
 from .call_tree import SfgCallTreeNode, SfgCallTreeLeaf, SfgSequence, SfgStatements
-from ..ir.source_components import SfgKernelParamVar
+from ..lang.expressions import SfgKernelParamVar
 from ..lang import (
     SfgVar,
     IFieldExtraction,
@@ -26,10 +27,6 @@ from ..lang import (
     depends,
     includes,
 )
-
-if TYPE_CHECKING:
-    from ..context import SfgContext
-    from .source_components import SfgClass
 
 
 class FlattenSequences:
@@ -65,18 +62,8 @@ class FlattenSequences:
 
 
 class PostProcessingContext:
-    def __init__(self, enclosing_class: SfgClass | None = None) -> None:
-        self.enclosing_class: SfgClass | None = enclosing_class
+    def __init__(self) -> None:
         self._live_variables: dict[str, SfgVar] = dict()
-
-    def is_method(self) -> bool:
-        return self.enclosing_class is not None
-
-    def get_enclosing_class(self) -> SfgClass:
-        if self.enclosing_class is None:
-            raise SfgException("Cannot get the enclosing class of a free function.")
-
-        return self.enclosing_class
 
     @property
     def live_variables(self) -> set[SfgVar]:
@@ -144,8 +131,7 @@ class PostProcessingResult:
 
 
 class CallTreePostProcessing:
-    def __init__(self, enclosing_class: SfgClass | None = None):
-        self._enclosing_class = enclosing_class
+    def __init__(self):
         self._flattener = FlattenSequences()
 
     def __call__(self, ast: SfgCallTreeNode) -> PostProcessingResult:
@@ -174,7 +160,7 @@ class CallTreePostProcessing:
     def get_live_variables(self, node: SfgCallTreeNode) -> set[SfgVar]:
         match node:
             case SfgSequence():
-                ppc = self._ppc()
+                ppc = PostProcessingContext()
                 self.handle_sequence(node, ppc)
                 return ppc.live_variables
 
@@ -190,9 +176,6 @@ class CallTreePostProcessing:
                     (self.get_live_variables(c) for c in node.children),
                     set(),
                 )
-
-    def _ppc(self) -> PostProcessingContext:
-        return PostProcessingContext(enclosing_class=self._enclosing_class)
 
 
 class SfgDeferredNode(SfgCallTreeNode, ABC):
@@ -213,7 +196,7 @@ class SfgDeferredNode(SfgCallTreeNode, ABC):
     def expand(self, ppc: PostProcessingContext) -> SfgCallTreeNode:
         pass
 
-    def get_code(self, ctx: SfgContext) -> str:
+    def get_code(self, cstyle: CodeStyle) -> str:
         raise SfgException(
             "Invalid access into deferred node; deferred nodes must be expanded first."
         )

@@ -1,5 +1,5 @@
-from .config import SfgConfig
-from .generator import SourceFileGenerator, GLOBAL_NAMESPACE, OutputMode
+from .config import SfgConfig, GLOBAL_NAMESPACE, OutputMode
+from .generator import SourceFileGenerator
 from .composer import SfgComposer
 from .context import SfgContext
 from .lang import SfgVar, AugExpr

@@ -1,5 +1,4 @@
-from .emitter import AbstractEmitter, OutputSpec
-from .header_impl_pair import HeaderImplPairEmitter
-from .header_only import HeaderOnlyEmitter
+from .emitter import SfgCodeEmitter
+from .file_printer import SfgFilePrinter
 
-__all__ = ["AbstractEmitter", "OutputSpec", "HeaderImplPairEmitter", "HeaderOnlyEmitter"]
+__all__ = ["SfgCodeEmitter", "SfgFilePrinter"]

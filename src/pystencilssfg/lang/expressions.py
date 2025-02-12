@@ -6,7 +6,8 @@ from abc import ABC, abstractmethod
 import sympy as sp
 
 from pystencils import TypedSymbol
-from pystencils.types import PsType, UserTypeSpec, create_type
+from pystencils.codegen import Parameter
+from pystencils.types import PsType, PsIntegerType, UserTypeSpec, create_type
 
 from ..exceptions import SfgException
 from .headers import HeaderFile
@@ -72,6 +73,23 @@ class SfgVar:
 
     def __repr__(self) -> str:
         return self.name_and_type()
+
+
+class SfgKernelParamVar(SfgVar):
+    __match_args__ = ("wrapped",)
+
+    """Cast pystencils- or SymPy-native symbol-like objects as a `SfgVar`."""
+
+    def __init__(self, param: Parameter):
+        self._param = param
+        super().__init__(param.name, param.dtype)
+
+    @property
+    def wrapped(self) -> Parameter:
+        return self._param
+
+    def _args(self):
+        return (self._param,)
 
 
 class DependentExpression:
@@ -434,7 +452,7 @@ def depends(expr: ExprLike) -> set[SfgVar]:
             raise ValueError(f"Invalid expression: {expr}")
 
 
-def includes(expr: ExprLike) -> set[HeaderFile]:
+def includes(obj: ExprLike | PsType) -> set[HeaderFile]:
     """Determine the set of header files an expression depends on.
 
     Args:
@@ -447,21 +465,33 @@ def includes(expr: ExprLike) -> set[HeaderFile]:
         ValueError: If the argument was not a valid variable or expression
     """
 
-    match expr:
+    if isinstance(obj, PsType):
+        obj = strip_ptr_ref(obj)
+
+    match obj:
+        case CppType():
+            return set(obj.includes)
+
+        case PsType():
+            headers = set(HeaderFile.parse(h) for h in obj.required_headers)
+            if isinstance(obj, PsIntegerType):
+                headers.add(HeaderFile.parse("<cstdint>"))
+            return headers
+
         case SfgVar(_, dtype):
-            match dtype:
-                case CppType():
-                    return set(dtype.includes)
-                case _:
-                    return set(HeaderFile.parse(h) for h in dtype.required_headers)
+            return includes(dtype)
+
         case TypedSymbol():
-            return includes(asvar(expr))
+            return includes(asvar(obj))
+
         case str():
             return set()
+
         case AugExpr():
-            return set(expr.includes)
+            return set(obj.includes)
+
         case _:
-            raise ValueError(f"Invalid expression: {expr}")
+            raise ValueError(f"Invalid expression: {obj}")
 
 
 class IFieldExtraction(ABC):

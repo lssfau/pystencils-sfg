@@ -15,7 +15,9 @@ with SourceFileGenerator() as sfg:
 
     @kernel
     def poisson_jacobi():
-        u_dst[0,0] @= (h**2 * f[0, 0] + u_src[1, 0] + u_src[-1, 0] + u_src[0, 1] + u_src[0, -1]) / 4
+        u_dst[0, 0] @= (
+            h**2 * f[0, 0] + u_src[1, 0] + u_src[-1, 0] + u_src[0, 1] + u_src[0, -1]
+        ) / 4
 
     poisson_kernel = sfg.kernels.create(poisson_jacobi)
 
@@ -23,5 +25,5 @@ with SourceFileGenerator() as sfg:
         sfg.map_field(u_src, mdspan.from_field(u_src, layout_policy="layout_left")),
         sfg.map_field(u_dst, mdspan.from_field(u_dst, layout_policy="layout_left")),
         sfg.map_field(f, mdspan.from_field(f, layout_policy="layout_left")),
-        sfg.call(poisson_kernel)
+        sfg.call(poisson_kernel),
     )

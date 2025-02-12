@@ -1,11 +1,11 @@
 import sys
 import os
 from os import path
+from typing import NoReturn
 
 from argparse import ArgumentParser, BooleanOptionalAction
 
-from .config import CommandLineParameters, SfgConfigException, OutputMode
-from .emission import OutputSpec
+from .config import CommandLineParameters, SfgConfigException
 
 
 def add_newline_arg(parser):
@@ -17,7 +17,7 @@ def add_newline_arg(parser):
     )
 
 
-def cli_main(program="sfg-cli"):
+def cli_main(program="sfg-cli") -> NoReturn:
     parser = ArgumentParser(
         program,
         description="pystencilssfg command-line utility for build system integration",
@@ -65,7 +65,7 @@ def cli_main(program="sfg-cli"):
     exit(-1)  # should never happen
 
 
-def version(args):
+def version(args) -> NoReturn:
     from . import __version__
 
     print(__version__, end=os.linesep if args.newline else "")
@@ -73,37 +73,37 @@ def version(args):
     exit(0)
 
 
-def list_files(args):
+def list_files(args) -> NoReturn:
     cli_params = CommandLineParameters(args)
     config = cli_params.get_config()
 
     _, scriptname = path.split(args.codegen_script)
     basename = path.splitext(scriptname)[0]
 
-    output_spec = OutputSpec.create(config, basename)
-    output_files = [output_spec.get_header_filepath()]
-    if config.output_mode != OutputMode.HEADER_ONLY:
-        output_files.append(output_spec.get_impl_filepath())
+    output_files = config._get_output_files(basename)
 
-    print(args.sep.join(output_files), end=os.linesep if args.newline else "")
+    print(
+        args.sep.join(str(of) for of in output_files),
+        end=os.linesep if args.newline else "",
+    )
 
     exit(0)
 
 
-def print_cmake_modulepath(args):
+def print_cmake_modulepath(args) -> NoReturn:
     from .cmake import get_sfg_cmake_modulepath
 
     print(get_sfg_cmake_modulepath(), end=os.linesep if args.newline else "")
     exit(0)
 
 
-def make_cmake_find_module(args):
+def make_cmake_find_module(args) -> NoReturn:
     from .cmake import make_find_module
 
     make_find_module()
     exit(0)
 
 
-def abort_with_config_exception(exception: SfgConfigException, source: str):
+def abort_with_config_exception(exception: SfgConfigException, source: str) -> NoReturn:
     print(f"Invalid {source} configuration: {exception.args[0]}.", file=sys.stderr)
     exit(1)
