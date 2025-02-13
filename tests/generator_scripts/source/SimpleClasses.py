@@ -11,18 +11,19 @@ with SourceFileGenerator() as sfg:
 
     sfg.klass("Point")(
         sfg.public(
-            sfg.constructor(x, y, z)
-            .init(x_)(x)
-            .init(y_)(y)
-            .init(z_)(z),
-
+            sfg.constructor(x, y, z).init(x_)(x).init(y_)(y).init(z_)(z),
             sfg.method("getX", returns="const int64_t", const=True, inline=True)(
                 "return this->x_;"
-            )
+            ),
         ),
-        sfg.private(
-            x_,
-            y_,
-            z_
+        sfg.protected(x_, y_, z_),
+    )
+
+    sfg.klass("SpecialPoint", bases=["public Point"])(
+        sfg.public(
+            "using Point::Point;",
+            sfg.method("getY", returns="const int64_t", const=True, inline=True)(
+                "return this->y_;"
+            ),
         )
     )
