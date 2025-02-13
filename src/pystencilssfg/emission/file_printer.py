@@ -154,7 +154,10 @@ class SfgFilePrinter:
                 return code
 
             case SfgClassBody(cls, vblocks):
-                code = f"{cls.class_keyword} {cls.name} {{\n"
+                code = f"{cls.class_keyword} {cls.name}"
+                if cls.base_classes:
+                    code += " : " + ", ".join(cls.base_classes)
+                code += " {\n"
                 vblocks_str = [self._visibility_block(b) for b in vblocks]
                 code += "\n\n".join(vblocks_str)
                 code += "\n};\n"
