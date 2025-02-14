@@ -11,7 +11,7 @@ from pystencils.types import PsType, PsIntegerType, UserTypeSpec, create_type
 
 from ..exceptions import SfgException
 from .headers import HeaderFile
-from .types import strip_ptr_ref, CppType, CppTypeFactory
+from .types import strip_ptr_ref, CppType, CppTypeFactory, cpptype
 
 __all__ = [
     "SfgVar",
@@ -367,6 +367,26 @@ class CppClass(AugExpr):
         fstr = self.get_dtype().c_string() + "{{" + ", ".join(["{}"] * len(args)) + "}}"
         dtype = cast(CppType, self.get_dtype())
         return self.bind(fstr, *args, require_headers=dtype.includes)
+
+
+def cppclass(
+    template_str: str, include: str | HeaderFile | Iterable[str | HeaderFile] = ()
+):
+    """
+    Convience class decorator for CppClass.
+    It adds to the decorate class the variable `template` via `lang.cpptype`
+    and sets `lang.CppClass` as a base clase.
+    >>> @cppclass("MyClass", "MyClass.hpp")
+    ... class MyClass:
+    ...    pass
+    """
+
+    def wrapper(cls):
+        new_cls = type(cls.__name__, (cls, CppClass), {})
+        new_cls.template = cpptype(template_str, include)
+        return new_cls
+
+    return wrapper
 
 
 _VarLike = (AugExpr, SfgVar, TypedSymbol)
