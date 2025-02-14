@@ -1,7 +1,15 @@
 import pytest
 
 from pystencilssfg import SfgException
-from pystencilssfg.lang import asvar, SfgVar, AugExpr, cpptype, HeaderFile, CppClass
+from pystencilssfg.lang import (
+    asvar,
+    SfgVar,
+    AugExpr,
+    cpptype,
+    HeaderFile,
+    CppClass,
+    cppclass,
+)
 
 import sympy as sp
 
@@ -110,6 +118,20 @@ def test_cppclass():
     class MyClass(CppClass):
         template = cpptype("mynamespace::MyClass< {T} >", "MyHeader.hpp")
 
+        def ctor(self, arg: AugExpr):
+            return self.ctor_bind(arg)
+
+    unbound = MyClass(T="bogus")
+    assert unbound.get_dtype() == MyClass.template(T="bogus")
+
+    ctor_expr = unbound.ctor(AugExpr(PsCustomType("bogus")).var("foo"))
+    assert str(ctor_expr).strip() == r"mynamespace::MyClass< bogus >{foo}"
+
+
+def test_cppclass_decorator():
+
+    @cppclass("mynamespace::MyClass< {T} >", "MyHeader.hpp")
+    class MyClass(CppClass):
         def ctor(self, arg: AugExpr):
             return self.ctor_bind(arg)
 
