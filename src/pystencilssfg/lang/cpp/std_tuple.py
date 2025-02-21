@@ -1,5 +1,3 @@
-from typing import Sequence
-
 from pystencils.types import UserTypeSpec, create_type
 
 from ...lang import SrcVector, AugExpr, cpptype
@@ -10,7 +8,7 @@ class StdTuple(SrcVector):
 
     def __init__(
         self,
-        element_types: Sequence[UserTypeSpec],
+        *element_types: UserTypeSpec,
         const: bool = False,
         ref: bool = False,
     ):

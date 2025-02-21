@@ -18,13 +18,6 @@ class SfgCallTreeNode(ABC):
     For extensibility, code printing is implemented inside the call tree.
     Therefore, every instantiable call tree node must implement the method `get_code`.
     By convention, the string returned by `get_code` should not contain a trailing newline.
-
-    ## Branching Structure
-
-    The branching structure of the call tree is managed uniformly through the `children` interface
-    of SfgCallTreeNode. Each subclass must ensure that access to and modification of
-    the branching structure through the `children` property and the `child` and `set_child`
-    methods is possible, if necessary by overriding the property and methods.
     """
     def __init__(self) -> None:
         self._includes: set[HeaderFile] = set()
@@ -50,7 +43,7 @@ class SfgCallTreeNode(ABC):
 class SfgCallTreeLeaf(SfgCallTreeNode, ABC):
     """A leaf node of the call tree.
 
-    Leaf nodes must implement `required_parameters` for automatic parameter collection.
+    Leaf nodes must implement ``depends`` for automatic parameter collection.
     """
 
     def __init__(self):
@@ -69,7 +62,7 @@ class SfgCallTreeLeaf(SfgCallTreeNode, ABC):
 class SfgEmptyNode(SfgCallTreeLeaf):
     """A leaf node that does not emit any code.
 
-    Empty nodes must still implement `required_parameters`.
+    Empty nodes must still implement ``depends``.
     """
 
     def __init__(self):
@@ -304,6 +297,8 @@ class SfgBranch(SfgCallTreeNode):
 
 class SfgSwitchCase(SfgCallTreeNode):
     DefaultCaseType = NewType("DefaultCaseType", object)
+    """Sentinel type representing the ``default`` case."""
+
     Default = DefaultCaseType(object())
 
     def __init__(self, label: str | SfgSwitchCase.DefaultCaseType, body: SfgSequence):

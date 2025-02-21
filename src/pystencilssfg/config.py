@@ -52,7 +52,7 @@ class OutputMode(Enum):
     """Generate only a header file.
 
     At the moment, header-only mode does not support generation of kernels and requires that all functions
-    and methods are marked `inline`.
+    and methods are marked ``inline``.
     """
 
 
@@ -64,7 +64,7 @@ class CodeStyle(ConfigBase):
     """The number of spaces successively nested blocks should be indented with"""
 
     includes_sorting_key: BasicOption[Callable[[HeaderFile], Any]] = BasicOption()
-    """Key function that will be used to sort `#include` statements in generated files.
+    """Key function that will be used to sort ``#include`` statements in generated files.
 
     Pystencils-sfg will instruct clang-tidy to forego include sorting if this option is set.
     """

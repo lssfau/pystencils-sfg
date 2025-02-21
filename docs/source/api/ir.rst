@@ -1,8 +1,11 @@
 Internal Code Representation (`pystencilssfg.ir`)
 =================================================
 
-.. autoclass:: pystencilssfg.SfgContext
+.. automodule:: pystencilssfg.ir
     :members:
 
-.. automodule:: pystencilssfg.ir
+Postprocessing
+--------------
+
+.. automodule:: pystencilssfg.ir.postprocessing
     :members:

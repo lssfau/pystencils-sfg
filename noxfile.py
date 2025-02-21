@@ -13,11 +13,7 @@ def add_pystencils_git(session: nox.Session):
     pystencils_dir = cache_dir / "pystencils"
     if pystencils_dir.exists():
         with session.chdir(pystencils_dir):
-            session.run_install(
-                "git",
-                "pull",
-                external=True
-            )
+            session.run_install("git", "pull", external=True)
     else:
         session.run_install(
             "git",
@@ -76,7 +72,18 @@ def testsuite(session: nox.Session):
 def docs(session: nox.Session):
     """Build the documentation pages"""
     editable_install(session, ["docs"])
+
+    env = {}
+
+    session_args = session.posargs
+    if "--fail-on-warnings" in session_args:
+        env["SPHINXOPTS"] = "-W --keep-going"
+
     session.chdir("docs")
+
+    if "--clean" in session_args:
+        session.run("make", "clean", external=True)
+
     session.run("make", "html", external=True)
 
 

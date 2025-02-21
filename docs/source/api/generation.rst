@@ -24,6 +24,9 @@ Categories, Parameter Types, and Special Values
 .. autoclass:: OutputMode
     :members:
 
+.. autoclass:: FileExtensions
+    :members:
+
 .. autoclass:: CodeStyle
     :members:
 

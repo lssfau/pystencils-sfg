@@ -1,15 +1,22 @@
 from __future__ import annotations
+
 from typing import Sequence, TypeAlias
 from abc import ABC, abstractmethod
 import sympy as sp
 from functools import reduce
 from warnings import warn
 
-from pystencils import Field, CreateKernelConfig, create_kernel
+from pystencils import (
+    Field,
+    CreateKernelConfig,
+    create_kernel,
+    Assignment,
+    AssignmentCollection,
+)
 from pystencils.codegen import Kernel
-from pystencils.types import create_type, UserTypeSpec
+from pystencils.types import create_type, UserTypeSpec, PsType
 
-from ..context import SfgContext
+from ..context import SfgContext, SfgCursor
 from .custom import CustomGenerator
 from ..ir import (
     SfgCallTreeNode,
@@ -79,6 +86,8 @@ SequencerArg: TypeAlias = tuple | ExprLike | SfgCallTreeNode | SfgNodeBuilder
 
 
 class KernelsAdder:
+    """Handle on a kernel namespace that permits registering kernels."""
+
     def __init__(self, ctx: SfgContext, loc: SfgNamespaceBlock):
         self._ctx = ctx
         self._loc = loc
@@ -115,12 +124,12 @@ class KernelsAdder:
 
     def create(
         self,
-        assignments,
+        assignments: Assignment | Sequence[Assignment] | AssignmentCollection,
         name: str | None = None,
         config: CreateKernelConfig | None = None,
     ):
         """Creates a new pystencils kernel from a list of assignments and a configuration.
-        This is a wrapper around `pystencils.create_kernel`
+        This is a wrapper around `create_kernel <pystencils.codegen.create_kernel>`
         with a subsequent call to `add`.
         """
         if config is None:
@@ -135,7 +144,6 @@ class KernelsAdder:
 
             config.function_name = name
 
-        # type: ignore
         kernel = create_kernel(assignments, config=config)
         return self.add(kernel)
 
@@ -171,7 +179,7 @@ class SfgBasicComposer(SfgIComposer):
             else:
                 f.prelude += content + end
 
-    def code(self, *code: str):
+    def code(self, *code: str, impl: bool = False):
         """Add arbitrary lines of code to the generated header file.
 
         :Example:
@@ -188,9 +196,15 @@ class SfgBasicComposer(SfgIComposer):
                 #define PI 3.14 // more than enough for engineers
                 using namespace std;
 
+        Args:
+            code: Sequence of code strings to be written to the output file
+            impl: If `True`, write the code to the implementation file; otherwise, to the header file.
         """
         for c in code:
-            self._cursor.write_header(c)
+            if impl:
+                self._cursor.write_impl(c)
+            else:
+                self._cursor.write_header(c)
 
     def define(self, *definitions: str):
         from warnings import warn
@@ -257,10 +271,10 @@ class SfgBasicComposer(SfgIComposer):
         return self.kernel_namespace("kernels")
 
     def kernel_namespace(self, name: str) -> KernelsAdder:
-        """Return the kernel namespace of the given name, creating it if it does not exist yet."""
-        kns = self._cursor.get_entity("kernels")
+        """Return a view on a kernel namespace in order to add kernels to it."""
+        kns = self._cursor.get_entity(name)
         if kns is None:
-            kns = SfgKernelNamespace("kernels", self._cursor.current_namespace)
+            kns = SfgKernelNamespace(name, self._cursor.current_namespace)
             self._cursor.add_entity(kns)
         elif not isinstance(kns, SfgKernelNamespace):
             raise ValueError(
@@ -318,10 +332,8 @@ class SfgBasicComposer(SfgIComposer):
     def function(
         self,
         name: str,
-        returns: UserTypeSpec = void,
-        inline: bool = False,
         return_type: UserTypeSpec | None = None,
-    ):
+    ) -> SfgFunctionSequencer:
         """Add a function.
 
         The syntax of this function adder uses a chain of two calls to mimic C++ syntax:
@@ -334,33 +346,17 @@ class SfgBasicComposer(SfgIComposer):
 
         The function body is constructed via sequencing (see `make_sequence`).
         """
+        seq = SfgFunctionSequencer(self._cursor, name)
+
         if return_type is not None:
             warn(
                 "The parameter `return_type` to `function()` is deprecated and will be removed by version 0.1. "
-                "Setting it will override the value of the `returns` parameter. "
-                "Use `returns` instead.",
+                "Use `.returns()` instead.",
                 FutureWarning,
             )
-            returns = return_type
+            seq.returns(return_type)
 
-        def sequencer(*args: SequencerArg):
-            tree = make_sequence(*args)
-            func = SfgFunction(
-                name,
-                self._cursor.current_namespace,
-                tree,
-                return_type=create_type(returns),
-                inline=inline,
-            )
-            self._cursor.add_entity(func)
-
-            if inline:
-                self._cursor.write_header(SfgEntityDef(func))
-            else:
-                self._cursor.write_header(SfgEntityDecl(func))
-                self._cursor.write_impl(SfgEntityDef(func))
-
-        return sequencer
+        return seq
 
     def call(self, kernel_handle: SfgKernelHandle) -> SfgCallTreeNode:
         """Use inside a function body to directly call a kernel.
@@ -508,7 +504,7 @@ class SfgBasicComposer(SfgIComposer):
 
         Args:
             switch_arg: Argument to the `switch()` statement
-            autobreak: Whether to automatically print a `break;` at the end of each case block
+            autobreak: Whether to automatically print a ``break;`` at the end of each case block
         """
         return SfgSwitchBuilder(switch_arg, autobreak=autobreak)
 
@@ -523,7 +519,7 @@ class SfgBasicComposer(SfgIComposer):
 
         Args:
             field: The pystencils field to be mapped
-            src_object: A `IFieldIndexingProvider` object representing a field data structure.
+            index_provider: An expression representing a field, or a field extraction provider instance
             cast_indexing_symbols: Whether to always introduce explicit casts for indexing symbols
         """
         return SfgDeferredFieldMapping(
@@ -561,7 +557,8 @@ def make_sequence(*args: SequencerArg) -> SfgSequence:
     """Construct a sequence of C++ code from various kinds of arguments.
 
     `make_sequence` is ubiquitous throughout the function building front-end;
-    among others, it powers the syntax of `SfgComposer.function` and `SfgComposer.branch`.
+    among others, it powers the syntax of `SfgBasicComposer.function`
+    and `SfgBasicComposer.branch`.
 
     `make_sequence` constructs an abstract syntax tree for code within a function body, accepting various
     types of arguments which then get turned into C++ code. These are
@@ -619,6 +616,94 @@ def make_sequence(*args: SequencerArg) -> SfgSequence:
             raise TypeError(f"Sequence argument {i} has invalid type.")
 
     return SfgSequence(children)
+
+
+class SfgFunctionSequencerBase:
+    """Common base class for function and method sequencers.
+
+    This builder uses call sequencing to specify the function or method's properties.
+
+    Example:
+
+    >>> sfg.function(
+    ...         "myFunction"
+    ...     ).returns(
+    ...         "float32"
+    ...     ).attr(
+    ...         "nodiscard", "maybe_unused"
+    ...     ).inline().constexpr()(
+    ...         "return 31.2;"
+    ...     )
+    """
+
+    def __init__(self, cursor: SfgCursor, name: str) -> None:
+        self._cursor = cursor
+        self._name = name
+        self._return_type: PsType = void
+        self._params: list[SfgVar] | None = None
+
+        #   Qualifiers
+        self._inline: bool = False
+        self._constexpr: bool = False
+
+        #   Attributes
+        self._attributes: list[str] = []
+
+    def returns(self, rtype: UserTypeSpec):
+        """Set the return type of the function"""
+        self._return_type = create_type(rtype)
+        return self
+
+    def params(self, *args: VarLike):
+        """Specify the parameters for this function.
+
+        Use this to manually specify the function's parameter list.
+
+        If any free variables collected from the function body are not contained
+        in the parameter list, an error will be raised.
+        """
+        self._params = [asvar(v) for v in args]
+        return self
+
+    def inline(self):
+        """Mark this function as ``inline``."""
+        self._inline = True
+        return self
+
+    def constexpr(self):
+        """Mark this function as ``constexpr``."""
+        self._constexpr = True
+        return self
+
+    def attr(self, *attrs: str):
+        """Add attributes to this function"""
+        self._attributes += attrs
+        return self
+
+
+class SfgFunctionSequencer(SfgFunctionSequencerBase):
+    """Sequencer for constructing functions."""
+
+    def __call__(self, *args: SequencerArg) -> None:
+        """Populate the function body"""
+        tree = make_sequence(*args)
+        func = SfgFunction(
+            self._name,
+            self._cursor.current_namespace,
+            tree,
+            return_type=self._return_type,
+            inline=self._inline,
+            constexpr=self._constexpr,
+            attributes=self._attributes,
+            required_params=self._params,
+        )
+        self._cursor.add_entity(func)
+
+        if self._inline:
+            self._cursor.write_header(SfgEntityDef(func))
+        else:
+            self._cursor.write_header(SfgEntityDecl(func))
+            self._cursor.write_impl(SfgEntityDef(func))
 
 
 class SfgBranchBuilder(SfgNodeBuilder):

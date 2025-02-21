@@ -2,35 +2,58 @@
 Composer API (``pystencilssfg.composer``)
 *****************************************
 
-.. autoclass:: pystencilssfg.composer.SfgComposer
+.. module:: pystencilssfg.composer
+
+.. autoclass:: SfgComposer
     :members:
 
-.. autoclass:: pystencilssfg.composer.SfgIComposer
+.. autoclass:: SfgIComposer
     :members:
 
-.. autoclass:: pystencilssfg.composer.SfgBasicComposer
+.. autoclass:: SfgBasicComposer
     :members:
 
-.. autoclass:: pystencilssfg.composer.SfgClassComposer
+.. autoclass:: SfgClassComposer
     :members:
 
 Custom Generators
 =================
 
-.. autoclass:: pystencilssfg.composer.custom.CustomGenerator
+.. module:: pystencilssfg.composer.custom
+
+.. autoclass:: CustomGenerator
     :members:
 
 
 Helper Methods and Builders
 ===========================
 
-.. autofunction:: pystencilssfg.composer.make_sequence
+.. module:: pystencilssfg.composer.basic_composer
 
-.. autoclass:: pystencilssfg.composer.basic_composer.SfgNodeBuilder
+.. autofunction:: make_sequence
+
+.. autoclass:: KernelsAdder
     :members:
 
-.. autoclass:: pystencilssfg.composer.basic_composer.SfgBranchBuilder
+.. autoclass:: SfgFunctionSequencer
     :members:
 
-.. autoclass:: pystencilssfg.composer.basic_composer.SfgSwitchBuilder
+.. autoclass:: SfgNodeBuilder
+    :members:
+
+.. autoclass:: SfgBranchBuilder
+    :members:
+
+.. autoclass:: SfgSwitchBuilder
+    :members:
+
+Context and Cursor
+==================
+
+.. module:: pystencilssfg.context
+
+.. autoclass:: SfgContext
+    :members:
+
+.. autoclass:: SfgCursor
     :members:

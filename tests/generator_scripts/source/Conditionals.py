@@ -22,7 +22,7 @@ with SourceFileGenerator() as sfg:
         )
     )
 
-    sfg.function("getRating", "int32")(
+    sfg.function("getRating").returns("int32")(
         sfg.switch(noodle, autobreak=False)
         .case("Noodles::RIGATONI")(
             "return 13;"
@@ -39,7 +39,7 @@ with SourceFileGenerator() as sfg:
         "return 0;"
     )
 
-    sfg.function("isItalian", return_type="bool")(
+    sfg.function("isItalian").returns("bool")(
         sfg.branch(
             sfg.expr("{0} == Noodles::RIGATONI || {0} == Noodles::SPAGHETTI", noodle)
         )(

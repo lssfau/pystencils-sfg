@@ -3,9 +3,9 @@ from typing import Sequence
 from itertools import takewhile, dropwhile
 import numpy as np
 
-from pystencils.types import PsCustomType, UserTypeSpec, create_type
+from pystencils.types import create_type
 
-from ..context import SfgContext
+from ..context import SfgContext, SfgCursor
 from ..lang import (
     VarLike,
     ExprLike,
@@ -32,7 +32,67 @@ from .mixin import SfgComposerMixIn
 from .basic_composer import (
     make_sequence,
     SequencerArg,
+    SfgFunctionSequencerBase,
 )
+
+
+class SfgMethodSequencer(SfgFunctionSequencerBase):
+    def __init__(self, cursor: SfgCursor, name: str) -> None:
+        super().__init__(cursor, name)
+
+        self._const: bool = False
+        self._static: bool = False
+        self._virtual: bool = False
+        self._override: bool = False
+
+        self._tree: SfgCallTreeNode
+
+    def const(self):
+        """Mark this method as ``const``."""
+        self._const = True
+        return self
+
+    def static(self):
+        """Mark this method as ``static``."""
+        self._static = True
+        return self
+
+    def virtual(self):
+        """Mark this method as ``virtual``."""
+        self._virtual = True
+        return self
+
+    def override(self):
+        """Mark this method as ``override``."""
+        self._override = True
+        return self
+
+    def __call__(self, *args: SequencerArg):
+        self._tree = make_sequence(*args)
+        return self
+
+    def _resolve(self, ctx: SfgContext, cls: SfgClass, vis_block: SfgVisibilityBlock):
+        method = SfgMethod(
+            self._name,
+            cls,
+            self._tree,
+            return_type=self._return_type,
+            inline=self._inline,
+            const=self._const,
+            static=self._static,
+            constexpr=self._constexpr,
+            virtual=self._virtual,
+            override=self._override,
+            attributes=self._attributes,
+            required_params=self._params,
+        )
+        cls.add_member(method, vis_block.visibility)
+
+        if self._inline:
+            vis_block.elements.append(SfgEntityDef(method))
+        else:
+            vis_block.elements.append(SfgEntityDecl(method))
+            ctx._cursor.write_impl(SfgEntityDef(method))
 
 
 class SfgClassComposer(SfgComposerMixIn):
@@ -53,7 +113,7 @@ class SfgClassComposer(SfgComposerMixIn):
         def __init__(self, visibility: SfgVisibility):
             self._visibility = visibility
             self._args: tuple[
-                SfgClassComposer.MethodSequencer
+                SfgMethodSequencer
                 | SfgClassComposer.ConstructorBuilder
                 | VarLike
                 | str,
@@ -63,10 +123,7 @@ class SfgClassComposer(SfgComposerMixIn):
         def __call__(
             self,
             *args: (
-                SfgClassComposer.MethodSequencer
-                | SfgClassComposer.ConstructorBuilder
-                | VarLike
-                | str
+                SfgMethodSequencer | SfgClassComposer.ConstructorBuilder | VarLike | str
             ),
         ):
             self._args = args
@@ -76,10 +133,7 @@ class SfgClassComposer(SfgComposerMixIn):
             vis_block = SfgVisibilityBlock(self._visibility)
             for arg in self._args:
                 match arg:
-                    case (
-                        SfgClassComposer.MethodSequencer()
-                        | SfgClassComposer.ConstructorBuilder()
-                    ):
+                    case SfgMethodSequencer() | SfgClassComposer.ConstructorBuilder():
                         arg._resolve(ctx, cls, vis_block)
                     case str():
                         vis_block.elements.append(arg)
@@ -89,43 +143,6 @@ class SfgClassComposer(SfgComposerMixIn):
                         cls.add_member(member_var, vis_block.visibility)
                         vis_block.elements.append(SfgEntityDef(member_var))
             return vis_block
-
-    class MethodSequencer:
-        def __init__(
-            self,
-            name: str,
-            returns: UserTypeSpec = PsCustomType("void"),
-            inline: bool = False,
-            const: bool = False,
-        ) -> None:
-            self._name = name
-            self._returns = create_type(returns)
-            self._inline = inline
-            self._const = const
-            self._tree: SfgCallTreeNode
-
-        def __call__(self, *args: SequencerArg):
-            self._tree = make_sequence(*args)
-            return self
-
-        def _resolve(
-            self, ctx: SfgContext, cls: SfgClass, vis_block: SfgVisibilityBlock
-        ):
-            method = SfgMethod(
-                self._name,
-                cls,
-                self._tree,
-                return_type=self._returns,
-                inline=self._inline,
-                const=self._const,
-            )
-            cls.add_member(method, vis_block.visibility)
-
-            if self._inline:
-                vis_block.elements.append(SfgEntityDef(method))
-            else:
-                vis_block.elements.append(SfgEntityDecl(method))
-                ctx._cursor.write_impl(SfgEntityDef(method))
 
     class ConstructorBuilder:
         """Composer syntax for constructor building.
@@ -197,9 +214,7 @@ class SfgClassComposer(SfgComposerMixIn):
         """
         return self._class(class_name, SfgClassKeyword.STRUCT, bases)
 
-    def numpy_struct(
-        self, name: str, dtype: np.dtype, add_constructor: bool = True
-    ):
+    def numpy_struct(self, name: str, dtype: np.dtype, add_constructor: bool = True):
         """Add a numpy structured data type as a C++ struct
 
         Returns:
@@ -230,24 +245,15 @@ class SfgClassComposer(SfgComposerMixIn):
         """
         return SfgClassComposer.ConstructorBuilder(*params)
 
-    def method(
-        self,
-        name: str,
-        returns: UserTypeSpec = PsCustomType("void"),
-        inline: bool = False,
-        const: bool = False,
-    ):
+    def method(self, name: str):
         """In a class or struct body or visibility block, add a method.
         The usage is similar to :any:`SfgBasicComposer.function`.
 
         Args:
             name: The method name
-            returns: The method's return type
-            inline: Whether or not the method should be defined in-line.
-            const: Whether or not the method is const-qualified.
         """
 
-        return SfgClassComposer.MethodSequencer(name, returns, inline, const)
+        return SfgMethodSequencer(self._cursor, name)
 
     #   INTERNALS
 
@@ -270,7 +276,7 @@ class SfgClassComposer(SfgComposerMixIn):
         def sequencer(
             *args: (
                 SfgClassComposer.VisibilityBlockSequencer
-                | SfgClassComposer.MethodSequencer
+                | SfgMethodSequencer
                 | SfgClassComposer.ConstructorBuilder
                 | VarLike
                 | str

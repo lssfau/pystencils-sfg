@@ -47,6 +47,12 @@ SimpleClasses:
   sfg-args:
     output-mode: header-only
 
+ComposerFeatures:
+  expect-code:
+    hpp:
+      - regex: >-
+          \[\[nodiscard\]\]\s*static\s*double\s*geometric\(\s*double\s*q,\s*uint64_t\s*k\)
+
 Conditionals:
   expect-code:
     cpp:

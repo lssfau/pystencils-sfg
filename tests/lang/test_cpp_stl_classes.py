@@ -19,7 +19,7 @@ def test_stl_containers():
     assert no_spaces(expr.get_dtype().c_string()) == "conststd::vector<double>&"
     assert includes(expr) == {HeaderFile.parse("<vector>")}
 
-    expr = std.tuple(("float64", "int32", "uint16", "bool")).var("t")
+    expr = std.tuple("float64", "int32", "uint16", "bool").var("t")
     assert (
         no_spaces(expr.get_dtype().c_string())
         == "std::tuple<double,int32_t,uint16_t,bool>"

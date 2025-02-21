@@ -217,6 +217,8 @@ class SfgDeferredParamSetter(SfgDeferredNode):
 
 
 class SfgDeferredFieldMapping(SfgDeferredNode):
+    """Deferred mapping of a pystencils field to a field data structure."""
+
     def __init__(
         self,
         psfield: Field,

@@ -38,7 +38,6 @@ extensions = [
 templates_path = ["_templates"]
 exclude_patterns = []
 master_doc = "index"
-nitpicky = True
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -71,7 +70,10 @@ default_role = "any"
 
 autodoc_member_order = "bysource"
 autodoc_typehints = "description"
-# autodoc_class_signature = "separated"
+# autodoc_type_aliases = {
+#     "VarLike": "pystencilssfg.lang.expressions.VarLike",
+#     "ExprLike": "pystencilssfg.lang.expressions.ExprLike"
+# }
 
 #   Doctest Setup
 
@@ -89,17 +91,4 @@ myst_enable_extensions = [
     "dollarmath",
     "colon_fence",
 ]
-
-#   Prepare code generation examples
-
-def build_examples():
-    import subprocess
-    import os
-
-    examples_dir = os.path.join("usage", "examples",)
-
-    subprocess.run(["python", "build.py"], cwd=examples_dir).check_returncode()
-
-
-print("Generating output of example scripts...")
-build_examples()
+nb_render_markdown_format = "myst"
