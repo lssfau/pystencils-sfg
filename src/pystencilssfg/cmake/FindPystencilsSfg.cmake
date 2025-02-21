@@ -48,7 +48,7 @@ endif()
 if(${PystencilsSfg_FOUND})
     message( STATUS "Found pystencils Source File Generator (Version ${PystencilsSfg_VERSION})")
     message( STATUS "Using Python interpreter ${PystencilsSfg_PYTHON_INTERPRETER} for SFG generator scripts.")
-    
+
     execute_process(COMMAND ${PystencilsSfg_PYTHON_INTERPRETER} -m pystencilssfg cmake modulepath --no-newline
                     OUTPUT_VARIABLE _PystencilsSfg_CMAKE_MODULE_PATH)
 

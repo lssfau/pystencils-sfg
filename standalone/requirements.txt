@@ -1,0 +1,5 @@
+py-cpuinfo
+# pystencils 2.0 Development Branch
+git+https://i10git.cs.fau.de/pycodegen/pystencils.git@4876f0b774d38fe7644f2b64f80f1291ffa0fa08
+# pystencils-sfg
+git+https://i10git.cs.fau.de/pycodegen/pystencils-sfg.git@dcb77258670abe5bc87f2bd80761594eb304cb90

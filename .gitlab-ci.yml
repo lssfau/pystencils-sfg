@@ -71,3 +71,12 @@ pages:
     - docker
   only:
     - master@pycodegen/pystencils-sfg
+
+cmake-standalone:
+  stage: deploy
+  needs: []
+  script:
+    - echo "Publishing Cmake standalone"
+  artifacts:
+    paths:
+      - standalone
