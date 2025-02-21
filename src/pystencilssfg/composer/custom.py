@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 class CustomGenerator(ABC):
     """Abstract base class for custom code generators that may be passed to
-    `SfgComposer.generate`."""
+    `SfgBasicComposer.generate`."""
 
     @abstractmethod
     def generate(self, sfg: SfgComposer) -> None: ...

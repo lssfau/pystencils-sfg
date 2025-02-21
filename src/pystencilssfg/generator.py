@@ -18,8 +18,8 @@ class SourceFileGenerator:
     """Context manager that controls the code generation process in generator scripts.
 
     The `SourceFileGenerator` must be used as a context manager by calling it within
-    a ``with`` statement in the top-level code of a generator script (see :ref:`guide:generator_scripts`).
-    Upon entry to its context, it creates an :class:`SfgComposer` which can be used to populate the generated files.
+    a ``with`` statement in the top-level code of a generator script.
+    Upon entry to its context, it creates an `SfgComposer` which can be used to populate the generated files.
     When the managed region finishes, the code files are generated and written to disk at the locations
     defined by the configuration.
     Existing copies of the target files are deleted on entry to the managed region,
@@ -29,17 +29,10 @@ class SourceFileGenerator:
         sfg_config: Inline configuration for the code generator
         keep_unknown_argv: If `True`, any command line arguments given to the generator script
             that the `SourceFileGenerator` does not understand are stored in
-            `sfg.context.argv`.
+            `sfg.context.argv <SfgContext.argv>`.
     """
 
-    def __init__(
-        self,
-        sfg_config: SfgConfig | None = None,
-        keep_unknown_argv: bool = False,
-    ):
-        if sfg_config and not isinstance(sfg_config, SfgConfig):
-            raise TypeError("sfg_config is not an SfgConfiguration.")
-
+    def _scriptname(self) -> str:
         import __main__
 
         if not hasattr(__main__, "__file__"):
@@ -50,7 +43,17 @@ class SourceFileGenerator:
             )
 
         scriptpath = Path(__main__.__file__)
-        scriptname = scriptpath.name
+        return scriptpath.name
+
+    def __init__(
+        self,
+        sfg_config: SfgConfig | None = None,
+        keep_unknown_argv: bool = False,
+    ):
+        if sfg_config and not isinstance(sfg_config, SfgConfig):
+            raise TypeError("sfg_config is not an SfgConfiguration.")
+
+        scriptname = self._scriptname()
         basename = scriptname.rsplit(".")[0]
 
         from argparse import ArgumentParser
@@ -146,32 +149,35 @@ class SourceFileGenerator:
             if impl_path.exists():
                 impl_path.unlink()
 
+    def _finish_files(self) -> None:
+        if self._output_mode == OutputMode.INLINE:
+            assert self._impl_file is not None
+            self._header_file.elements.append(f'#include "{self._impl_file.name}"')
+
+        from .ir import collect_includes
+
+        header_includes = collect_includes(self._header_file)
+        self._header_file.includes = list(
+            set(self._header_file.includes) | header_includes
+        )
+        self._header_file.includes.sort(key=self._include_sort_key)
+
+        if self._impl_file is not None:
+            impl_includes = collect_includes(self._impl_file)
+            #   If some header is already included by the generated header file, do not duplicate that inclusion
+            impl_includes -= header_includes
+            self._impl_file.includes = list(
+                set(self._impl_file.includes) | impl_includes
+            )
+            self._impl_file.includes.sort(key=self._include_sort_key)
+
     def __enter__(self) -> SfgComposer:
         self.clean_files()
         return SfgComposer(self._context)
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is None:
-            if self._output_mode == OutputMode.INLINE:
-                assert self._impl_file is not None
-                self._header_file.elements.append(f'#include "{self._impl_file.name}"')
-
-            from .ir import collect_includes
-
-            header_includes = collect_includes(self._header_file)
-            self._header_file.includes = list(
-                set(self._header_file.includes) | header_includes
-            )
-            self._header_file.includes.sort(key=self._include_sort_key)
-
-            if self._impl_file is not None:
-                impl_includes = collect_includes(self._impl_file)
-                #   If some header is already included by the generated header file, do not duplicate that inclusion
-                impl_includes -= header_includes
-                self._impl_file.includes = list(
-                    set(self._impl_file.includes) | impl_includes
-                )
-                self._impl_file.includes.sort(key=self._include_sort_key)
+            self._finish_files()
 
             self._emitter.emit(self._header_file)
             if self._impl_file is not None:

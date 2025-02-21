@@ -4,7 +4,8 @@ kernelspec:
   name: python3
 ---
 
-# Modelling C++ APIs in pystencils-sfg
+(how_to_cpp_api_modelling)=
+# How To Reflect C++ APIs
 
 Pystencils-SFG is designed to help you generate C++ code that interfaces with pystencils on the one side,
 and with your handwritten code on the other side.
@@ -228,3 +229,11 @@ b = lang.AugExpr("double").var("b")
 expr = MyClass(T1="int", T2="double").ctor(a, b)
 expr, lang.depends(expr), lang.includes(expr)
 ```
+
+(field_data_structure_reflection)=
+## Reflecting Field Data Structures
+
+:::{admonition} To Do
+
+Write guide on field data structure reflection
+:::

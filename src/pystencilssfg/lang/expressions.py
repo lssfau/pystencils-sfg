@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import Iterable, TypeAlias, Any, cast
 from itertools import chain
 from abc import ABC, abstractmethod
@@ -12,19 +13,6 @@ from pystencils.types import PsType, PsIntegerType, UserTypeSpec, create_type
 from ..exceptions import SfgException
 from .headers import HeaderFile
 from .types import strip_ptr_ref, CppType, CppTypeFactory, cpptype
-
-__all__ = [
-    "SfgVar",
-    "AugExpr",
-    "CppClass",
-    "VarLike",
-    "ExprLike",
-    "asvar",
-    "depends",
-    "IFieldExtraction",
-    "SrcField",
-    "SrcVector",
-]
 
 
 class SfgVar:
@@ -98,7 +86,7 @@ class DependentExpression:
 
     Args:
         expr: C++ Code string of the expression
-        depends: Iterable of variables and/or `AugExpr`s from which variable and header dependencies are collected
+        depends: Iterable of variables and/or `AugExpr` from which variable and header dependencies are collected
         includes: Iterable of header files which this expression additionally depends on
     """
 
@@ -374,8 +362,9 @@ def cppclass(
 ):
     """
     Convience class decorator for CppClass.
-    It adds to the decorate class the variable `template` via `lang.cpptype`
-    and sets `lang.CppClass` as a base clase.
+    It adds to the decorated class the variable ``template`` via `cpptype`
+    and sets `CppClass` as a base clase.
+
     >>> @cppclass("MyClass", "MyClass.hpp")
     ... class MyClass:
     ...    pass

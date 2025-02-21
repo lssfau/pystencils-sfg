@@ -53,10 +53,11 @@ build-documentation:
   stage: "Documentation"
   needs: []
   script:
-    - nox --session docs
+    - nox -s docs -- --fail-on-warnings
   artifacts:
     paths:
       - docs/build/html
+    when: always
 
 pages:
   image: alpine:latest

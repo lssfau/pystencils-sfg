@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from abc import ABC
 from enum import Enum, auto
 from typing import (
@@ -61,7 +62,7 @@ class SfgCodeEntity:
 class SfgNamespace(SfgCodeEntity):
     """A C++ namespace.
 
-    Each namespace has a `name` and a `parent`; its fully qualified name is given as
+    Each namespace has a name and a parent; its fully qualified name is given as
     ``<parent.name>::<name>``.
 
     Args:
@@ -77,7 +78,7 @@ class SfgNamespace(SfgCodeEntity):
     def get_entity(self, qual_name: str) -> SfgCodeEntity | None:
         """Find an entity with the given qualified name within this namespace.
 
-        If `qual_name` contains any qualifying delimiters ``::``,
+        If ``qual_name`` contains any qualifying delimiters ``::``,
         each component but the last is interpreted as a namespace.
         """
         tokens = qual_name.split("::", 1)
@@ -203,10 +204,40 @@ class SfgKernelNamespace(SfgNamespace):
         self._kernels[kernel.name] = kernel
 
 
-class SfgFunction(SfgCodeEntity):
+@dataclass(frozen=True, match_args=False)
+class CommonFunctionProperties:
+    tree: SfgCallTreeNode
+    parameters: tuple[SfgVar, ...]
+    return_type: PsType
+    inline: bool
+    constexpr: bool
+    attributes: Sequence[str]
+
+    @staticmethod
+    def collect_params(tree: SfgCallTreeNode, required_params: Sequence[SfgVar] | None):
+        from .postprocessing import CallTreePostProcessing
+
+        param_collector = CallTreePostProcessing()
+        params_set = param_collector(tree).function_params
+
+        if required_params is not None:
+            if not (params_set <= set(required_params)):
+                extras = params_set - set(required_params)
+                raise SfgException(
+                    "Extraenous function parameters: "
+                    f"Found free variables {extras} that were not listed in manually specified function parameters."
+                )
+            parameters = tuple(required_params)
+        else:
+            parameters = tuple(sorted(params_set, key=lambda p: p.name))
+
+        return parameters
+
+
+class SfgFunction(SfgCodeEntity, CommonFunctionProperties):
     """A free function."""
 
-    __match_args__ = ("name", "tree", "parameters", "return_type")
+    __match_args__ = ("name", "tree", "parameters", "return_type")  # type: ignore
 
     def __init__(
         self,
@@ -215,37 +246,23 @@ class SfgFunction(SfgCodeEntity):
         tree: SfgCallTreeNode,
         return_type: PsType = void,
         inline: bool = False,
+        constexpr: bool = False,
+        attributes: Sequence[str] = (),
+        required_params: Sequence[SfgVar] | None = None,
     ):
         super().__init__(name, namespace)
 
-        self._tree = tree
-        self._return_type = return_type
-        self._inline = inline
+        parameters = self.collect_params(tree, required_params)
 
-        self._parameters: tuple[SfgVar, ...]
-
-        from .postprocessing import CallTreePostProcessing
-
-        param_collector = CallTreePostProcessing()
-        self._parameters = tuple(
-            sorted(param_collector(self._tree).function_params, key=lambda p: p.name)
+        CommonFunctionProperties.__init__(
+            self,
+            tree,
+            parameters,
+            return_type,
+            inline,
+            constexpr,
+            attributes,
         )
-
-    @property
-    def parameters(self) -> tuple[SfgVar, ...]:
-        return self._parameters
-
-    @property
-    def tree(self) -> SfgCallTreeNode:
-        return self._tree
-
-    @property
-    def return_type(self) -> PsType:
-        return self._return_type
-
-    @property
-    def inline(self) -> bool:
-        return self._inline
 
 
 class SfgVisibility(Enum):
@@ -323,10 +340,10 @@ class SfgMemberVariable(SfgVar, SfgClassMember):
         return self._default_init
 
 
-class SfgMethod(SfgClassMember):
+class SfgMethod(SfgClassMember, CommonFunctionProperties):
     """Instance method of a class"""
 
-    __match_args__ = ("name", "tree", "parameters", "return_type")
+    __match_args__ = ("name", "tree", "parameters", "return_type")  # type: ignore
 
     def __init__(
         self,
@@ -336,22 +353,31 @@ class SfgMethod(SfgClassMember):
         return_type: PsType = void,
         inline: bool = False,
         const: bool = False,
+        static: bool = False,
+        constexpr: bool = False,
+        virtual: bool = False,
+        override: bool = False,
+        attributes: Sequence[str] = (),
+        required_params: Sequence[SfgVar] | None = None,
     ):
         super().__init__(cls)
 
         self._name = name
-        self._tree = tree
-        self._return_type = return_type
-        self._inline = inline
+        self._static = static
         self._const = const
+        self._virtual = virtual
+        self._override = override
 
-        self._parameters: tuple[SfgVar, ...]
+        parameters = self.collect_params(tree, required_params)
 
-        from .postprocessing import CallTreePostProcessing
-
-        param_collector = CallTreePostProcessing()
-        self._parameters = tuple(
-            sorted(param_collector(self._tree).function_params, key=lambda p: p.name)
+        CommonFunctionProperties.__init__(
+            self,
+            tree,
+            parameters,
+            return_type,
+            inline,
+            constexpr,
+            attributes,
         )
 
     @property
@@ -359,24 +385,20 @@ class SfgMethod(SfgClassMember):
         return self._name
 
     @property
-    def parameters(self) -> tuple[SfgVar, ...]:
-        return self._parameters
-
-    @property
-    def tree(self) -> SfgCallTreeNode:
-        return self._tree
-
-    @property
-    def return_type(self) -> PsType:
-        return self._return_type
-
-    @property
-    def inline(self) -> bool:
-        return self._inline
+    def static(self) -> bool:
+        return self._static
 
     @property
     def const(self) -> bool:
         return self._const
+
+    @property
+    def virtual(self) -> bool:
+        return self._virtual
+
+    @property
+    def override(self) -> bool:
+        return self._override
 
 
 class SfgConstructor(SfgClassMember):

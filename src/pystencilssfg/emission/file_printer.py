@@ -34,15 +34,15 @@ class SfgFilePrinter:
     def __call__(self, file: SfgSourceFile) -> str:
         code = ""
 
-        if file.file_type == SfgSourceFileType.HEADER:
-            code += "#pragma once\n\n"
-
         if file.prelude:
             comment = "/**\n"
-            comment += indent(file.prelude, " * ")
+            comment += indent(file.prelude, " * ", predicate=lambda _: True)
             comment += " */\n\n"
 
             code += comment
+
+        if file.file_type == SfgSourceFileType.HEADER:
+            code += "#pragma once\n\n"
 
         for header in file.includes:
             incl = str(header) if header.system_header else f'"{str(header)}"'
@@ -148,7 +148,9 @@ class SfgFilePrinter:
                     code += f" {defined_entity.owning_class.name}::"
                 code += f" {name}"
                 if defined_entity.default_init is not None:
-                    args_str = ", ".join(str(expr) for expr in defined_entity.default_init)
+                    args_str = ", ".join(
+                        str(expr) for expr in defined_entity.default_init
+                    )
                     code += "{" + args_str + "}"
                 code += ";"
                 return code
@@ -177,8 +179,22 @@ class SfgFilePrinter:
 
     def _func_signature(self, func: SfgFunction | SfgMethod, inclass: bool):
         code = ""
-        if func.inline:
+
+        if func.attributes:
+            code += "[[" + ", ".join(func.attributes) + "]]"
+
+        if func.inline and not inclass:
             code += "inline "
+
+        if isinstance(func, SfgMethod) and inclass:
+            if func.static:
+                code += "static "
+            if func.virtual:
+                code += "virtual "
+
+        if func.constexpr:
+            code += "constexpr "
+
         code += func.return_type.c_string() + " "
         params_str = ", ".join(
             f"{param.dtype.c_string()} {param.name}" for param in func.parameters
@@ -187,7 +203,10 @@ class SfgFilePrinter:
             code += f"{func.owning_class.name}::"
         code += f"{func.name}({params_str})"
 
-        if isinstance(func, SfgMethod) and func.const:
-            code += " const"
+        if isinstance(func, SfgMethod):
+            if func.const:
+                code += " const"
+            if func.override and inclass:
+                code += " override"
 
         return code
