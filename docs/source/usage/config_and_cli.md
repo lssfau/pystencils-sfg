@@ -42,13 +42,15 @@ The file extensions of the generated files can be modified through
 {any}`cfg.extensions.header <FileExtensions.header>`
 and {any}`cfg.extensions.impl <FileExtensions.impl>`;
 and the output directory of the code generator can be set through {any}`cfg.output_directory <SfgConfig.output_directory>`.
+The [header-only mode](#header_only_mode) can be enabled using {any}`cfg.header_only <SfgConfig.header_only>`.
 
 :::{danger}
 
-When running generator scripts through [CMake](#cmake_integration), you should *never* set the file extensions
-and the output directory in the inline configuration.
-Both are managed by the pystencils-sfg CMake module, and setting them manually inside the script will
-lead to an error.
+When running generator scripts through [CMake](#cmake_integration), the file extensions,
+output directory, and header-only mode settings will be managed fully by the pystencils-sfg
+CMake module and the (optional) project configuration module.
+They should therefore not be set in the inline configuration,
+as this will likely lead to errors being raised during code generation.
 :::
 
 ### Outer Namespace
@@ -76,7 +78,7 @@ on invocation. These include:
 - `--sfg-output-dir <path>`: Set the output directory of the generator script. This corresponds to {any}`SfgConfig.output_directory`.
 - `--sfg-file-extensions <exts>`: Set the file extensions used for the generated files;
   `exts` must be a comma-separated list not containing any spaces. Corresponds to {any}`SfgConfig.extensions`.
-- `--sfg-output-mode <mode>`: Set the output mode of the generator script. Corresponds to {any}`SfgConfig.output_mode`.
+- `[--no]--sfg-header-only`: Enable or disable header-only code generation. Corresponds to {any}`SfgConfig.header_only`.
 
 If any configuration option is set to conflicting values on the command line and in the inline configuration,
 the generator script will terminate with an error.
@@ -87,6 +89,17 @@ with the `--help` flag:
 ```bash
 $ python kernels.py --help
 ```
+
+(header_only_mode)=
+## Header-Only Mode
+
+When the header-only output mode is enabled,
+the code generator will emit only a header file and no separate implementation file.
+In this case, the composer will automatically place all function, method,
+and kernel definitions in the header file.
+
+Header-only code generation can be enabled by setting the `--header-only` command-line flag
+or the {any}`SfgConfig.header_only` configuration option.
 
 (custom_cli_args)=
 ## Adding Custom Command-Line Options

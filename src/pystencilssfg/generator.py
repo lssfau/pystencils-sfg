@@ -4,7 +4,6 @@ from typing import Callable, Any
 from .config import (
     SfgConfig,
     CommandLineParameters,
-    OutputMode,
     _GlobalNamespace,
 )
 from .context import SfgContext
@@ -78,7 +77,7 @@ class SourceFileGenerator:
             cli_params.find_conflicts(sfg_config)
             config.override(sfg_config)
 
-        self._output_mode: OutputMode = config.get_option("output_mode")
+        self._header_only: bool = config.get_option("header_only")
         self._output_dir: Path = config.get_option("output_directory")
 
         output_files = config._get_output_files(basename)
@@ -90,20 +89,15 @@ class SourceFileGenerator:
         )
         self._impl_file: SfgSourceFile | None
 
-        match self._output_mode:
-            case OutputMode.HEADER_ONLY:
-                self._impl_file = None
-            case OutputMode.STANDALONE:
-                self._impl_file = SfgSourceFile(
-                    output_files[1].name, SfgSourceFileType.TRANSLATION_UNIT
-                )
-                self._impl_file.includes.append(
-                    HeaderFile.parse(self._header_file.name)
-                )
-            case OutputMode.INLINE:
-                self._impl_file = SfgSourceFile(
-                    output_files[1].name, SfgSourceFileType.HEADER
-                )
+        if self._header_only:
+            self._impl_file = None
+        else:
+            self._impl_file = SfgSourceFile(
+                output_files[1].name, SfgSourceFileType.TRANSLATION_UNIT
+            )
+            self._impl_file.includes.append(
+                HeaderFile.parse(self._header_file.name)
+            )
 
         #   TODO: Find a way to not hard-code the restrict qualifier in pystencils
         self._header_file.elements.append("#define RESTRICT __restrict__")
@@ -150,10 +144,6 @@ class SourceFileGenerator:
                 impl_path.unlink()
 
     def _finish_files(self) -> None:
-        if self._output_mode == OutputMode.INLINE:
-            assert self._impl_file is not None
-            self._header_file.elements.append(f'#include "{self._impl_file.name}"')
-
         from .ir import collect_includes
 
         header_includes = collect_includes(self._header_file)

@@ -29,8 +29,7 @@ def test_list_files_headeronly():
         "list-files",
         "--sfg-output-dir",
         output_dir,
-        "--sfg-output-mode",
-        "header-only",
+        "--sfg-header-only",
         "genscript.py",
     ]
 

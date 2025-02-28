@@ -3,7 +3,6 @@ from pathlib import Path
 
 from pystencilssfg.config import (
     SfgConfig,
-    OutputMode,
     GLOBAL_NAMESPACE,
     CommandLineParameters,
     SfgConfigException
@@ -13,7 +12,7 @@ from pystencilssfg.config import (
 def test_defaults():
     cfg = SfgConfig()
 
-    assert cfg.get_option("output_mode") == OutputMode.STANDALONE
+    assert cfg.get_option("header_only") is False
     assert cfg.extensions.get_option("header") == "hpp"
     assert cfg.codestyle.get_option("indent_width") == 2
     assert cfg.clang_format.get_option("binary") == "clang-format"
@@ -90,6 +89,23 @@ def test_from_commandline(sample_config_module):
     assert cfg.output_directory == Path(".out")
     assert cfg.extensions.header == "h++"
     assert cfg.extensions.impl == "c++"
+    assert cfg.header_only is None
+
+    args = parser.parse_args(
+        ["--sfg-header-only"]
+    )
+    cli_args = CommandLineParameters(args)
+    cfg = cli_args.get_config()
+
+    assert cfg.header_only is True
+
+    args = parser.parse_args(
+        ["--no-sfg-header-only"]
+    )
+    cli_args = CommandLineParameters(args)
+    cfg = cli_args.get_config()
+
+    assert cfg.header_only is False
 
     args = parser.parse_args(
         ["--sfg-output-dir", "gen_sources", "--sfg-config-module", sample_config_module]

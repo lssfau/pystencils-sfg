@@ -141,11 +141,19 @@ class SfgKernelHandle(SfgCodeEntity):
 
     __match_args__ = ("kernel", "parameters")
 
-    def __init__(self, name: str, namespace: SfgKernelNamespace, kernel: Kernel):
+    def __init__(
+        self,
+        name: str,
+        namespace: SfgKernelNamespace,
+        kernel: Kernel,
+        inline: bool = False,
+    ):
         super().__init__(name, namespace)
 
         self._kernel = kernel
         self._parameters = [SfgKernelParamVar(p) for p in kernel.parameters]
+
+        self._inline: bool = inline
 
         self._scalar_params: set[SfgVar] = set()
         self._fields: set[Field] = set()
@@ -175,6 +183,10 @@ class SfgKernelHandle(SfgCodeEntity):
     def kernel(self) -> Kernel:
         """Underlying pystencils kernel object"""
         return self._kernel
+
+    @property
+    def inline(self) -> bool:
+        return self._inline
 
 
 class SfgKernelNamespace(SfgNamespace):

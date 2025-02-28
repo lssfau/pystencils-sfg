@@ -72,11 +72,12 @@ class GenScriptTest:
 
         sfg_args: dict = test_description.get("sfg-args", dict())
 
-        if (output_mode := sfg_args.get("output-mode", None)) is not None:
-            if output_mode == "header-only":
+        if (header_only := sfg_args.get("header-only", None)) is not None:
+            if header_only:
                 expected_extensions = ["hpp"]
-
-            self._script_args += ["--sfg-output-mode", output_mode]
+                self._script_args += ["--sfg-header-only"]
+            else:
+                self._script_args += ["--no--sfg-header-only"]
 
         if (file_exts := sfg_args.get("file-extensions", None)) is not None:
             expected_extensions = file_exts

@@ -116,6 +116,10 @@ class SfgCursor:
                 self._loc[f] = f.elements
 
     @property
+    def context(self) -> SfgContext:
+        return self._ctx
+
+    @property
     def current_namespace(self) -> SfgNamespace:
         return self._cur_namespace
 

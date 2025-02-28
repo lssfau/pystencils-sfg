@@ -85,12 +85,12 @@ The test suite parses the following (groups of) parameters:
 
 SFG-related command-line parameters passed to the generator script.
 These may be:
-- `output-mode`: Define the output mode, can be either `standalone`, `inline` or `header-only`.
-If `header-only` is specified, the set of expected output files is reduced to `{".hpp"}`.
+- `header-only` (`true` or `false`): Enable or disable header-only code generation.
+  If `true`, the set of expected output files is reduced to `{".hpp"}`.
 - `file-extensions`: List of file extensions for the output files of the generator script.
-If specified, these are taken as the expected output files by the test suite.
+  If specified, these are taken as the expected output files by the test suite.
 - `config-module`: Path to a config module, relative to `source/`.
-The Python file referred to by this option will be passed as a configuration module to the generator script.
+  The Python file referred to by this option will be passed as a configuration module to the generator script.
 
 #### `extra-args`
 List of additional command line parameters passed to the script.

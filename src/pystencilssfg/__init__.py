@@ -1,4 +1,4 @@
-from .config import SfgConfig, GLOBAL_NAMESPACE, OutputMode
+from .config import SfgConfig, GLOBAL_NAMESPACE
 from .generator import SourceFileGenerator
 from .composer import SfgComposer
 from .context import SfgContext
@@ -8,7 +8,6 @@ from .exceptions import SfgException
 __all__ = [
     "SfgConfig",
     "GLOBAL_NAMESPACE",
-    "OutputMode",
     "SourceFileGenerator",
     "SfgComposer",
     "SfgContext",

@@ -19,7 +19,7 @@ TestIllegalArgs:
 
 TestIncludeSorting:
   sfg-args:
-    output-mode: header-only
+    header-only: true
   expect-code:
     hpp:
       - regex: >-
@@ -32,7 +32,7 @@ TestIncludeSorting:
 
 BasicDefinitions:
   sfg-args:
-    output-mode: header-only
+    header-only: true
   expect-code:
     hpp:
       - regex: >-
@@ -45,13 +45,23 @@ BasicDefinitions:
 
 SimpleClasses:
   sfg-args:
-    output-mode: header-only
+    header-only: true
 
 ComposerFeatures:
   expect-code:
     hpp:
       - regex: >-
           \[\[nodiscard\]\]\s*static\s*double\s*geometric\(\s*double\s*q,\s*uint64_t\s*k\)
+
+ComposerHeaderOnly:
+  sfg-args:
+    header-only: true
+  expect-code:
+    hpp:
+      - regex: >-
+          inline\s+int32_t\s+twice\s*\(
+      - regex: >-
+          inline\s+void\s+kernel\s*\(
 
 Conditionals:
   expect-code:
@@ -67,7 +77,7 @@ Conditionals:
 
 NestedNamespaces:
   sfg-args:
-    output-mode: header-only
+    header-only: true
 
 # Kernel Generation
 
@@ -84,10 +94,11 @@ MdSpanLbStreaming:
 
 SyclKernels:
   sfg-args:
-    output-mode: inline
-    file-extensions: [hpp, ipp]
+    header-only: true
   expect-code:
-    ipp:
+    hpp:
+      - regex: >-
+          inline\s+void\s+kernel\s*\(
       - regex: >-
           cgh\.parallel_for\(range,\s*\[=\]\s*\(const\s+sycl::item<\s*2\s*>\s+sycl_item\s*\)\s*\{\s*kernels::kernel\(.*\);\s*\}\);
 

@@ -253,7 +253,10 @@ class SfgClassComposer(SfgComposerMixIn):
             name: The method name
         """
 
-        return SfgMethodSequencer(self._cursor, name)
+        seq = SfgMethodSequencer(self._cursor, name)
+        if self._ctx.impl_file is None:
+            seq.inline()
+        return seq
 
     #   INTERNALS
 
