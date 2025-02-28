@@ -21,9 +21,6 @@ Categories, Parameter Types, and Special Values
 .. autoclass:: _GlobalNamespace
 .. autodata:: GLOBAL_NAMESPACE
 
-.. autoclass:: OutputMode
-    :members:
-
 .. autoclass:: FileExtensions
     :members:
 

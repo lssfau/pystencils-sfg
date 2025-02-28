@@ -27,9 +27,7 @@ from ..config import CodeStyle
 class SfgFilePrinter:
     def __init__(self, code_style: CodeStyle) -> None:
         self._code_style = code_style
-        self._kernel_printer = CAstPrinter(
-            indent_width=code_style.get_option("indent_width")
-        )
+        self._indent_width = code_style.get_option("indent_width")
 
     def __call__(self, file: SfgSourceFile) -> str:
         code = ""
@@ -86,7 +84,11 @@ class SfgFilePrinter:
     ) -> str:
         match declared_entity:
             case SfgKernelHandle(kernel):
-                return self._kernel_printer.print_signature(kernel) + ";"
+                kernel_printer = CAstPrinter(
+                    indent_width=self._indent_width,
+                    func_prefix="inline" if declared_entity.inline else None,
+                )
+                return kernel_printer.print_signature(kernel) + ";"
 
             case SfgFunction(name, _, params) | SfgMethod(name, _, params):
                 return self._func_signature(declared_entity, inclass) + ";"
@@ -113,7 +115,11 @@ class SfgFilePrinter:
     ) -> str:
         match defined_entity:
             case SfgKernelHandle(kernel):
-                return self._kernel_printer(kernel)
+                kernel_printer = CAstPrinter(
+                    indent_width=self._indent_width,
+                    func_prefix="inline" if defined_entity.inline else None,
+                )
+                return kernel_printer(kernel)
 
             case SfgFunction(name, tree, params) | SfgMethod(name, tree, params):
                 sig = self._func_signature(defined_entity, inclass)

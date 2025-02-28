@@ -1,12 +1,11 @@
 import sympy as sp
 import pystencils as ps
 
-from pystencilssfg import SourceFileGenerator, SfgConfig, OutputMode
+from pystencilssfg import SourceFileGenerator, SfgConfig
 from pystencilssfg.extensions.sycl import SyclComposer
 
 cfg = SfgConfig()
-cfg.output_mode = OutputMode.INLINE
-cfg.extensions.impl = "ipp"
+cfg.header_only = True
 
 with SourceFileGenerator(cfg) as sfg:
     sfg = SyclComposer(sfg)

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from argparse import ArgumentParser
+from argparse import ArgumentParser, BooleanOptionalAction
 
 from types import ModuleType
 from typing import Any, Sequence, Callable
 from dataclasses import dataclass
-from enum import Enum, auto
 from os import path
 from importlib import util as iutil
 from pathlib import Path
@@ -25,7 +24,7 @@ class FileExtensions(ConfigBase):
     header: BasicOption[str] = BasicOption("hpp")
     """File extension for generated header file."""
 
-    impl: BasicOption[str] = BasicOption()
+    impl: BasicOption[str] = BasicOption("cpp")
     """File extension for generated implementation file."""
 
     @header.validate
@@ -35,25 +34,6 @@ class FileExtensions(ConfigBase):
             return ext[1:]
 
         return ext
-
-
-class OutputMode(Enum):
-    """Output mode of the source file generator."""
-
-    STANDALONE = auto()
-    """Generate a header/implementation file pair (e.g. ``.hpp/.cpp``) where the implementation file will
-    be compiled to a standalone object."""
-
-    INLINE = auto()
-    """Generate a header/inline implementation file pair (e.g. ``.hpp/.ipp``) where all implementations
-    are inlined by including the implementation file at the end of the header file."""
-
-    HEADER_ONLY = auto()
-    """Generate only a header file.
-
-    At the moment, header-only mode does not support generation of kernels and requires that all functions
-    and methods are marked ``inline``.
-    """
 
 
 @dataclass
@@ -137,14 +117,10 @@ class SfgConfig(ConfigBase):
             FileExtensions.impl
     """
 
-    output_mode: BasicOption[OutputMode] = BasicOption(OutputMode.STANDALONE)
-    """The generator's output mode; defines which files to generate, and the set of legal file extensions.
+    header_only: BasicOption[bool] = BasicOption(False)
+    """If set to `True`, generate only a header file.
 
-    Possible parameters:
-        .. autosummary::
-            OutputMode.STANDALONE
-            OutputMode.INLINE
-            OutputMode.HEADER_ONLY
+    This will cause all definitions to be generated ``inline``.
     """
 
     outer_namespace: BasicOption[str | _GlobalNamespace] = BasicOption(GLOBAL_NAMESPACE)
@@ -187,16 +163,9 @@ class SfgConfig(ConfigBase):
         header_ext = self.extensions.get_option("header")
         impl_ext = self.extensions.get_option("impl")
         output_files = [output_dir / f"{basename}.{header_ext}"]
-        output_mode = self.get_option("output_mode")
+        header_only = self.get_option("header_only")
 
-        if impl_ext is None:
-            match output_mode:
-                case OutputMode.INLINE:
-                    impl_ext = "ipp"
-                case OutputMode.STANDALONE:
-                    impl_ext = "cpp"
-
-        if output_mode != OutputMode.HEADER_ONLY:
+        if not header_only:
             assert impl_ext is not None
             output_files.append(output_dir / f"{basename}.{impl_ext}")
 
@@ -219,11 +188,10 @@ class CommandLineParameters:
             help="Comma-separated list of file extensions",
         )
         config_group.add_argument(
-            "--sfg-output-mode",
-            type=str,
-            default=None,
-            choices=("standalone", "inline", "header-only"),
-            dest="output_mode",
+            "--sfg-header-only",
+            action=BooleanOptionalAction,
+            dest="header_only",
+            help="Generate only a header file.",
         )
         config_group.add_argument(
             "--sfg-config-module", type=str, default=None, dest="config_module_path"
@@ -234,21 +202,7 @@ class CommandLineParameters:
     def __init__(self, args) -> None:
         self._cl_config_module_path: str | None = args.config_module_path
 
-        if args.output_mode is not None:
-            match args.output_mode.lower():
-                case "standalone":
-                    output_mode = OutputMode.STANDALONE
-                case "inline":
-                    output_mode = OutputMode.INLINE
-                case "header-only":
-                    output_mode = OutputMode.HEADER_ONLY
-                case _:
-                    assert False, "invalid output mode"
-        else:
-            output_mode = None
-
-        self._cl_output_mode = output_mode
-
+        self._cl_header_only: bool | None = args.header_only
         self._cl_output_dir: str | None = args.output_directory
 
         if args.file_extensions is not None:
@@ -279,8 +233,8 @@ class CommandLineParameters:
         ):
             self._config_module.configure_sfg(cfg)
 
-        if self._cl_output_mode is not None:
-            cfg.output_mode = self._cl_output_mode
+        if self._cl_header_only is not None:
+            cfg.header_only = self._cl_header_only
         if self._cl_header_ext is not None:
             cfg.extensions.header = self._cl_header_ext
         if self._cl_impl_ext is not None:
@@ -292,7 +246,7 @@ class CommandLineParameters:
 
     def find_conflicts(self, cfg: SfgConfig):
         for name, mine, theirs in (
-            ("output_mode", self._cl_output_mode, cfg.output_mode),
+            ("header_only", self._cl_header_only, cfg.header_only),
             ("extensions.header", self._cl_header_ext, cfg.extensions.header),
             ("extensions.impl", self._cl_impl_ext, cfg.extensions.impl),
             ("output_directory", self._cl_output_dir, cfg.output_directory),
@@ -320,7 +274,7 @@ class CommandLineParameters:
         extensions = tuple((ext[1:] if ext[0] == "." else ext) for ext in extensions)
 
         HEADER_FILE_EXTENSIONS = {"h", "hpp", "hxx", "h++", "cuh"}
-        IMPL_FILE_EXTENSIONS = {"c", "cpp", "cxx", "c++", "cu", ".impl.h", "ipp", "hip"}
+        IMPL_FILE_EXTENSIONS = {"c", "cpp", "cxx", "c++", "cu", "hip"}
 
         for ext in extensions:
             if ext in HEADER_FILE_EXTENSIONS:

@@ -88,11 +88,16 @@ SequencerArg: TypeAlias = tuple | ExprLike | SfgCallTreeNode | SfgNodeBuilder
 class KernelsAdder:
     """Handle on a kernel namespace that permits registering kernels."""
 
-    def __init__(self, ctx: SfgContext, loc: SfgNamespaceBlock):
-        self._ctx = ctx
-        self._loc = loc
-        assert isinstance(loc.namespace, SfgKernelNamespace)
-        self._kernel_namespace = loc.namespace
+    def __init__(self, cursor: SfgCursor, knamespace: SfgKernelNamespace):
+        self._cursor = cursor
+        self._kernel_namespace = knamespace
+        self._inline: bool = False
+        self._loc: SfgNamespaceBlock | None = None
+
+    def inline(self) -> KernelsAdder:
+        """Generate kernel definitions ``inline`` in the header file."""
+        self._inline = True
+        return self
 
     def add(self, kernel: Kernel, name: str | None = None):
         """Adds an existing pystencils AST to this namespace.
@@ -111,14 +116,22 @@ class KernelsAdder:
         if name is not None:
             kernel.name = kernel_name
 
-        khandle = SfgKernelHandle(kernel_name, self._kernel_namespace, kernel)
+        khandle = SfgKernelHandle(
+            kernel_name, self._kernel_namespace, kernel, inline=self._inline
+        )
         self._kernel_namespace.add_kernel(khandle)
 
-        self._loc.elements.append(SfgEntityDef(khandle))
+        loc = self._get_loc()
+        loc.elements.append(SfgEntityDef(khandle))
 
         for header in kernel.required_headers:
-            assert self._ctx.impl_file is not None
-            self._ctx.impl_file.includes.append(HeaderFile.parse(header))
+            hfile = HeaderFile.parse(header)
+            if self._inline:
+                self._cursor.context.header_file.includes.append(hfile)
+            else:
+                impl_file = self._cursor.context.impl_file
+                assert impl_file is not None
+                impl_file.includes.append(hfile)
 
         return khandle
 
@@ -146,6 +159,18 @@ class KernelsAdder:
 
         kernel = create_kernel(assignments, config=config)
         return self.add(kernel)
+
+    def _get_loc(self) -> SfgNamespaceBlock:
+        if self._loc is None:
+            kns_block = SfgNamespaceBlock(self._kernel_namespace)
+
+            if self._inline:
+                self._cursor.write_header(kns_block)
+            else:
+                self._cursor.write_impl(kns_block)
+
+            self._loc = kns_block
+        return self._loc
 
 
 class SfgBasicComposer(SfgIComposer):
@@ -281,9 +306,10 @@ class SfgBasicComposer(SfgIComposer):
                 f"The existing entity {kns.fqname} is not a kernel namespace"
             )
 
-        kns_block = SfgNamespaceBlock(kns)
-        self._cursor.write_impl(kns_block)
-        return KernelsAdder(self._ctx, kns_block)
+        kadder = KernelsAdder(self._cursor, kns)
+        if self._ctx.impl_file is None:
+            kadder.inline()
+        return kadder
 
     def include(self, header: str | HeaderFile, private: bool = False):
         """Include a header file.
@@ -355,6 +381,9 @@ class SfgBasicComposer(SfgIComposer):
                 FutureWarning,
             )
             seq.returns(return_type)
+
+        if self._ctx.impl_file is None:
+            seq.inline()
 
         return seq
 

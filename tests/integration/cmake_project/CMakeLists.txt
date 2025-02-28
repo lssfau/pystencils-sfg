@@ -35,12 +35,12 @@ pystencilssfg_generate_target_sources(
     TestApp
     SCRIPTS CliTest.py
     SCRIPT_ARGS apples bananas unicorns
-    OUTPUT_MODE header-only
+    HEADER_ONLY
 )
 
 pystencilssfg_generate_target_sources(
     TestApp
     SCRIPTS CustomDirTest.py
     OUTPUT_DIRECTORY my-output
-    OUTPUT_MODE header-only
+    HEADER_ONLY
 )
