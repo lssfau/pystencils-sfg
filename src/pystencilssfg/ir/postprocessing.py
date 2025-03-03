@@ -19,9 +19,8 @@ from .call_tree import SfgCallTreeNode, SfgCallTreeLeaf, SfgSequence, SfgStateme
 from ..lang.expressions import SfgKernelParamVar
 from ..lang import (
     SfgVar,
-    IFieldExtraction,
-    SrcField,
-    SrcVector,
+    SupportsFieldExtraction,
+    SupportsVectorExtraction,
     ExprLike,
     AugExpr,
     depends,
@@ -211,7 +210,9 @@ class SfgDeferredParamSetter(SfgDeferredNode):
         live_var = ppc.get_live_variable(self._lhs.name)
         if live_var is not None:
             code = f"{live_var.dtype.c_string()} {live_var.name} = {self._rhs};"
-            return SfgStatements(code, (live_var,), depends(self._rhs), includes(self._rhs))
+            return SfgStatements(
+                code, (live_var,), depends(self._rhs), includes(self._rhs)
+            )
         else:
             return SfgSequence([])
 
@@ -222,15 +223,11 @@ class SfgDeferredFieldMapping(SfgDeferredNode):
     def __init__(
         self,
         psfield: Field,
-        extraction: IFieldExtraction | SrcField,
+        extraction: SupportsFieldExtraction,
         cast_indexing_symbols: bool = True,
     ):
         self._field = psfield
-        self._extraction: IFieldExtraction = (
-            extraction
-            if isinstance(extraction, IFieldExtraction)
-            else extraction.get_extraction()
-        )
+        self._extraction = extraction
         self._cast_indexing_symbols = cast_indexing_symbols
 
     def expand(self, ppc: PostProcessingContext) -> SfgCallTreeNode:
@@ -267,7 +264,7 @@ class SfgDeferredFieldMapping(SfgDeferredNode):
         done: set[SfgKernelParamVar] = set()
 
         if ptr is not None:
-            expr = self._extraction.ptr()
+            expr = self._extraction._extract_ptr()
             nodes.append(
                 SfgStatements(
                     f"{ptr.dtype.c_string()} {ptr.name} {{ {expr} }};",
@@ -286,7 +283,7 @@ class SfgDeferredFieldMapping(SfgDeferredNode):
                 return expr
 
         def get_shape(coord, symb: SfgKernelParamVar | str):
-            expr = self._extraction.size(coord)
+            expr = self._extraction._extract_size(coord)
 
             if expr is None:
                 raise SfgException(
@@ -306,7 +303,7 @@ class SfgDeferredFieldMapping(SfgDeferredNode):
                 return SfgStatements(f"/* {expr} == {symb} */", (), ())
 
         def get_stride(coord, symb: SfgKernelParamVar | str):
-            expr = self._extraction.stride(coord)
+            expr = self._extraction._extract_stride(coord)
 
             if expr is None:
                 raise SfgException(
@@ -332,7 +329,11 @@ class SfgDeferredFieldMapping(SfgDeferredNode):
 
 
 class SfgDeferredVectorMapping(SfgDeferredNode):
-    def __init__(self, scalars: Sequence[sp.Symbol | SfgVar], vector: SrcVector):
+    def __init__(
+        self,
+        scalars: Sequence[sp.Symbol | SfgVar],
+        vector: SupportsVectorExtraction,
+    ):
         self._scalars = {sc.name: (i, sc) for i, sc in enumerate(scalars)}
         self._vector = vector
 
@@ -342,7 +343,7 @@ class SfgDeferredVectorMapping(SfgDeferredNode):
         for param in ppc.live_variables:
             if param.name in self._scalars:
                 idx, _ = self._scalars[param.name]
-                expr = self._vector.extract_component(idx)
+                expr = self._vector._extract_component(idx)
                 nodes.append(
                     SfgStatements(
                         f"{param.dtype.c_string()} {param.name} {{ {expr} }};",

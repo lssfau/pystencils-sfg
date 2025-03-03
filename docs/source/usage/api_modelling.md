@@ -7,6 +7,21 @@ kernelspec:
 (how_to_cpp_api_modelling)=
 # How To Reflect C++ APIs
 
+```{code-cell} ipython3
+:tags: [remove-cell]
+
+from __future__ import annotations
+import sys
+from pathlib import Path
+
+mockup_path = Path("../_util").resolve()
+sys.path.append(str(mockup_path))
+
+from sfg_monkeypatch import DocsPatchedGenerator  # monkeypatch SFG for docs
+
+from pystencilssfg import SourceFileGenerator
+```
+
 Pystencils-SFG is designed to help you generate C++ code that interfaces with pystencils on the one side,
 and with your handwritten code on the other side.
 This requires that the C++ classes and APIs of your framework or application be represented within the SFG system.
@@ -233,7 +248,173 @@ expr, lang.depends(expr), lang.includes(expr)
 (field_data_structure_reflection)=
 ## Reflecting Field Data Structures
 
-:::{admonition} To Do
+One key feature of pystencils-sfg is its ability to map symbolic fields
+onto arbitrary array data structures
+using the composer's {any}`map_field <SfgBasicComposer.map_field>` method.
+The APIs of a custom field data structure can naturally be injected into pystencils-sfg
+using the modelling framework described above.
+However, for them to be recognized by `map_field`,
+the reflection class also needs to implement the {any}`SupportsFieldExtraction` protocol.
+This requires that the following three methods are implemented:
 
-Write guide on field data structure reflection
-:::
+```{code-block} python
+def _extract_ptr(self) -> AugExpr: ...
+
+def _extract_size(self, coordinate: int) -> AugExpr | None: ...
+
+def _extract_stride(self, coordinate: int) -> AugExpr | None: ...
+```
+
+The first, `_extract_ptr`, must return an expression that evaluates
+to the base pointer of the field's memory buffer.
+This pointer has to point at the field entry which pystencils accesses
+at all-zero index and offsets (see [](#note-on-ghost-layers)).
+The other two, when called with a coordinate $c \ge 0$, shall return
+the size and linearization stride of the field in that direction.
+If the coordinate is equal or larger than the field's dimensionality,
+return `None` instead.
+
+### Sample Field API Reflection
+
+Consider the following class template for a field, which takes its element type
+and dimensionality as template parameters
+and exposes its data pointer, shape, and strides through public methods:
+
+```{code-block} C++
+template< std::floating_point ElemType, size_t DIM >
+class MyField {
+public:
+  size_t get_shape(size_t coord);
+  size_t get_stride(size_t coord);
+  ElemType * data_ptr();
+}
+```
+
+It could be reflected by the following class.
+Note that in this case we define a custom `__init__` method in order to
+intercept the template arguments `elem_type` and `dim`
+and store them as instance members.
+Our `__init__` then forwards all its arguments up to `CppClass.__init__`.
+We then define reflection methods for `shape`, `stride` and `data` -
+the implementation of the field extraction protocol then simply calls these methods.
+
+```{code-cell} ipython3
+from pystencilssfg.lang import SupportsFieldExtraction
+from pystencils.types import UserTypeSpec
+
+class MyField(lang.CppClass, SupportsFieldExtraction):
+    template = lang.cpptype(
+        "MyField< {ElemType}, {DIM} >",
+        "MyField.hpp"
+    )
+
+    def __init__(
+        self,
+        elem_type: UserTypeSpec,
+        dim: int,
+        **kwargs,
+    ) -> None:
+        self._elem_type = elem_type
+        self._dim = dim
+        super().__init__(ElemType=elem_type, DIM=dim, **kwargs)
+
+    #   Reflection of Public Methods
+    def get_shape(self, coord: int | lang.AugExpr) -> lang.AugExpr:
+        return lang.AugExpr.format("{}.get_shape({})", self, coord)
+        
+    def get_stride(self, coord: int | lang.AugExpr) -> lang.AugExpr:
+        return lang.AugExpr.format("{}.get_stride({})", self, coord)
+
+    def data_ptr(self) -> lang.AugExpr:
+        return lang.AugExpr.format("{}.data_ptr()", self)
+
+    #   Field Extraction Protocol that uses the above interface
+    def _extract_ptr(self) -> lang.AugExpr:
+        return self.data_ptr()
+
+    def _extract_size(self, coordinate: int) -> lang.AugExpr | None:
+        if coordinate > self._dim:
+            return None
+        else:
+            return self.get_shape(coordinate)
+
+    def _extract_stride(self, coordinate: int) -> lang.AugExpr | None:
+        if coordinate > self._dim:
+            return None
+        else:
+            return self.get_stride(coordinate)
+```
+
+Our custom field reflection is now ready to be used.
+The following generator script demonstrates what code is generated when an instance of `MyField`
+is passed to `sfg.map_field`:
+
+
+```{code-cell} ipython3
+import pystencils as ps
+from pystencilssfg.lang.cpp import std
+
+with SourceFileGenerator() as sfg:
+    #   Create symbolic fields
+    f = ps.fields("f: double[3D]")
+    f_myfield = MyField(f.dtype, f.ndim, ref=True).var(f.name)
+
+    #   Create the kernel
+    asm = ps.Assignment(f(0), 2 * f(0))
+    khandle = sfg.kernels.create(asm)
+
+    #   Create the wrapper function
+    sfg.function("invoke")(
+        sfg.map_field(f, f_myfield),
+        sfg.call(khandle)
+    )
+```
+
+### Add a Factory Function
+
+In the above example, an instance of `MyField` representing the field `f` is created by the
+slightly verbose expression `MyField(f.dtype, f.ndim, ref=True).var(f.name)`.
+Having to write this sequence every time, for every field, introduces unnecessary
+cognitive load and lots of potential sources of error.
+Whenever it is possible to create a field reflection using just information contained in a
+pystencils {any}`Field <pystencils.field.Field>` object,
+the API reflection should therefore implement a factory method `from_field`:
+
+```{code-cell} ipython3
+class MyField(lang.CppClass, SupportsFieldExtraction):
+    ...
+
+    @classmethod
+    def from_field(cls, field: ps.Field, const: bool = False, ref: bool = False) -> MyField:
+        return cls(f.dtype, f.ndim, const=const, ref=ref).var(f.name)
+
+```
+
+The above signature is idiomatic for `from_field`, and you should stick to it as far as possible.
+We can now use it inside the generator script:
+
+```{code-block} python
+f = ps.fields("f: double[3D]")
+f_myfield = MyField.from_field(f)
+```
+
+(note-on-ghost-layers)=
+### A Note on Ghost Layers
+
+Some care has to be taken when reflecting data structures that model the notion
+of ghost layers.
+Consider an array with the index space $[0, N_x) \times [0, N_y)$,
+its base pointer identifying the entry $(0, 0)$.
+When a pystencils kernel is generated with a shell of $k$ ghost layers
+(see {any}`CreateKernelConfig.ghost_layers <pystencils.codegen.config.CreateKernelConfig.ghost_layers>`),
+it will process only the subspace $[k, N_x - k) \times [k, N_x - k)$.
+
+If your data structure is implemented such that ghost layer nodes have coordinates
+$< 0$ and $\ge N_{x, y}$,
+you must hence take care that
+ - either, `_extract_ptr` returns a pointer identifying the array entry at `(-k, -k)`;
+ - or, ensure that kernels operating on your data structure are always generated
+   with `ghost_layers = 0`.
+
+In either case, you must make sure that the number of ghost layers in your data structure
+matches the expected number of ghost layers of the kernel.

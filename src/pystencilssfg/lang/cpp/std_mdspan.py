@@ -11,10 +11,10 @@ from pystencils.types import (
 
 from pystencilssfg.lang.expressions import AugExpr
 
-from ...lang import SrcField, IFieldExtraction, cpptype, HeaderFile, ExprLike
+from ...lang import SupportsFieldExtraction, cpptype, HeaderFile, ExprLike
 
 
-class StdMdspan(SrcField):
+class StdMdspan(AugExpr, SupportsFieldExtraction):
     """Represents an `std::mdspan` instance.
 
     The `std::mdspan <https://en.cppreference.com/w/cpp/container/mdspan>`_
@@ -141,26 +141,22 @@ class StdMdspan(SrcField):
     def data_handle(self) -> AugExpr:
         return AugExpr.format("{}.data_handle()", self)
 
-    def get_extraction(self) -> IFieldExtraction:
-        mdspan = self
+    #   SupportsFieldExtraction protocol
 
-        class Extraction(IFieldExtraction):
-            def ptr(self) -> AugExpr:
-                return mdspan.data_handle()
+    def _extract_ptr(self) -> AugExpr:
+        return self.data_handle()
 
-            def size(self, coordinate: int) -> AugExpr | None:
-                if coordinate > mdspan._dim:
-                    return None
-                else:
-                    return mdspan.extent(coordinate)
+    def _extract_size(self, coordinate: int) -> AugExpr | None:
+        if coordinate > self._dim:
+            return None
+        else:
+            return self.extent(coordinate)
 
-            def stride(self, coordinate: int) -> AugExpr | None:
-                if coordinate > mdspan._dim:
-                    return None
-                else:
-                    return mdspan.stride(coordinate)
-
-        return Extraction()
+    def _extract_stride(self, coordinate: int) -> AugExpr | None:
+        if coordinate > self._dim:
+            return None
+        else:
+            return self.stride(coordinate)
 
     @staticmethod
     def from_field(

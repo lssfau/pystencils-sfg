@@ -13,10 +13,9 @@ from .expressions import (
     includes,
     CppClass,
     cppclass,
-    IFieldExtraction,
-    SrcField,
-    SrcVector,
 )
+
+from .extractions import SupportsFieldExtraction, SupportsVectorExtraction
 
 from .types import cpptype, void, Ref, strip_ptr_ref
 
@@ -32,13 +31,12 @@ __all__ = [
     "asvar",
     "depends",
     "includes",
-    "IFieldExtraction",
-    "SrcField",
-    "SrcVector",
     "cpptype",
     "CppClass",
     "cppclass",
     "void",
     "Ref",
     "strip_ptr_ref",
+    "SupportsFieldExtraction",
+    "SupportsVectorExtraction",
 ]

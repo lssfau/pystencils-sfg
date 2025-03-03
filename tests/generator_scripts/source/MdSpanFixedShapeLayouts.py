@@ -22,7 +22,7 @@ with SourceFileGenerator() as sfg:
                 ),
                 sfg.expr(
                     'assert({} == {} && "Stride mismatch at coordinate {}");',
-                    mdspan.stride(d),
+                    mdspan._extract_stride(d),
                     field.strides[d],
                     d,
                 ),

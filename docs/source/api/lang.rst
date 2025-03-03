@@ -21,6 +21,12 @@ Data Types
 .. automodule:: pystencilssfg.lang.types
     :members:
 
+Extraction Protocols
+--------------------
+
+.. automodule:: pystencilssfg.lang.extractions
+    :members:
+
 C++ Standard Library (``pystencilssfg.lang.cpp``)
 -------------------------------------------------
 

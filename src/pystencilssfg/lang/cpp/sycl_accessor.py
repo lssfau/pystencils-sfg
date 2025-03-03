@@ -1,12 +1,10 @@
-from ...lang import SrcField, IFieldExtraction
-
 from pystencils import Field, DynamicType
 from pystencils.types import UserTypeSpec, create_type
 
-from ...lang import AugExpr, cpptype
+from ...lang import AugExpr, cpptype, SupportsFieldExtraction
 
 
-class SyclAccessor(SrcField):
+class SyclAccessor(AugExpr, SupportsFieldExtraction):
     """Represent a
     `SYCL Accessor <https://registry.khronos.org/SYCL/specs/sycl-2020/html/sycl-2020.html#subsec:accessors>`_.
 
@@ -36,40 +34,32 @@ class SyclAccessor(SrcField):
         self._dim = dimensions
         self._inner_stride = 1
 
-    def get_extraction(self) -> IFieldExtraction:
-        accessor = self
+    def _extract_ptr(self) -> AugExpr:
+        return AugExpr.format(
+            "{}.get_multi_ptr<sycl::access::decorated::no>().get()",
+            self,
+        )
 
-        class Extraction(IFieldExtraction):
-            def ptr(self) -> AugExpr:
-                return AugExpr.format(
-                    "{}.get_multi_ptr<sycl::access::decorated::no>().get()",
-                    accessor,
-                )
+    def _extract_size(self, coordinate: int) -> AugExpr | None:
+        if coordinate > self._dim:
+            return None
+        else:
+            return AugExpr.format("{}.get_range().get({})", self, coordinate)
 
-            def size(self, coordinate: int) -> AugExpr | None:
-                if coordinate > accessor._dim:
-                    return None
-                else:
-                    return AugExpr.format(
-                        "{}.get_range().get({})", accessor, coordinate
-                    )
-
-            def stride(self, coordinate: int) -> AugExpr | None:
-                if coordinate > accessor._dim:
-                    return None
-                elif coordinate == accessor._dim - 1:
-                    return AugExpr.format("{}", accessor._inner_stride)
-                else:
-                    exprs = []
-                    args = []
-                    for d in range(coordinate + 1, accessor._dim):
-                        args.extend([accessor, d])
-                        exprs.append("{}.get_range().get({})")
-                    expr = " * ".join(exprs)
-                    expr += " * {}"
-                    return AugExpr.format(expr, *args, accessor._inner_stride)
-
-        return Extraction()
+    def _extract_stride(self, coordinate: int) -> AugExpr | None:
+        if coordinate > self._dim:
+            return None
+        elif coordinate == self._dim - 1:
+            return AugExpr.format("{}", self._inner_stride)
+        else:
+            exprs = []
+            args = []
+            for d in range(coordinate + 1, self._dim):
+                args.extend([self, d])
+                exprs.append("{}.get_range().get({})")
+            expr = " * ".join(exprs)
+            expr += " * {}"
+            return AugExpr.format(expr, *args, self._inner_stride)
 
     @staticmethod
     def from_field(field: Field, ref: bool = True):

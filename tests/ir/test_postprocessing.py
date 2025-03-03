@@ -4,7 +4,7 @@ from pystencils.types import PsCustomType
 
 from pystencilssfg.composer import make_sequence
 
-from pystencilssfg.lang import IFieldExtraction, AugExpr
+from pystencilssfg.lang import AugExpr, SupportsFieldExtraction
 
 from pystencilssfg.ir import SfgStatements, SfgSequence
 from pystencilssfg.ir.postprocessing import CallTreePostProcessing
@@ -73,17 +73,17 @@ def test_find_sympy_symbols(sfg):
     assert call_tree.children[1].code_string == "const double y = x / a;"
 
 
-class DemoFieldExtraction(IFieldExtraction):
+class DemoFieldExtraction(SupportsFieldExtraction):
     def __init__(self, name: str):
         self.obj = AugExpr(PsCustomType("MyField")).var(name)
 
-    def ptr(self) -> AugExpr:
+    def _extract_ptr(self) -> AugExpr:
         return AugExpr.format("{}.ptr()", self.obj)
 
-    def size(self, coordinate: int) -> AugExpr | None:
+    def _extract_size(self, coordinate: int) -> AugExpr | None:
         return AugExpr.format("{}.size({})", self.obj, coordinate)
 
-    def stride(self, coordinate: int) -> AugExpr | None:
+    def _extract_stride(self, coordinate: int) -> AugExpr | None:
         return AugExpr.format("{}.stride({})", self.obj, coordinate)
 
 

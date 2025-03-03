@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Iterable, TypeAlias, Any, cast
 from itertools import chain
-from abc import ABC, abstractmethod
 
 import sympy as sp
 
@@ -501,39 +500,3 @@ def includes(obj: ExprLike | PsType) -> set[HeaderFile]:
 
         case _:
             raise ValueError(f"Invalid expression: {obj}")
-
-
-class IFieldExtraction(ABC):
-    """Interface for objects defining how to extract low-level field parameters
-    from high-level data structures."""
-
-    @abstractmethod
-    def ptr(self) -> AugExpr: ...
-
-    @abstractmethod
-    def size(self, coordinate: int) -> AugExpr | None: ...
-
-    @abstractmethod
-    def stride(self, coordinate: int) -> AugExpr | None: ...
-
-
-class SrcField(AugExpr):
-    """Represents a C++ data structure that can be mapped to a *pystencils* field.
-
-    Args:
-        dtype: Data type of the field data structure
-    """
-
-    @abstractmethod
-    def get_extraction(self) -> IFieldExtraction: ...
-
-
-class SrcVector(AugExpr, ABC):
-    """Represents a C++ data structure that represents a mathematical vector.
-
-    Args:
-        dtype: Data type of the vector data structure
-    """
-
-    @abstractmethod
-    def extract_component(self, coordinate: int) -> AugExpr: ...

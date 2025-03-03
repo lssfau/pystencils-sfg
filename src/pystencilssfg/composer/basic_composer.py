@@ -54,9 +54,8 @@ from ..lang import (
     includes,
     SfgVar,
     AugExpr,
-    SrcField,
-    IFieldExtraction,
-    SrcVector,
+    SupportsFieldExtraction,
+    SupportsVectorExtraction,
     void,
 )
 from ..exceptions import SfgException
@@ -540,7 +539,7 @@ class SfgBasicComposer(SfgIComposer):
     def map_field(
         self,
         field: Field,
-        index_provider: IFieldExtraction | SrcField,
+        index_provider: SupportsFieldExtraction,
         cast_indexing_symbols: bool = True,
     ) -> SfgDeferredFieldMapping:
         """Map a pystencils field to a field data structure, from which pointers, sizes
@@ -548,7 +547,7 @@ class SfgBasicComposer(SfgIComposer):
 
         Args:
             field: The pystencils field to be mapped
-            index_provider: An expression representing a field, or a field extraction provider instance
+            index_provider: An object that provides the field indexing information
             cast_indexing_symbols: Whether to always introduce explicit casts for indexing symbols
         """
         return SfgDeferredFieldMapping(
@@ -565,12 +564,12 @@ class SfgBasicComposer(SfgIComposer):
         var: SfgVar | sp.Symbol = asvar(param) if isinstance(param, _VarLike) else param
         return SfgDeferredParamSetter(var, expr)
 
-    def map_vector(self, lhs_components: Sequence[VarLike | sp.Symbol], rhs: SrcVector):
+    def map_vector(self, lhs_components: Sequence[VarLike | sp.Symbol], rhs: SupportsVectorExtraction):
         """Extracts scalar numerical values from a vector data type.
 
         Args:
             lhs_components: Vector components as a list of symbols.
-            rhs: A `SrcVector` object representing a vector data structure.
+            rhs: An object providing access to vector components
         """
         components: list[SfgVar | sp.Symbol] = [
             (asvar(c) if isinstance(c, _VarLike) else c) for c in lhs_components

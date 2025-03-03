@@ -352,8 +352,8 @@ computing landscape, including [Kokkos Views][kokkos_view], [C++ std::mdspan][md
 [SYCL buffers][sycl_buffer], and many framework-specific custom-built classes.
 Using the protocols behind {any}`sfg.map_field <SfgBasicComposer.map_field>`,
 it is possible to automatically emit code
-that extracts the indexing information required by a kernel from any of these classes
-- provided a suitable API reflection is available.
+that extracts the indexing information required by a kernel from any of these classes,
+as long as a suitable API reflection is available.
 
 :::{seealso}
 [](#field_data_structure_reflection) for instructions on how to set up field API
