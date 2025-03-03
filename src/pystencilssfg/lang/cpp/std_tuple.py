@@ -1,9 +1,9 @@
 from pystencils.types import UserTypeSpec, create_type
 
-from ...lang import SrcVector, AugExpr, cpptype
+from ...lang import SupportsVectorExtraction, AugExpr, cpptype
 
 
-class StdTuple(SrcVector):
+class StdTuple(AugExpr, SupportsVectorExtraction):
     _template = cpptype("std::tuple< {ts} >", "<tuple>")
 
     def __init__(
@@ -19,7 +19,7 @@ class StdTuple(SrcVector):
         dtype = self._template(ts=", ".join(elt_type_strings), const=const, ref=ref)
         super().__init__(dtype)
 
-    def extract_component(self, coordinate: int) -> AugExpr:
+    def _extract_component(self, coordinate: int) -> AugExpr:
         if coordinate < 0 or coordinate >= self._length:
             raise ValueError(
                 f"Index {coordinate} out-of-bounds for std::tuple with {self._length} entries."

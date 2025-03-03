@@ -1,10 +1,10 @@
 from pystencils import Field, DynamicType
 from pystencils.types import UserTypeSpec, create_type, PsType
 
-from ...lang import SrcField, SrcVector, AugExpr, IFieldExtraction, cpptype
+from ...lang import SupportsFieldExtraction, SupportsVectorExtraction, AugExpr, cpptype
 
 
-class StdVector(SrcVector, SrcField):
+class StdVector(AugExpr, SupportsFieldExtraction, SupportsVectorExtraction):
     _template = cpptype("std::vector< {T} >", "<vector>")
 
     def __init__(
@@ -25,28 +25,22 @@ class StdVector(SrcVector, SrcField):
     def element_type(self) -> PsType:
         return self._element_type
 
-    def get_extraction(self) -> IFieldExtraction:
-        vec = self
+    def _extract_ptr(self) -> AugExpr:
+        return AugExpr.format("{}.data()", self)
 
-        class Extraction(IFieldExtraction):
-            def ptr(self) -> AugExpr:
-                return AugExpr.format("{}.data()", vec)
+    def _extract_size(self, coordinate: int) -> AugExpr | None:
+        if coordinate > 0:
+            return None
+        else:
+            return AugExpr.format("{}.size()", self)
 
-            def size(self, coordinate: int) -> AugExpr | None:
-                if coordinate > 0:
-                    return None
-                else:
-                    return AugExpr.format("{}.size()", vec)
+    def _extract_stride(self, coordinate: int) -> AugExpr | None:
+        if coordinate > 0:
+            return None
+        else:
+            return AugExpr.format("1")
 
-            def stride(self, coordinate: int) -> AugExpr | None:
-                if coordinate > 0:
-                    return None
-                else:
-                    return AugExpr.format("1")
-
-        return Extraction()
-
-    def extract_component(self, coordinate: int) -> AugExpr:
+    def _extract_component(self, coordinate: int) -> AugExpr:
         if self._unsafe:
             return AugExpr.format("{}[{}]", self, coordinate)
         else:

@@ -1,10 +1,10 @@
 from pystencils import Field, DynamicType
 from pystencils.types import UserTypeSpec, create_type, PsType
 
-from ...lang import SrcField, IFieldExtraction, AugExpr, cpptype
+from ...lang import SupportsFieldExtraction, AugExpr, cpptype
 
 
-class StdSpan(SrcField):
+class StdSpan(AugExpr, SupportsFieldExtraction):
     _template = cpptype("std::span< {T} >", "<span>")
 
     def __init__(self, T: UserTypeSpec, ref=False, const=False):
@@ -17,26 +17,20 @@ class StdSpan(SrcField):
     def element_type(self) -> PsType:
         return self._element_type
 
-    def get_extraction(self) -> IFieldExtraction:
-        span = self
+    def _extract_ptr(self) -> AugExpr:
+        return AugExpr.format("{}.data()", self)
 
-        class Extraction(IFieldExtraction):
-            def ptr(self) -> AugExpr:
-                return AugExpr.format("{}.data()", span)
+    def _extract_size(self, coordinate: int) -> AugExpr | None:
+        if coordinate > 0:
+            return None
+        else:
+            return AugExpr.format("{}.size()", self)
 
-            def size(self, coordinate: int) -> AugExpr | None:
-                if coordinate > 0:
-                    return None
-                else:
-                    return AugExpr.format("{}.size()", span)
-
-            def stride(self, coordinate: int) -> AugExpr | None:
-                if coordinate > 0:
-                    return None
-                else:
-                    return AugExpr.format("1")
-
-        return Extraction()
+    def _extract_stride(self, coordinate: int) -> AugExpr | None:
+        if coordinate > 0:
+            return None
+        else:
+            return AugExpr.format("1")
 
     @staticmethod
     def from_field(field: Field, ref: bool = False, const: bool = False):
