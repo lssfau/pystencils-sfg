@@ -16,6 +16,9 @@ Composer API (``pystencilssfg.composer``)
 .. autoclass:: SfgClassComposer
     :members:
 
+.. autoclass:: SfgGpuComposer
+    :members:
+
 Custom Generators
 =================
 
@@ -37,6 +40,7 @@ Helper Methods and Builders
 
 .. autoclass:: SfgFunctionSequencer
     :members:
+    :inherited-members:
 
 .. autoclass:: SfgNodeBuilder
     :members:
@@ -46,6 +50,12 @@ Helper Methods and Builders
 
 .. autoclass:: SfgSwitchBuilder
     :members:
+
+.. module:: pystencilssfg.composer.class_composer
+
+.. autoclass:: SfgMethodSequencer
+    :members:
+    :inherited-members:
 
 Context and Cursor
 ==================

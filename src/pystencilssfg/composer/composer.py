@@ -3,12 +3,13 @@ from typing import TYPE_CHECKING
 
 from .basic_composer import SfgBasicComposer
 from .class_composer import SfgClassComposer
+from .gpu_composer import SfgGpuComposer
 
 if TYPE_CHECKING:
     from ..context import SfgContext
 
 
-class SfgComposer(SfgBasicComposer, SfgClassComposer):
+class SfgComposer(SfgBasicComposer, SfgClassComposer, SfgGpuComposer):
     """Primary interface for constructing source files in pystencils-sfg.
 
     The SfgComposer combines the `SfgBasicComposer`
@@ -19,3 +20,4 @@ class SfgComposer(SfgBasicComposer, SfgClassComposer):
     def __init__(self, sfg: SfgContext | SfgBasicComposer):
         SfgBasicComposer.__init__(self, sfg)
         SfgClassComposer.__init__(self)
+        SfgGpuComposer.__init__(self)

@@ -24,7 +24,6 @@ typechecker:
     - nox --session typecheck
 
 .testsuite-base:
-  extends: .nox-base
   stage: "Tests"
   needs: []
   coverage: '/TOTAL.*\s+(\d+%)$/'
@@ -38,13 +37,18 @@ typechecker:
         coverage_format: cobertura
         path: coverage.xml
 
-"testsuite-py3.10":
+"testsuite-py3.10+cuda":
   extends: .testsuite-base
+  image: i10git.cs.fau.de:5005/pycodegen/pycodegen/nox:ubuntu24.04-cuda12.6
   script:
     - nox --session testsuite-3.10
+  tags:
+    - docker
+    - cuda11
 
 "testsuite-py3.13":
   extends: .testsuite-base
+  image: i10git.cs.fau.de:5005/pycodegen/pycodegen/nox:alpine
   script:
     - nox --session testsuite-3.13
 

@@ -283,7 +283,7 @@ The composer gives us access to the default kernel namespace (`<current_namespac
 via `sfg.kernels`.
 
 To add a kernel,
- - either pass its assignments and the pystencils code generator configuration directly to {any}`kernels.reate() <KernelsAdder.create>`,
+ - either pass its assignments and the pystencils code generator configuration directly to {any}`kernels.create() <KernelsAdder.create>`,
  - or create the kernel separately through {any}`pystencils.create_kernel <pystencils.codegen.create_kernel>` and register it using
    {any}`kernels.add() <KernelsAdder.add>`.
 
@@ -392,13 +392,176 @@ with SourceFileGenerator() as sfg:
     )
 ```
 
-(exposed_inline_kernels)=
-### Exposed and Inline Kernels
+## GPU Kernels
+
+Pystencils also allows us to generate kernels for the CUDA and HIP GPU programming models.
+This section describes how to generate GPU kernels through pystencils-sfg;
+how to invoke them with various launch configurations,
+and how GPU execution streams are reflected.
+
+### Generate and Invoke CUDA and HIP Kernels
+
+To generate a kernel targetting either of these, set the
+{any}`target <pystencils.codegen.config.CreateKernelConfig.target>`
+code generator option to either `Target.CUDA` or `Target.HIP`.
+After registering a GPU kernel,
+its invocation can be rendered using {any}`sfg.gpu_invoke <SfgGpuComposer.gpu_invoke>`.
+Here is an example using CUDA:
+
+```{code-cell} ipython3
+from pystencilssfg import SfgConfig
+sfg_config = SfgConfig()
+sfg_config.extensions.impl = "cu"
+
+with SourceFileGenerator(sfg_config) as sfg:
+    #   Configure the code generator to use CUDA
+    cfg = ps.CreateKernelConfig(target=ps.Target.CUDA)
+
+    #   Create fields, assemble assignments
+    f, g = ps.fields("f, g: double[128, 128]")
+    asm = ps.Assignment(f(0), g(0))
+
+    #   Register kernel
+    khandle = sfg.kernels.create(asm, "gpu_kernel", cfg)
+
+    #   Invoke it
+    sfg.function("kernel_wrapper")(
+        sfg.gpu_invoke(khandle)
+    )
+```
+
+In this snippet, we used the [generator configuration](#how_to_generator_scripts_config)
+to change the suffix of the generated implementation file to `.cu`.
+
+When investigating the generated `.cu` file, you can see that the GPU launch configuration parameters
+*grid size* and *block size* are being computed automatically from the array sizes.
+This behavior can be changed by modifying options in the {any}`gpu <pystencils.codegen.config.GpuOptions>`
+category of the `CreateKernelConfig`.
+
+### Adapting the Launch Configuration
+
+GPU kernel invocations usually require the user to provide a launch grid, defined
+by the GPU thread block size and the number of blocks on the grid.
+In the simplest case (seen above), pystencils-sfg will emit code that automatically
+computes these parameters from the size of the arrays passed to the kernel,
+using a default block size defined by pystencils.
+
+The code generator also permits customization of the launch configuration.
+You may provide a custom block size to override the default, in which case the
+grid size will still be computed by dividing the array sizes by your block size.
+Otherwise, you can also fully take over control of both block and grid size.
+For both cases, instructions are given in the following.
+
+#### User-Defined Block Size for Auto-Computed Grid Size
+
+To merely modify the block size argument while still automatically inferring the grid size,
+pass a variable or expression of type `dim3` to the `block_size` parameter of `gpu_invoke`.
+Pystencils-sfg exposes two versions of `dim3`, which differ primarily in their associated
+runtime headers:
+
+ - {any}`pystencilssfg.lang.gpu.cuda.dim3 <CudaAPI.dim3>` for CUDA, and
+ - {any}`pystencilssfg.lang.gpu.hip.dim3 <HipAPI.dim3>` for HIP.
+
+The following snippet selects the correct `dim3` type according to the kernel target;
+it then creates a variable of that type and turns that into an argument to the kernel invocation:
+
+```{code-cell} ipython3
+:tags: [remove-cell]
+target = ps.Target.HIP
+cfg = ps.CreateKernelConfig(target=target)
+f, g = ps.fields("f, g: double[128, 128]")
+asm = ps.Assignment(f(0), g(0))
+```
+
+```{code-cell} ipython3
+from pystencilssfg.lang.gpu import hip
+
+with SourceFileGenerator(sfg_config) as sfg:
+    # ... define kernel ...
+    khandle = sfg.kernels.create(asm, "gpu_kernel", cfg)
+
+    #   Select dim3 reflection
+    match target:
+        case ps.Target.CUDA:
+            from pystencilssfg.lang.gpu import cuda as gpu_api
+        case ps.Target.HIP:
+            from pystencilssfg.lang.gpu import hip as gpu_api
+    
+    #   Create dim3 variable and pass it to kernel invocation
+    block_size = gpu_api.dim3(const=True).var("block_size")
+
+    sfg.function("kernel_wrapper")(
+        sfg.gpu_invoke(khandle, block_size=block_size)
+    )
+```
+
+#### Manual Launch Configurations
+
+To take full control of the launch configuration, we must disable its automatic inferrence
+by setting the {any}`gpu.manual_launch_grid <pystencils.codegen.config.GpuOptions.manual_launch_grid>`
+code generator option to `True`.
+Then, we must pass `dim3` arguments for both `block_size` and `grid_size` to the kernel invocation:
+
+```{code-cell} ipython3
+from pystencilssfg.lang.gpu import hip
+
+with SourceFileGenerator(sfg_config) as sfg:
+    # ... define kernel ...
+
+    #   Configure for manual launch config
+    cfg = ps.CreateKernelConfig(target=ps.Target.CUDA)
+    cfg.gpu.manual_launch_grid = True
+
+    #   Register kernel
+    khandle = sfg.kernels.create(asm, "gpu_kernel", cfg)
+    
+    #   Create dim3 variables
+    from pystencilssfg.lang.gpu import cuda
+    block_size = cuda.dim3(const=True).var("block_size")
+    grid_size = cuda.dim3(const=True).var("grid_size")
+
+    sfg.function("kernel_wrapper")(
+        sfg.gpu_invoke(khandle, block_size=block_size, grid_size=grid_size)
+    )
+```
+
+### Using Streams
+
+CUDA and HIP kernels can be enqueued into streams for concurrent execution.
+This is mirrored in pystencils-sfg;
+all overloads of `gpu_invoke` take an optional `stream` argument.
+The `stream_t` data types of both CUDA and HIP are made available
+through the respective API reflections:
+
+ - {any}`lang.gpu.cuda.stream_t <CudaAPI.stream_t>` reflects `cudaStream_t`, and
+ - {any}`lang.gpu.hip.stream_t <HipAPI.stream_t>` reflects `hipStream_t`.
+
+Here is an example that creates a variable of the HIP stream type
+and passes it to `gpu_invoke`:
+
+```{code-cell} ipython3
+:tags: [remove-cell]
+cfg = ps.CreateKernelConfig(target=ps.Target.HIP)
+f, g = ps.fields("f, g: double[128, 128]")
+asm = ps.Assignment(f(0), g(0))
+```
+
+```{code-cell} ipython3
+from pystencilssfg.lang.gpu import hip
+
+with SourceFileGenerator(sfg_config) as sfg:
+    # ... define kernel ...
+    khandle = sfg.kernels.create(asm, "gpu_kernel", cfg)
+
+    stream = hip.stream_t(const=True).var("stream")
+
+    sfg.function("kernel_wrapper")(
+        sfg.gpu_invoke(khandle, stream=stream)
+    )
+```
 
 :::{admonition} To Do
 
- - Creating and calling kernels
- - Invoking GPU kernels and the CUDA API Mirror
  - Defining classes, their fields constructors, and methods
 
 :::

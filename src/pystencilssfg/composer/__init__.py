@@ -9,6 +9,7 @@ from .basic_composer import (
 )
 from .mixin import SfgComposerMixIn
 from .class_composer import SfgClassComposer
+from .gpu_composer import SfgGpuComposer
 
 __all__ = [
     "SfgIComposer",
@@ -20,4 +21,5 @@ __all__ = [
     "ExprLike",
     "SfgBasicComposer",
     "SfgClassComposer",
+    "SfgGpuComposer",
 ]

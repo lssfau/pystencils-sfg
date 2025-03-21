@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Sequence, Any, Generator
 from contextlib import contextmanager
 
-from .config import CodeStyle
+from .config import CodeStyle, ClangFormatOptions
 from .ir import (
     SfgSourceFile,
     SfgNamespace,
@@ -23,6 +23,7 @@ class SfgContext:
         impl_file: SfgSourceFile | None,
         namespace: str | None = None,
         codestyle: CodeStyle | None = None,
+        clang_format_opts: ClangFormatOptions | None = None,
         argv: Sequence[str] | None = None,
         project_info: Any = None,
     ):
@@ -33,6 +34,9 @@ class SfgContext:
         self._inner_namespace: str | None = None
 
         self._codestyle = codestyle if codestyle is not None else CodeStyle()
+        self._clang_format: ClangFormatOptions = (
+            clang_format_opts if clang_format_opts is not None else ClangFormatOptions()
+        )
 
         self._header_file = header_file
         self._impl_file = impl_file
@@ -72,6 +76,10 @@ class SfgContext:
     def codestyle(self) -> CodeStyle:
         """The code style object for this generation context."""
         return self._codestyle
+
+    @property
+    def clang_format(self) -> ClangFormatOptions:
+        return self._clang_format
 
     @property
     def header_file(self) -> SfgSourceFile:
@@ -150,6 +158,9 @@ class SfgCursor:
             self._loc[f].append(block)
             self._loc[f] = block.elements
 
+        outer_namespace = self._cur_namespace
+        self._cur_namespace = namespace
+
         @contextmanager
         def ctxmgr():
             try:
@@ -157,5 +168,6 @@ class SfgCursor:
             finally:
                 #   Have the cursor step back out of the nested namespace blocks
                 self._loc = outer_locs
+                self._cur_namespace = outer_namespace
 
         return ctxmgr()

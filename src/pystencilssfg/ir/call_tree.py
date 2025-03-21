@@ -19,6 +19,7 @@ class SfgCallTreeNode(ABC):
     Therefore, every instantiable call tree node must implement the method `get_code`.
     By convention, the string returned by `get_code` should not contain a trailing newline.
     """
+
     def __init__(self) -> None:
         self._includes: set[HeaderFile] = set()
 
@@ -33,6 +34,11 @@ class SfgCallTreeNode(ABC):
 
         By convention, the code block emitted by this function should not contain a trailing newline.
         """
+
+    @property
+    def depends(self) -> set[SfgVar]:
+        """Set of objects this leaf depends on"""
+        return set()
 
     @property
     def required_includes(self) -> set[HeaderFile]:
@@ -52,11 +58,6 @@ class SfgCallTreeLeaf(SfgCallTreeNode, ABC):
     @property
     def children(self) -> Sequence[SfgCallTreeNode]:
         return ()
-
-    @property
-    @abstractmethod
-    def depends(self) -> set[SfgVar]:
-        """Set of objects this leaf depends on"""
 
 
 class SfgEmptyNode(SfgCallTreeLeaf):
@@ -202,52 +203,76 @@ class SfgKernelCallNode(SfgCallTreeLeaf):
         return set(self._kernel_handle.parameters)
 
     def get_code(self, cstyle: CodeStyle) -> str:
-        ast_params = self._kernel_handle.parameters
+        kparams = self._kernel_handle.parameters
         fnc_name = self._kernel_handle.fqname
-        call_parameters = ", ".join([p.name for p in ast_params])
+        call_parameters = ", ".join([p.name for p in kparams])
 
         return f"{fnc_name}({call_parameters});"
 
 
-class SfgCudaKernelInvocation(SfgCallTreeLeaf):
+class SfgGpuKernelInvocation(SfgCallTreeNode):
+    """A CUDA or HIP kernel invocation.
+
+    See https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#execution-configuration
+    or https://rocmdocs.amd.com/projects/HIP/en/latest/how-to/hip_cpp_language_extensions.html#calling-global-functions
+    for the syntax.
+    """
+
     def __init__(
         self,
         kernel_handle: SfgKernelHandle,
-        num_blocks_code: str,
-        threads_per_block_code: str,
-        stream_code: str | None,
-        depends: set[SfgVar],
+        grid_size: SfgStatements,
+        block_size: SfgStatements,
+        shared_memory_bytes: SfgStatements | None,
+        stream: SfgStatements | None,
     ):
-        from pystencils import Target
         from pystencils.codegen import GpuKernel
 
         kernel = kernel_handle.kernel
-        if not (isinstance(kernel, GpuKernel) and kernel.target == Target.CUDA):
+        if not isinstance(kernel, GpuKernel):
             raise ValueError(
-                "An `SfgCudaKernelInvocation` node can only call a CUDA kernel."
+                "An `SfgGpuKernelInvocation` node can only call GPU kernels."
             )
 
         super().__init__()
         self._kernel_handle = kernel_handle
-        self._num_blocks = num_blocks_code
-        self._threads_per_block = threads_per_block_code
-        self._stream = stream_code
-        self._depends = depends
+        self._grid_size = grid_size
+        self._block_size = block_size
+        self._shared_memory_bytes = shared_memory_bytes
+        self._stream = stream
+
+    @property
+    def children(self) -> Sequence[SfgCallTreeNode]:
+        return (
+            (
+                self._grid_size,
+                self._block_size,
+            )
+            + (
+                (self._shared_memory_bytes,)
+                if self._shared_memory_bytes is not None
+                else ()
+            )
+            + ((self._stream,) if self._stream is not None else ())
+        )
 
     @property
     def depends(self) -> set[SfgVar]:
-        return set(self._kernel_handle.parameters) | self._depends
+        return set(self._kernel_handle.parameters)
 
     def get_code(self, cstyle: CodeStyle) -> str:
-        ast_params = self._kernel_handle.parameters
+        kparams = self._kernel_handle.parameters
         fnc_name = self._kernel_handle.fqname
-        call_parameters = ", ".join([p.name for p in ast_params])
+        call_parameters = ", ".join([p.name for p in kparams])
 
-        grid_args = [self._num_blocks, self._threads_per_block]
+        grid_args = [self._grid_size, self._block_size]
+        if self._shared_memory_bytes is not None:
+            grid_args += [self._shared_memory_bytes]
+
         if self._stream is not None:
             grid_args += [self._stream]
 
-        grid = "<<< " + ", ".join(grid_args) + " >>>"
+        grid = "<<< " + ", ".join(arg.get_code(cstyle) for arg in grid_args) + " >>>"
         return f"{fnc_name}{grid}({call_parameters});"
 
 

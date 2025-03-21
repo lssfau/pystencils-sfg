@@ -1,6 +1,8 @@
 import pystencilssfg
 from pystencilssfg.config import SfgConfig
 
+from os.path import splitext
+
 
 class DocsPatchedGenerator(pystencilssfg.SourceFileGenerator):
     """Mockup wrapper around SourceFileGenerator for use in documentation
@@ -28,23 +30,23 @@ class DocsPatchedGenerator(pystencilssfg.SourceFileGenerator):
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is None:
             self._finish_files()
+            emitter = self._get_emitter()
 
-            header_code = self._emitter.dumps(self._header_file)
-            impl_code = (
-                None
-                if self._impl_file is None
-                else self._emitter.dumps(self._impl_file)
-            )
+            header_code = emitter.dumps(self._header_file)
+            header_ext = splitext(self._header_file.name)[1]
 
             mdcode = ":::::{tab-set}\n"
 
-            mdcode += "::::{tab-item} Generated Header (.hpp)\n"
+            mdcode += f"::::{{tab-item}} Generated Header ({header_ext})\n"
             mdcode += ":::{code-block} C++\n\n"
             mdcode += header_code
             mdcode += "\n:::\n::::\n"
 
-            if impl_code:
-                mdcode += "::::{tab-item} Generated Implementation (.cpp)\n"
+            if self._impl_file is not None:
+                impl_code = emitter.dumps(self._impl_file)
+                impl_ext = splitext(self._impl_file.name)[1]
+
+                mdcode += f"::::{{tab-item}} Generated Implementation ({impl_ext})\n"
                 mdcode += ":::{code-block} C++\n\n"
                 mdcode += impl_code
                 mdcode += "\n:::\n::::\n"
