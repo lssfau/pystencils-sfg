@@ -19,10 +19,13 @@ class StdTuple(AugExpr, SupportsVectorExtraction):
         dtype = self._template(ts=", ".join(elt_type_strings), const=const, ref=ref)
         super().__init__(dtype)
 
+    def get(self, idx: int | str) -> AugExpr:
+        return AugExpr.format("std::get< {} >({})", idx, self)
+
     def _extract_component(self, coordinate: int) -> AugExpr:
         if coordinate < 0 or coordinate >= self._length:
             raise ValueError(
                 f"Index {coordinate} out-of-bounds for std::tuple with {self._length} entries."
             )
 
-        return AugExpr.format("std::get< {} >({})", coordinate, self)
+        return self.get(coordinate)

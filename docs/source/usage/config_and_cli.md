@@ -12,7 +12,7 @@ different configuration sources:
   the generator script to set some of its configuration options; see [Command-Line Options](#cmdline_options)
 - **Project Configuration:** When embedded into a larger project, using a build system such as CMake, generator scripts
   may be configured globally within that project by the use of a *configuration module*.
-  Settings specified inside that configuration module are always overridden by the former to configuration sources.
+  Settings specified inside that configuration module are always overridden by the two other configuration sources listed above.
   For details on configuration modules, refer to the guide on [Project and Build System Integration](#guide_project_integration).
 
 (inline_config)=
@@ -60,14 +60,26 @@ set {any}`cfg.outer_namespace <SfgConfig.outer_namespace>`.
 
 ### Code Style and Formatting
 
- - Modify the values in the {any}`cfg.code_style <CodeStyle>` category to affect
-   certain formatting aspects of the generated code.
- - To change, enforce, or disable auto-formatting of generated code through `clang-format`,
-   take a look at the {any}`cfg.clang_format <ClangFormatOptions>` category.
- - Clang-format will, by default, sort `#include` statements alphabetically and separate
-   local and system header includes.
-   To override this, you can set a custom sorting key for `#include` sorting via
-   {any}`cfg.code_style.includes_sorting_key <CodeStyle.includes_sorting_key>`.
+Pystencils-sfg gives you some options to affect its output code style.
+These are controlled by the options in the {any}`cfg.code_style <CodeStyle>` category.
+
+Furthermore, pystencils-sfg uses `clang-format` to beautify generated code.
+The behaviour of the clang-format integration is managed by the
+the {any}`cfg.clang_format <ClangFormatOptions>` category,
+where you can set options to skip or enforce formatting,
+or change the formatter binary.
+To set the code style used by `clang-format` either create a `.clang-format` file
+in any of the parent folders of your generator script,
+or modify the {any}`cfg.clang_format.code_style <ClangFormatOptions.code_style>` option.
+
+:::{seealso}
+[Clang-Format Style Options](https://clang.llvm.org/docs/ClangFormatStyleOptions.html)
+:::
+
+Clang-format will, by default, sort `#include` statements alphabetically and separate
+local and system header includes.
+To override this, you can set a custom sorting key for `#include` sorting via
+{any}`cfg.code_style.includes_sorting_key <CodeStyle.includes_sorting_key>`.
 
 (cmdline_options)=
 ## Command-Line Options

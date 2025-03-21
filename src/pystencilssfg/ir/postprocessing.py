@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Sequence, Iterable
 import warnings
-from functools import reduce
 from dataclasses import dataclass
 
 from abc import ABC, abstractmethod
@@ -15,7 +14,7 @@ from pystencils.codegen.properties import FieldBasePtr, FieldShape, FieldStride
 from ..exceptions import SfgException
 from ..config import CodeStyle
 
-from .call_tree import SfgCallTreeNode, SfgCallTreeLeaf, SfgSequence, SfgStatements
+from .call_tree import SfgCallTreeNode, SfgSequence, SfgStatements
 from ..lang.expressions import SfgKernelParamVar
 from ..lang import (
     SfgVar,
@@ -163,17 +162,12 @@ class CallTreePostProcessing:
                 self.handle_sequence(node, ppc)
                 return ppc.live_variables
 
-            case SfgCallTreeLeaf():
-                return node.depends
-
             case SfgDeferredNode():
                 raise SfgException("Deferred nodes can only occur inside a sequence.")
 
             case _:
-                return reduce(
-                    lambda x, y: x | y,
-                    (self.get_live_variables(c) for c in node.children),
-                    set(),
+                return node.depends.union(
+                    *(self.get_live_variables(c) for c in node.children)
                 )
 
 

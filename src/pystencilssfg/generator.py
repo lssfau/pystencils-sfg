@@ -95,9 +95,7 @@ class SourceFileGenerator:
             self._impl_file = SfgSourceFile(
                 output_files[1].name, SfgSourceFileType.TRANSLATION_UNIT
             )
-            self._impl_file.includes.append(
-                HeaderFile.parse(self._header_file.name)
-            )
+            self._impl_file.includes.append(HeaderFile.parse(self._header_file.name))
 
         #   TODO: Find a way to not hard-code the restrict qualifier in pystencils
         self._header_file.elements.append("#define RESTRICT __restrict__")
@@ -115,12 +113,9 @@ class SourceFileGenerator:
             self._impl_file,
             namespace,
             config.codestyle,
+            config.clang_format,
             argv=script_args,
             project_info=cli_params.get_project_info(),
-        )
-
-        self._emitter = SfgCodeEmitter(
-            self._output_dir, config.codestyle, config.clang_format
         )
 
         sort_key = config.codestyle.get_option("includes_sorting_key")
@@ -161,6 +156,13 @@ class SourceFileGenerator:
             )
             self._impl_file.includes.sort(key=self._include_sort_key)
 
+    def _get_emitter(self):
+        return SfgCodeEmitter(
+            self._output_dir,
+            self._context.codestyle,
+            self._context.clang_format,
+        )
+
     def __enter__(self) -> SfgComposer:
         self.clean_files()
         return SfgComposer(self._context)
@@ -169,6 +171,7 @@ class SourceFileGenerator:
         if exc_type is None:
             self._finish_files()
 
-            self._emitter.emit(self._header_file)
+            emitter = self._get_emitter()
+            emitter.emit(self._header_file)
             if self._impl_file is not None:
-                self._emitter.emit(self._impl_file)
+                emitter.emit(self._impl_file)

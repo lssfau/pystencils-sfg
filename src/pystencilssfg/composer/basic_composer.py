@@ -13,7 +13,7 @@ from pystencils import (
     Assignment,
     AssignmentCollection,
 )
-from pystencils.codegen import Kernel
+from pystencils.codegen import Kernel, Lambda
 from pystencils.types import create_type, UserTypeSpec, PsType
 
 from ..context import SfgContext, SfgCursor
@@ -21,7 +21,6 @@ from .custom import CustomGenerator
 from ..ir import (
     SfgCallTreeNode,
     SfgKernelCallNode,
-    SfgCudaKernelInvocation,
     SfgStatements,
     SfgFunctionParams,
     SfgRequireIncludes,
@@ -53,6 +52,7 @@ from ..lang import (
     HeaderFile,
     includes,
     SfgVar,
+    SfgKernelParamVar,
     AugExpr,
     SupportsFieldExtraction,
     SupportsVectorExtraction,
@@ -390,33 +390,13 @@ class SfgBasicComposer(SfgIComposer):
         """Use inside a function body to directly call a kernel.
 
         When using `call`, the given kernel will simply be called as a function.
-        To invoke a GPU kernel on a specified launch grid, use `cuda_invoke`
-        or the interfaces of ``pystencilssfg.extensions.sycl`` instead.
+        To invoke a GPU kernel on a specified launch grid,
+        use `gpu_invoke <SfgGpuComposer.gpu_invoke>` instead.
 
         Args:
             kernel_handle: Handle to a kernel previously added to some kernel namespace.
         """
         return SfgKernelCallNode(kernel_handle)
-
-    def cuda_invoke(
-        self,
-        kernel_handle: SfgKernelHandle,
-        num_blocks: ExprLike,
-        threads_per_block: ExprLike,
-        stream: ExprLike | None,
-    ):
-        """Dispatch a CUDA kernel to the device."""
-        num_blocks_str = str(num_blocks)
-        tpb_str = str(threads_per_block)
-        stream_str = str(stream) if stream is not None else None
-
-        deps = depends(num_blocks) | depends(threads_per_block)
-        if stream is not None:
-            deps |= depends(stream)
-
-        return SfgCudaKernelInvocation(
-            kernel_handle, num_blocks_str, tpb_str, stream_str, deps
-        )
 
     def seq(self, *args: tuple | str | SfgCallTreeNode | SfgNodeBuilder) -> SfgSequence:
         """Syntax sequencing. For details, see `make_sequence`"""
@@ -511,6 +491,11 @@ class SfgBasicComposer(SfgIComposer):
         """
         return AugExpr.format(fmt, *deps, **kwdeps)
 
+    def expr_from_lambda(self, lamb: Lambda) -> AugExpr:
+        depends = set(SfgKernelParamVar(p) for p in lamb.parameters)
+        code = lamb.c_code()
+        return AugExpr.make(code, depends, dtype=lamb.return_type)
+
     @property
     def branch(self) -> SfgBranchBuilder:
         """Use inside a function body to create an if/else conditonal branch.
@@ -564,7 +549,11 @@ class SfgBasicComposer(SfgIComposer):
         var: SfgVar | sp.Symbol = asvar(param) if isinstance(param, _VarLike) else param
         return SfgDeferredParamSetter(var, expr)
 
-    def map_vector(self, lhs_components: Sequence[VarLike | sp.Symbol], rhs: SupportsVectorExtraction):
+    def map_vector(
+        self,
+        lhs_components: Sequence[VarLike | sp.Symbol],
+        rhs: SupportsVectorExtraction,
+    ):
         """Extracts scalar numerical values from a vector data type.
 
         Args:

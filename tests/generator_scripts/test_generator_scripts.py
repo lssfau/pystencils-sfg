@@ -12,16 +12,24 @@ import shutil
 import warnings
 import subprocess
 
+from pystencils.include import get_pystencils_include_path
+
 THIS_DIR = pathlib.Path(__file__).parent
 
 DEPS_DIR = THIS_DIR / "deps"
 MDSPAN_QUAL_PATH = "mdspan-mdspan-0.6.0/include/"
 
+PYSTENCILS_RT_INCLUDE_PATH = get_pystencils_include_path()
 
 TEST_INDEX = THIS_DIR / "index.yaml"
 SOURCE_DIR = THIS_DIR / "source"
 EXPECTED_DIR = THIS_DIR / "expected"
-CXX_INCLUDE_FLAGS = ["-I", f"{DEPS_DIR}/{MDSPAN_QUAL_PATH}"]
+CXX_INCLUDE_FLAGS = [
+    "-I",
+    f"{DEPS_DIR}/{MDSPAN_QUAL_PATH}",
+    "-I",
+    PYSTENCILS_RT_INCLUDE_PATH,
+]
 
 
 def prepare_deps():
@@ -101,7 +109,7 @@ class GenScriptTest:
         for ext in self._expected_extensions:
             fname = f"{self._name}.{ext}"
             self._expected_files.add(fname)
-            if ext in ("cpp", "cxx", "c++"):
+            if ext in ("cpp", "cxx", "c++", "cu", "hip"):
                 self._files_to_compile.append(fname)
 
         compile_descr: dict = test_description.get("compile", dict())

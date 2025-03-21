@@ -41,3 +41,9 @@ Implementation
 
 .. automodule:: pystencilssfg.lang.cpp
     :members:
+
+GPU Runtime APIs
+----------------
+
+.. automodule:: pystencilssfg.lang.gpu
+    :members:

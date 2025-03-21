@@ -218,8 +218,12 @@ class AugExpr:
         return self._bind(expr)
 
     @staticmethod
-    def make(code: str, depends: Iterable[SfgVar | AugExpr]):
-        return AugExpr()._bind(DependentExpression(code, depends))
+    def make(
+        code: str,
+        depends: Iterable[SfgVar | AugExpr],
+        dtype: UserTypeSpec | None = None,
+    ):
+        return AugExpr(dtype)._bind(DependentExpression(code, depends))
 
     @staticmethod
     def format(fmt: str, *deps, **kwdeps) -> AugExpr:
