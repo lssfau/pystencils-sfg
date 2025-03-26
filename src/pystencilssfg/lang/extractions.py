@@ -1,10 +1,11 @@
 from __future__ import annotations
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 from abc import abstractmethod
 
 from .expressions import AugExpr
 
 
+@runtime_checkable
 class SupportsFieldExtraction(Protocol):
     """Protocol for field pointer and indexing extraction.
 
@@ -13,7 +14,7 @@ class SupportsFieldExtraction(Protocol):
     They can therefore be passed to `sfg.map_field <SfgBasicComposer.map_field>`.
     """
 
-#  how-to-guide begin
+    #  how-to-guide begin
     @abstractmethod
     def _extract_ptr(self) -> AugExpr:
         """Extract the field base pointer.
@@ -47,9 +48,12 @@ class SupportsFieldExtraction(Protocol):
 
         :meta public:
         """
+
+
 #  how-to-guide end
 
 
+@runtime_checkable
 class SupportsVectorExtraction(Protocol):
     """Protocol for component extraction from a vector.
 
