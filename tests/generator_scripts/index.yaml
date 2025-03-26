@@ -84,6 +84,7 @@ NestedNamespaces:
 ScaleKernel:
 JacobiMdspan:
 StlContainers1D:
+VectorExtraction:
 
 # std::mdspan
 

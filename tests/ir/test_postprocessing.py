@@ -1,10 +1,19 @@
 import sympy as sp
-from pystencils import fields, kernel, TypedSymbol, Field, FieldType, create_type
+from pystencils import (
+    fields,
+    kernel,
+    TypedSymbol,
+    Field,
+    FieldType,
+    create_type,
+    Assignment,
+)
 from pystencils.types import PsCustomType
 
 from pystencilssfg.composer import make_sequence
 
 from pystencilssfg.lang import AugExpr, SupportsFieldExtraction
+from pystencilssfg.lang.cpp import std
 
 from pystencilssfg.ir import SfgStatements, SfgSequence
 from pystencilssfg.ir.postprocessing import CallTreePostProcessing
@@ -100,7 +109,9 @@ def test_field_extraction(sfg):
     khandle = sfg.kernels.create(set_constant)
 
     extraction = DemoFieldExtraction("f")
-    call_tree = make_sequence(sfg.map_field(f, extraction, cast_indexing_symbols=False), sfg.call(khandle))
+    call_tree = make_sequence(
+        sfg.map_field(f, extraction, cast_indexing_symbols=False), sfg.call(khandle)
+    )
 
     pp = CallTreePostProcessing()
     free_vars = pp.get_live_variables(call_tree)
@@ -165,3 +176,39 @@ def test_duplicate_field_shapes(sfg):
     for line, stmt in zip(lines_f, call_tree.children[1].children, strict=True):
         assert isinstance(stmt, SfgStatements)
         assert stmt.code_string == line
+
+
+def test_scalar_fields(sfg):
+    sc_expl = Field.create_generic("f", 1, "double", index_shape=(1,))
+    sc_impl = Field.create_generic("f", 1, "double", index_shape=())
+
+    asm_expl = Assignment(sc_expl.center(0), 3)
+    asm_impl = Assignment(sc_impl.center(), 3)
+
+    k_expl = sfg.kernels.create(asm_expl, "expl")
+    k_impl = sfg.kernels.create(asm_impl, "impl")
+
+    tree_expl = make_sequence(
+        sfg.map_field(sc_expl, std.span.from_field(sc_expl)), sfg.call(k_expl)
+    )
+
+    tree_impl = make_sequence(
+        sfg.map_field(sc_impl, std.span.from_field(sc_impl)), sfg.call(k_impl)
+    )
+
+    pp = CallTreePostProcessing()
+    _ = pp.get_live_variables(tree_expl)
+    _ = pp.get_live_variables(tree_impl)
+
+    extraction_expl = tree_expl.children[0]
+    assert isinstance(extraction_expl, SfgSequence)
+
+    extraction_impl = tree_impl.children[0]
+    assert isinstance(extraction_impl, SfgSequence)
+
+    for node1, node2 in zip(
+        extraction_expl.children, extraction_impl.children, strict=True
+    ):
+        assert isinstance(node1, SfgStatements)
+        assert isinstance(node2, SfgStatements)
+        assert node1.code_string == node2.code_string
