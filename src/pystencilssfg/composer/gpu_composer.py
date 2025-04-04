@@ -196,8 +196,8 @@ class GpuInvocationBuilder:
         )
 
         return make_sequence(
-            "// clang-format off: "
-            "[pystencils-sfg] Formatting may add illegal spaces between angular brackets in `<<< >>>`.",
+            "/* clang-format off */",
+            "/* [pystencils-sfg] Formatting may add illegal spaces between angular brackets in `<<< >>>` */",
             SfgGpuKernelInvocation(
                 self._kernel_handle,
                 stmt_grid_size,
@@ -205,7 +205,7 @@ class GpuInvocationBuilder:
                 shared_memory_bytes=stmt_smem,
                 stream=stmt_stream,
             ),
-            "// clang-format on",
+            "/* clang-format on */",
         )
 
     def __call__(self, **kwargs: ExprLike) -> SfgCallTreeNode:
