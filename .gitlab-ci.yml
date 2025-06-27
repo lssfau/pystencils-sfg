@@ -44,7 +44,8 @@ typechecker:
     - nox --session testsuite-3.10
   tags:
     - docker
-    - cuda11
+    - cuda
+    - cudaComputeCapability6.1
 
 "testsuite-py3.13":
   extends: .testsuite-base
@@ -53,7 +54,7 @@ typechecker:
     - nox --session testsuite-3.13
 
 build-documentation:
-  extends: .nox-base
+  image: i10git.cs.fau.de:5005/pycodegen/pycodegen/nox:ubuntu24.04
   stage: "Documentation"
   needs: []
   script:
@@ -62,6 +63,8 @@ build-documentation:
     paths:
       - docs/build/html
     when: always
+  tags:
+     - docker
 
 pages:
   image: alpine:latest

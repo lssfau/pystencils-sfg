@@ -1,6 +1,14 @@
 ---
-file_format: mystnb
+jupytext:
+  formats: md:myst
+  text_representation:
+    extension: .md
+    format_name: myst
+    format_version: 0.13
+    jupytext_version: 1.16.4
 kernelspec:
+  display_name: Python 3 (ipykernel)
+  language: python
   name: python3
 ---
 
@@ -18,7 +26,6 @@ sys.path.append(str(mockup_path))
 
 from sfg_monkeypatch import DocsPatchedGenerator  # monkeypatch SFG for docs
 ```
-
 
 This guide will explain the basics of using pystencils-sfg through generator scripts.
 Generator scripts are the primary way to run code generation with pystencils-sfg.
@@ -110,7 +117,6 @@ with SourceFileGenerator() as sfg:
     sfg.function("scale")(
         sfg.call(scale_kernel)
     )
-
 ```
 
 When executing the above script, two files will be generated: a C++ header and implementation file containing
@@ -164,9 +170,8 @@ Here's the full script and its output:
 ```{code-cell} ipython3
 :tags: [remove-cell]
 
-DocsPatchedGenerator.setup("mdspan_demo", False, True)
+DocsPatchedGenerator.setup("generated", False, True, "mdspan_demo")
 ```
-
 
 ```{code-cell} ipython3
 from pystencilssfg import SourceFileGenerator
@@ -188,8 +193,8 @@ with SourceFileGenerator() as sfg:
     scale_kernel = sfg.kernels.create(scale, "scale_kernel")
 
     #   Create mdspan objects
-    src_mdspan = std.mdspan.from_field(src)
-    dst_mdspan = std.mdspan.from_field(dst)
+    src_mdspan = std.mdspan.from_field(src, layout_policy="layout_left")
+    dst_mdspan = std.mdspan.from_field(dst, layout_policy="layout_left")
 
     #   Wrap it in a function
     sfg.function("scale")(
@@ -197,7 +202,6 @@ with SourceFileGenerator() as sfg:
         sfg.map_field(dst, dst_mdspan),
         sfg.call(scale_kernel)
     )
-
 ```
 
 :::{note}
@@ -210,6 +214,117 @@ If you are using the reference implementation, refer to the documentation of {an
 for advice on how to configure the header file and namespace where the class is defined.
 :::
 
+## Integrating and Compiling the Generated Code
+
+To use the generated functions from handwritten code, include the generated header file
+into your C++ application, compile the generated translation unit to an object file,
+and link the two together.
+
+Here is an example application frame:
+
+```{code-cell} ipython3
+:tags: [remove-input]
+
+from IPython.display import Markdown
+
+output_dir = Path("mdspan_demo")
+output_dir.mkdir(exist_ok=True)
+
+code = r"""
+#include <mdspan>
+#include <memory>
+#include <iostream>
+
+// Include the generated header
+#include "generated.hpp"
+
+using field_t = std::mdspan< double, std::dextents< uint64_t, 1 >, std::layout_left >;
+
+int main(void){
+    constexpr size_t N = 4;
+    auto data_src = std::make_unique< double[] >(N);
+    auto data_dst = std::make_unique< double[] >(N);
+
+    field_t src { data_src.get(), N };
+    field_t dst { data_dst.get(), N };
+
+    for(size_t i = 0; i < N; ++i)
+        src[i] = 2.0 * double(i) + 1.0;
+
+    const double c { 4.5 };
+
+    // Call generated function
+    scale(c, dst, src);
+
+    // Print output
+    for(size_t i = 0; i < N; ++i)
+        std::cout << dst[i] << std::endl;
+
+    return 0;
+}
+"""
+(output_dir / "app.cpp").write_text(code)
+
+md = f""":::{{code-block}} C++
+:caption: app.cpp
+
+{code}
+
+:::
+"""
+
+Markdown(md)
+```
+
+The application sets up the data arrays and `mdspan`
+views for the `src` and `dst` fields, and initializes `src`.
+Then, it invokes the `scale` kernel defined in the above generator script
+on these `mdspan` objects and prints the result to stdout.
+
+Save the code into a file `app.cpp`.
+We can now compile application frame and generated code together, and link them into an executable,
+using the following compiler command:
+
+```{code-block} bash
+clang++ -std=c++23 -stdlib=libc++ -I $(python -m pystencils.include -s) generated.cpp app.cpp
+```
+
+Let's briefly take a look at the compiler options:
+- `std=c++23` ensures the C++23 standard, required for `std::mdspan`;
+- `-stdlib=libc++` instructs `clang` to link against the [LLVM C++ standard library](https://libcxx.llvm.org/),
+  which implements `std::mdspan`;
+- `-I $(python -m pystencils.include -s)` adds the location of the pystencils runtime headers to the compiler's include path;
+  the header path is obtained by executing the `python -m pystencils.include -s` subcommand.
+
+:::{note}
+The above command requires that at least clang 18 and `libc++` are installed.
+On Ubuntu >= 24, you can install these via `apt-get install clang libc++-dev`.
+On older systems, install `clang-18 libc++-18-dev` instead.
+:::
+
+After succesful compilation, running the executable should yield the following output:
+
+```{code-block} bash
+./a.out
+```
+
+```{code-cell} ipython3
+:tags: [remove-input]
+
+!cd mdspan_demo; clang++ -std=c++23 -stdlib=libc++ -I $(python -m pystencils.include -s) generated.cpp app.cpp
+!./mdspan_demo/a.out
+```
+
+That's it! We've now gone through all the basic steps of generating code
+and integrating it into an application using pystencils-sfg.
+
+## Next Steps
+
+To learn more about using pystencils-sfg's composer API, read [](#composer_guide).
+For integrating reflection of your own C++ APIs and field classes in pystencils-sfg,
+refer to [](#how_to_cpp_api_modelling).
+At [](#guide_project_integration), you can find more information about integrating pystencils-sfg
+with your project and build system to run code generation on-the-fly.
 
 [mdspan]: https://en.cppreference.com/w/cpp/container/mdspan
 [cppreference_compiler_support]: https://en.cppreference.com/w/cpp/compiler_support
