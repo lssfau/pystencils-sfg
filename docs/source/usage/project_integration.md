@@ -1,6 +1,17 @@
 (guide_project_integration)=
 # Project and Build System Integration
 
+(compile_generated_files)=
+## Compiling Generated Files
+
+When compiling generated files that include pystencils kernels,
+the pystencils runtime headers must be added to the compiler's include search path.
+To get the right path, use the `pystencils.include` utility, e.g.:
+
+```{code-block} bash
+g++ -I $(python -m pystencils.include -s) [args...] [input-files...]
+```
+
 (config_module)=
 ## Project-Wide Settings using Configuration Modules
 

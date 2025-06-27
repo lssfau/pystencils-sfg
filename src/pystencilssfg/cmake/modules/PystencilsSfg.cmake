@@ -13,7 +13,7 @@ endif()
 
 if(NOT DEFINED CACHE{_Pystencils_Include_Dir})
     execute_process(
-        COMMAND ${PystencilsSfg_PYTHON_INTERPRETER} -c "from pystencils.include import get_pystencils_include_path; print(get_pystencils_include_path(), end='')"
+        COMMAND ${PystencilsSfg_PYTHON_INTERPRETER} -m pystencils.include -s
         OUTPUT_VARIABLE _pystencils_includepath_result
     )
     set(_Pystencils_Include_Dir ${_pystencils_includepath_result} CACHE PATH "")

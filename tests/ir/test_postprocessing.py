@@ -152,7 +152,7 @@ def test_duplicate_field_shapes(sfg):
     _ = pp.get_live_variables(call_tree)
 
     lines_g = [
-        r"double * RESTRICT const _data_g { g.ptr() };",
+        r"const double * RESTRICT const _data_g { g.ptr() };",
         r"/* g.size(0) == N */",
         r"/* g.size(1) == N */",
         r"/* g.stride(0) == tx */",
