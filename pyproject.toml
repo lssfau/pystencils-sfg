@@ -31,7 +31,7 @@ dev = [
 ]
 testsuite = [
     "pytest",
-    "pytest-cov",
+    "pytest-cov~=7.0",
     "pyyaml",
     "requests",
     "fasteners",
@@ -57,10 +57,11 @@ tag_prefix = "v"
 parentdir_prefix = "pystencilssfg-"
 
 [tool.coverage.run]
+patch = ["subprocess"]
 omit = [
     "setup.py",
     "noxfile.py",
-    "src/pystencilssfg/_version.py",
+    "**/_version.py",
     "integration/*"
 ]
 

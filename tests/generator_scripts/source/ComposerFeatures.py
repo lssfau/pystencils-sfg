@@ -29,7 +29,10 @@ with SourceFileGenerator() as sfg:
         )
     )
 
-    sfg.struct("ConstexprMath")(
+    sfg.struct("Math")(
+        sfg.member_var("pi", "double").static().constexpr().init("3.1415962"),
+        sfg.member_var("exp1f", "float").static().init("2.7f", out_of_line=True),
+
         sfg.method("abs").static().constexpr().inline()
         .params(x)
         .returns("double")
@@ -46,7 +49,7 @@ with SourceFileGenerator() as sfg:
             sfg.branch("k == 0")(
                 "return 1.0;"
             )(
-                "return 1 + q * ConstexprMath::geometric(q, k - 1);"
+                "return 1 + q * Math::geometric(q, k - 1);"
             )
         )
     )
@@ -67,3 +70,22 @@ with SourceFileGenerator() as sfg:
                 )
             )
         )
+
+    with sfg.namespace("ctor_test"):
+        k = sfg.var("k", "int32")
+
+        sfg.klass("StaticCounter")(
+            sfg.public(
+                sfg.constructor(k).body(
+                    sfg.expr("StaticCounter::COUNTER += {};", k)
+                ),
+                sfg.method("getCounter").static().returns("int32")(
+                    "return StaticCounter::COUNTER;"
+                )
+            ),
+            sfg.private(
+                sfg.member_var("COUNTER", "int32").static().init("0", out_of_line=True)
+            )
+        )
+
+        #   Check if extra parameters raise

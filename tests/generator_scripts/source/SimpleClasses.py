@@ -23,7 +23,10 @@ with SourceFileGenerator() as sfg:
         sfg.public(
             "using Point::Point;",
             sfg.method("getY").returns("const int64_t").const().inline()(
-                "return this->y_;"
+                "return this->y_ * this->w_;"
             ),
+        ),
+        sfg.private(
+            sfg.member_var("w_", "int64").init("5")
         )
     )

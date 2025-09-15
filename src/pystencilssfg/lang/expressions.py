@@ -491,6 +491,7 @@ def includes(obj: ExprLike | PsType) -> set[HeaderFile]:
             return headers
 
         case SfgVar(_, dtype):
+            assert isinstance(dtype, PsType)  # for mypy
             return includes(dtype)
 
         case TypedSymbol():

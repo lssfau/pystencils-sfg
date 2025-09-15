@@ -3,7 +3,7 @@ from typing import Sequence
 from itertools import takewhile, dropwhile
 import numpy as np
 
-from pystencils.types import create_type
+from pystencils.types import create_type, UserTypeSpec
 
 from ..context import SfgContext, SfgCursor
 from ..lang import (
@@ -34,6 +34,57 @@ from .basic_composer import (
     SequencerArg,
     SfgFunctionSequencerBase,
 )
+
+
+class SfgMemberVarSequencer:
+    def __init__(self, var: SfgVar):
+        self._var = var
+
+        self._static: bool = False
+        self._constexpr: bool = False
+        self._attributes: list[str] = []
+        self._init_args: tuple[ExprLike, ...] | None = None
+        self._out_of_line_init: bool = False
+
+    def static(self):
+        """Mark this member variable as ``static``"""
+        self._static = True
+        return self
+
+    def constexpr(self):
+        """Mark this member variable as ``constexpr``"""
+        self._constexpr = True
+        return self
+
+    def attr(self, *attrs: str):
+        """Add attributes to this member variable"""
+        self._attributes += attrs
+        return self
+
+    def init(self, *init_args, out_of_line: bool = False):
+        """Set default-initializer arguments for this member variable"""
+        self._init_args = tuple(init_args)
+        self._out_of_line_init = out_of_line
+        return self
+
+    def _resolve(self, ctx: SfgContext, cls: SfgClass, vis_block: SfgVisibilityBlock):
+        member = SfgMemberVariable(
+            self._var.name,
+            self._var.dtype,
+            cls,
+            static=self._static,
+            constexpr=self._constexpr,
+            attributes=self._attributes,
+            default_init=self._init_args,
+        )
+
+        cls.add_member(member, vis_block.visibility)
+
+        if self._out_of_line_init:
+            vis_block.elements.append(SfgEntityDecl(member))
+            ctx._cursor.write_impl(SfgEntityDef(member))
+        else:
+            vis_block.elements.append(SfgEntityDef(member))
 
 
 class SfgMethodSequencer(SfgFunctionSequencerBase):
@@ -113,7 +164,8 @@ class SfgClassComposer(SfgComposerMixIn):
         def __init__(self, visibility: SfgVisibility):
             self._visibility = visibility
             self._args: tuple[
-                SfgMethodSequencer
+                SfgMemberVarSequencer
+                | SfgMethodSequencer
                 | SfgClassComposer.ConstructorBuilder
                 | VarLike
                 | str,
@@ -123,7 +175,11 @@ class SfgClassComposer(SfgComposerMixIn):
         def __call__(
             self,
             *args: (
-                SfgMethodSequencer | SfgClassComposer.ConstructorBuilder | VarLike | str
+                SfgMemberVarSequencer
+                | SfgMethodSequencer
+                | SfgClassComposer.ConstructorBuilder
+                | VarLike
+                | str
             ),
         ):
             self._args = args
@@ -133,7 +189,11 @@ class SfgClassComposer(SfgComposerMixIn):
             vis_block = SfgVisibilityBlock(self._visibility)
             for arg in self._args:
                 match arg:
-                    case SfgMethodSequencer() | SfgClassComposer.ConstructorBuilder():
+                    case (
+                        SfgMemberVarSequencer()
+                        | SfgMethodSequencer()
+                        | SfgClassComposer.ConstructorBuilder()
+                    ):
                         arg._resolve(ctx, cls, vis_block)
                     case str():
                         vis_block.elements.append(arg)
@@ -153,9 +213,15 @@ class SfgClassComposer(SfgComposerMixIn):
         def __init__(self, *params: VarLike):
             self._params = list(asvar(p) for p in params)
             self._initializers: list[tuple[SfgVar | str, tuple[ExprLike, ...]]] = []
-            self._body: str | None = None
+            self._body: SfgCallTreeNode | None = None
 
         def add_param(self, param: VarLike, at: int | None = None):
+            """Add a parameter to the constructor's parameter list.
+
+            Args:
+                param: The parameter
+                at: Optionally, its position in the list
+            """
             if at is None:
                 self._params.append(asvar(param))
             else:
@@ -163,6 +229,7 @@ class SfgClassComposer(SfgComposerMixIn):
 
         @property
         def parameters(self) -> list[SfgVar]:
+            """Access and modify the constructor's parameter list"""
             return self._params
 
         def init(self, var: VarLike | str):
@@ -176,11 +243,11 @@ class SfgClassComposer(SfgComposerMixIn):
 
             return init_sequencer
 
-        def body(self, body: str):
-            """Define the constructor body"""
+        def body(self, *args: SequencerArg):
+            """Populate the constructor body."""
             if self._body is not None:
                 raise SfgException("Multiple definitions of constructor body.")
-            self._body = body
+            self._body = make_sequence(*args)
             return self
 
         def _resolve(
@@ -190,7 +257,7 @@ class SfgClassComposer(SfgComposerMixIn):
                 cls,
                 parameters=self._params,
                 initializers=self._initializers,
-                body=self._body if self._body is not None else "",
+                body=self._body,
             )
 
             cls.add_member(ctor, vis_block.visibility)
@@ -237,6 +304,11 @@ class SfgClassComposer(SfgComposerMixIn):
         """Create a `private` visibility block in a class or struct body"""
         return SfgClassComposer.VisibilityBlockSequencer(SfgVisibility.PRIVATE)
 
+    def member_var(self, name: str, dtype: UserTypeSpec) -> SfgMemberVarSequencer:
+        """Add a member variable variable to a class"""
+        var = SfgVar(name, dtype)
+        return SfgMemberVarSequencer(var)
+
     def constructor(self, *params: VarLike):
         """In a class or struct body or visibility block, add a constructor.
 
@@ -279,6 +351,7 @@ class SfgClassComposer(SfgComposerMixIn):
         def sequencer(
             *args: (
                 SfgClassComposer.VisibilityBlockSequencer
+                | SfgMemberVarSequencer
                 | SfgMethodSequencer
                 | SfgClassComposer.ConstructorBuilder
                 | VarLike
