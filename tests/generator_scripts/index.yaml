@@ -52,6 +52,9 @@ ComposerFeatures:
     hpp:
       - regex: >-
           \[\[nodiscard\]\]\s*static\s*double\s*geometric\(\s*double\s*q,\s*uint64_t\s*k\)
+    cpp:
+      - regex: >-
+          float\sMath::exp1f\s=\s{2\.7f};
 
 ComposerHeaderOnly:
   sfg-args:

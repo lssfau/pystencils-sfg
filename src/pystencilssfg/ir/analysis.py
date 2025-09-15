@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from itertools import chain
+
 from ..lang import HeaderFile, includes
 from .syntax import (
     SfgSourceFile,
@@ -76,11 +78,30 @@ def collect_includes(file: SfgSourceFile) -> set[HeaderFile]:
                     case SfgFunction(_, tree, _) | SfgMethod(_, tree, _):
                         return walk_syntax(tree) | visit_decl(entity)
 
-                    case SfgConstructor():
-                        return visit_decl(entity)
+                    case SfgConstructor(_, _, initializers, body):
+                        return (
+                            visit_decl(entity)
+                            | walk_syntax(body)
+                            | set().union(
+                                *(
+                                    includes(e)
+                                    for e in chain.from_iterable(
+                                        (
+                                            init_args
+                                            for _, init_args in initializers
+                                        )
+                                    )
+                                )
+                            )
+                        )
 
                     case SfgMemberVariable():
-                        return includes(entity)
+                        incl = includes(entity)
+                        if entity.default_init is not None:
+                            incl = incl.union(
+                                *(includes(e) for e in entity.default_init)
+                            )
+                        return incl
 
                     case _:
                         assert False, "unexpected entity"

@@ -13,16 +13,20 @@ static_assert( factorial(3) == 6 );
 static_assert( factorial(4) == 24 );
 static_assert( factorial(5) == 120 );
 
-static_assert( ConstexprMath::abs(ConstexprMath::geometric(0.5, 0) - 1.0) < 1e-10 );
-static_assert( ConstexprMath::abs(ConstexprMath::geometric(0.5, 1) - 1.5) < 1e-10 );
-static_assert( ConstexprMath::abs(ConstexprMath::geometric(0.5, 2) - 1.75) < 1e-10 );
-static_assert( ConstexprMath::abs(ConstexprMath::geometric(0.5, 3) - 1.875) < 1e-10 );
+static_assert( Math::pi == 3.1415962 );
+
+static_assert( Math::abs(Math::geometric(0.5, 0) - 1.0) < 1e-10 );
+static_assert( Math::abs(Math::geometric(0.5, 1) - 1.5) < 1e-10 );
+static_assert( Math::abs(Math::geometric(0.5, 2) - 1.75) < 1e-10 );
+static_assert( Math::abs(Math::geometric(0.5, 3) - 1.875) < 1e-10 );
 
 int main(void) {
     assert( std::fabs(Series::geometric(0.5, 0) - 1.0) < 1e-10 );
     assert( std::fabs(Series::geometric(0.5, 1) - 1.5) < 1e-10 );
     assert( std::fabs(Series::geometric(0.5, 2) - 1.75) < 1e-10 );
     assert( std::fabs(Series::geometric(0.5, 3) - 1.875) < 1e-10 );
+
+    assert( Math::exp1f == 2.7f );
 
     inheritance_test::Parent p;
     assert( p.compute() == 24 );
@@ -32,4 +36,10 @@ int main(void) {
 
     auto & cp = dynamic_cast< inheritance_test::Parent & >(c);
     assert( cp.compute() == 31 );
+
+    ctor_test::StaticCounter {3};
+    ctor_test::StaticCounter {-1};
+    ctor_test::StaticCounter {7};
+
+    assert( ctor_test::StaticCounter::getCounter() == 9 );
 }

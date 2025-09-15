@@ -560,12 +560,181 @@ with SourceFileGenerator(sfg_config) as sfg:
     )
 ```
 
-:::{admonition} To Do
+## Structs and Classes
 
- - Defining classes, their fields constructors, and methods
+In addition to free functions, pystencils-sfg also allows you to programatically construct C++ *structs* and *classes*.
+As for functions, the syntax for class definitions is designed to mimic C++ code structure.
+To create a class, call `sfg.struct` or `sfg.klass` [^klass] with the class's name.
+Then, populate its body by passing member variables, constructors and methods
+within a second pair of parentheses:
 
+```{code-cell} ipython3
+with SourceFileGenerator() as sfg:
+    sfg.struct("MyClass")(
+        sfg.member_var("V", "uint32").static().constexpr().init("17"),
+
+        sfg.member_var("foo", "int32").init("-1"),
+        sfg.member_var("bar", "int32").init("31"),
+        sfg.var("buzz", "bool"),
+
+        sfg.method("fooOrBar").returns("int32").inline().const()(
+            "return buzz ? foo : bar;"
+        )
+    )
+```
+
+Let's take a closer look at the above:
+ - Member variables of the class are created using {any}`sfg.member_var <SfgClassComposer.member_var>`.
+   You can specify a default initializer for member variables using the sequencer's `.init()` method.
+   The {any}`member_var <SfgClassComposer.member_var>` sequencer also allows setting attributes
+   and qualifiers, such as `static` or `constexpr`.
+ - In addition, {any}`sfg.var <SfgBasicComposer.var>` can also be used to add member variables.
+   This can be used as a short-hand, when no qualifiers or default initialization are required.
+ - The {any}`sfg.method <SfgClassComposer.method>` sequencer works almost identically to {any}`sfg.function <SfgBasicComposer.function>`.
+   It does expose a few more qualifiers, though: In the above example, we used `.const()` to const-qualify the method.
+   There are also `.static()`, `.virtual()`, and `.override()`, covering the most important method qualifiers of C++.
+
+[^klass]: I'm deeply sorry, but the `k` in `klass` is not a typo.
+
+### Placement of Member Definitions
+
+C++ allows us to define members either *inline* inside the class body,
+or externally in a separate place.
+Pystencils-sfg allows you to control that placement in different ways:
+ - Method definitions are, by default, placed in the generated translation unit *unless* `.inline()`
+   is called on the method sequencer.
+ - Member variable initializers are always placed inside the class body.
+   There is one exception, though: non-`const` `static` members require an external definition,
+   which can be enforced by setting `out_of_line=True` in the call to `.init()`.
+
+You can observe this behavior in the following example.
+It includes two static methods, one of them inline; and one static member variable:
+
+```{code-cell} ipython3
+with SourceFileGenerator() as sfg:
+    sfg.struct("StaticVal")(
+        sfg.member_var("VALUE", "float").static().init("31.2f", out_of_line=True),
+        sfg.method("getValue").static().returns("float")(
+            "return StaticVal::VALUE;"
+        ),
+        sfg.method("setValue").static().inline()(
+            sfg.expr("StaticVal::VALUE = {};", sfg.var("v", "float"))
+        ),
+    )
+```
+
+### Visibility Blocks
+
+An important aspect of encapsulation by classes is the ability to hide implementation details.
+C++ achieves this via *access specifiers*; these are `private`, `protected` and `public`.
+To enclose parts of a class body beneath an access specifier, use
+{any}`sfg.private <SfgClassComposer.private>`,
+{any}`sfg.protected <SfgClassComposer.protected>`, or
+{any}`sfg.public <SfgClassComposer.public>`,
+as illustrated in the following example:
+
+```{code-cell} ipython3
+with SourceFileGenerator() as sfg:
+    sfg.klass("MyClass")(
+        sfg.private(
+            sfg.var("foo", "int32"),
+            sfg.var("bar", "int32"),
+            sfg.var("buzz", "bool"),
+        ),
+
+        sfg.public(
+            sfg.method("fooOrBar").returns("int32").inline().const()(
+                "return buzz ? foo : bar;"
+            )
+        )
+    )
+```
+
+### Constructors
+
+Most classes require some sort of constructor, which defines their initialization.
+The pystencils-sfg composer offers {any}`sfg.constructor <SfgClassComposer.constructor>`
+to generate these.
+The syntax for a constructor is a bit more involved than that of a regular method.
+The constructor does not have a name;
+instead it takes a list of parameters (as instances of {any}`SfgVar`).
+
+After the parameter list comes the *member initializer list*,
+which pystencils-sfg builds through multiple uses of `.init`.
+Each use of `.init` amounts to a sequence of two calls:
+First, the member to be initialized is passed (here, its name suffices);
+then, in a second pair of parentheses, pass in its constructor arguments.
+
+Finally, the constructor may have a body:
+It is populated via a call to `.body()`, in the same way as a function or method body.
+
+Here is a brief example, extending our previous class, to illustrate:
+
+```{code-cell} ipython3
+with SourceFileGenerator() as sfg:
+    sfg.klass("MyClass")(
+        sfg.private(
+            sfg.var("foo", "int32"),
+            sfg.var("bar", "int32"),
+            sfg.var("buzz", "bool"),
+        ),
+
+        sfg.public(
+            sfg.constructor(
+                sfg.var("wee", "int32"), sfg.var("bee", "bool")
+            ).init("foo")("wee").init("bar")("wee + 2").init("buzz")("bee").body(
+                'std::cout << "MyClass ctor called" << std::endl;'
+            )
+        )
+    )
+```
+
+The `.init()` method of the constructor builder works the same way as {any}`sfg.init <SfgBasicComposer.init>`;
+in particular, it has the same rules for passing multiple arguments to the init expression.
+
+:::{attention}
+Other than the `sfg.function` and `sfg.method` sequencers, the `.body()` sequencer of
+the constructor builder *does not collect free variables*.
+The constructor's parameters must always be listed manually!
 :::
 
+The call to `sfg.constructor` returns a {any}`ConstructorBuilder` instance,
+which we can use to assemble the constructor incrementally,
+even outside of the class body.
+
+Above, we passed all the constructor's parameters in at once.
+This is not the only way: a constructor's parameter list can also be constructed incrementally,
+using {any}`.add_param <ConstructorBuilder.add_param>`.
+Here is an example that first assembles the constructor externally,
+and only attaches it to the class later:
+
+```{code-cell} ipython3
+with SourceFileGenerator() as sfg:
+    #   Prepare constructor
+    ctor = sfg.constructor()
+    ctor.add_param(sfg.var("wee", "int32"))
+    ctor.add_param(sfg.var("bee", "int32"), at=0)
+
+    ctor.init("foo")("wee")
+    ctor.init("bar")("wee + 2")
+    ctor.init("buzz")("bee")
+
+    sfg.klass("MyClass")(
+        sfg.private(
+            sfg.var("foo", "int32"),
+            sfg.var("bar", "int32"),
+            sfg.var("buzz", "bool"),
+        ),
+
+        sfg.public(
+            #   Attach finished constructor to class
+            ctor
+        )
+    )
+```
+
+You can also directly access and modify the constructor's parameter list
+via the builder's {any}`.parameters <ConstructorBuilder.parameters>` member.
 
 [kokkos_view]: https://kokkos.org/kokkos-core-wiki/ProgrammingGuide/View.html
 [mdspan]: https://en.cppreference.com/w/cpp/container/mdspan

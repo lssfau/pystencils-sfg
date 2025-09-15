@@ -99,8 +99,8 @@ class SfgFilePrinter:
                 )
                 return f"{cls.name}({params_str});"
 
-            case SfgMemberVariable(name, dtype):
-                return f"{dtype.c_string()} {name};"
+            case SfgMemberVariable():
+                return self._member_var_decl_stub(declared_entity) + ";"
 
             case SfgClass(kwd, name):
                 return f"{str(kwd)} {name};"
@@ -145,19 +145,29 @@ class SfgFilePrinter:
                 if inits:
                     code += "\n:" + ",\n".join(inits)
 
-                code += "\n{\n" + self._code_style.indent(defined_entity.body) + "\n}"
+                body = defined_entity.body.get_code(self._code_style)
+                code += "\n{\n" + body + "\n}"
                 return code
 
             case SfgMemberVariable(name, dtype):
-                code = dtype.c_string()
-                if not inclass:
-                    code += f" {defined_entity.owning_class.name}::"
-                code += f" {name}"
+                if inclass:
+                    code = self._member_var_decl_stub(defined_entity)
+                else:
+                    code = (
+                        f"{dtype.c_string()} {defined_entity.owning_class.name}::{name}"
+                    )
+
                 if defined_entity.default_init is not None:
                     args_str = ", ".join(
                         str(expr) for expr in defined_entity.default_init
                     )
-                    code += "{" + args_str + "}"
+                    init_expr = " {" + args_str + "}"
+
+                    if not inclass:
+                        code += " =" + init_expr
+                    else:
+                        code += init_expr
+
                 code += ";"
                 return code
 
@@ -182,6 +192,19 @@ class SfgFilePrinter:
         )
         elements = [self.visit(elem, inclass=True) for elem in vblock.elements]
         return prefix + self._code_style.indent("\n".join(elements))
+
+    def _member_var_decl_stub(self, var: SfgMemberVariable) -> str:
+        name, dtype = var.name, var.dtype
+        quals = ""
+
+        if var.attributes:
+            quals += "[[" + ", ".join(var.attributes) + "]] "
+        if var.static:
+            quals += "static "
+        if var.constexpr:
+            quals += "constexpr "
+
+        return f"{quals}{dtype.c_string()} {name}"
 
     def _func_signature(self, func: SfgFunction | SfgMethod, inclass: bool):
         code = ""

@@ -53,6 +53,10 @@ Helper Methods and Builders
 
 .. module:: pystencilssfg.composer.class_composer
 
+.. autoclass:: SfgMemberVarSequencer
+    :members:
+    :inherited-members:
+
 .. autoclass:: SfgMethodSequencer
     :members:
     :inherited-members:

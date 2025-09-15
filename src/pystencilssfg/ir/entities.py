@@ -236,7 +236,7 @@ class CommonFunctionProperties:
             if not (params_set <= set(required_params)):
                 extras = params_set - set(required_params)
                 raise SfgException(
-                    "Extraenous function parameters: "
+                    "Extraenous parameters: "
                     f"Found free variables {extras} that were not listed in manually specified function parameters."
                 )
             parameters = tuple(required_params)
@@ -334,18 +334,36 @@ class SfgClassMember(ABC):
 
 
 class SfgMemberVariable(SfgVar, SfgClassMember):
-    """Variable that is a field of a class"""
+    """Member variable of a class"""
 
     def __init__(
         self,
         name: str,
         dtype: PsType,
         cls: SfgClass,
+        static: bool = False,
+        constexpr: bool = False,
+        attributes: Sequence[str] = (),
         default_init: tuple[ExprLike, ...] | None = None,
     ):
         SfgVar.__init__(self, name, dtype)
         SfgClassMember.__init__(self, cls)
+        self._static = static
+        self._constexpr = constexpr
+        self._attributes = attributes
         self._default_init = default_init
+
+    @property
+    def static(self) -> bool:
+        return self._static
+
+    @property
+    def constexpr(self) -> bool:
+        return self._constexpr
+
+    @property
+    def attributes(self) -> Sequence[str]:
+        return self._attributes
 
     @property
     def default_init(self) -> tuple[ExprLike, ...] | None:
@@ -423,11 +441,16 @@ class SfgConstructor(SfgClassMember):
         cls: SfgClass,
         parameters: Sequence[SfgVar] = (),
         initializers: Sequence[tuple[SfgVar | str, tuple[ExprLike, ...]]] = (),
-        body: str = "",
+        body: SfgCallTreeNode | None = None,
     ):
         super().__init__(cls)
         self._parameters = tuple(parameters)
         self._initializers = tuple(initializers)
+
+        if body is None:
+            from .call_tree import SfgSequence
+
+            body = SfgSequence([])
         self._body = body
 
     @property
@@ -439,7 +462,7 @@ class SfgConstructor(SfgClassMember):
         return self._initializers
 
     @property
-    def body(self) -> str:
+    def body(self) -> SfgCallTreeNode:
         return self._body
 
 

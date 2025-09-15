@@ -9,5 +9,5 @@ int main(void){
     assert(p.getX() == 3);
 
     SpecialPoint q { 0, 1, 2 };
-    assert(q.getY() == 1);
+    assert(q.getY() == 5);
 }
