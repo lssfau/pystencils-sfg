@@ -169,6 +169,19 @@ you are yourself responsible for placing that directory--or any of its parents--
 include path of your target.
 :::
 
+:::{admonition} Use with CMake 3.31 `codegen` target
+:class: note
+
+CMake 3.31 introduced the global `codegen` target, which allows invoking all code generation systems
+working through [`add_custom_command`](https://cmake.org/cmake/help/latest/command/add_custom_command.html)
+while bypassing the rest of the build tree.
+
+When [policy CMP0171](https://cmake.org/cmake/help/latest/policy/CMP0171.html) is set to `NEW`, pystencils-sfg
+will make use of this and add all generated sources to the global `codegen` target.
+They can then be generated all-at-once by building `codegen`.
+
+:::
+
 
 (cmake_set_config_module)=
 ### Set a Configuration Module

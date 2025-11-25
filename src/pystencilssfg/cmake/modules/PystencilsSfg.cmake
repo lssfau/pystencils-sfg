@@ -44,10 +44,25 @@ function(_pssfg_add_gen_source target script outputDirectory)
 
     file(MAKE_DIRECTORY ${outputDirectory})
 
+    #   If available, add generated sources to the global `codegen` target
+    #   See https://cmake.org/cmake/help/latest/command/add_custom_command.html
+    #   This requires the corresponding policy CMP0171 to be set to NEW
+    #   See https://cmake.org/cmake/help/latest/policy/CMP0171.html
+
+    set( _custom_command_extra_opts)
+
+    if(POLICY CMP0171)
+        cmake_policy(GET CMP0171 _codegen_policy_value)
+        if(_codegen_policy_value STREQUAL "NEW")
+            list(APPEND _custom_command_extra_opts CODEGEN)
+        endif()
+    endif()
+
     add_custom_command(OUTPUT ${generatedSourcesAbsolute}
                        DEPENDS ${scriptAbsolute} ${_pssfg_DEPENDS}
                        COMMAND ${PystencilsSfg_PYTHON_INTERPRETER} ${scriptAbsolute} ${_pssfg_GENERATOR_ARGS} ${_pssfg_USER_ARGS}
-                       WORKING_DIRECTORY "${outputDirectory}")
+                       WORKING_DIRECTORY "${outputDirectory}"
+                       ${_custom_command_extra_opts} )
 
     target_sources(${target} PRIVATE ${generatedSourcesAbsolute})
 endfunction()
