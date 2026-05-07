@@ -19,7 +19,7 @@ with SourceFileGenerator() as sfg:
         )
     ]
 
-    kernel_config = ps.CreateKernelConfig(target=ps.Target.SYCL)
+    kernel_config = ps.CreateKernelConfig(target=ps.Target.SYCL, jit=ps.no_jit)
     jacobi_kernel = sfg.kernels.create(jacobi_update, config=kernel_config)
 
     cgh = sfg.sycl_handler("handler")

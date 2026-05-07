@@ -11,7 +11,7 @@ def test_parallel_for_1_kernels(sfg):
     assignement_1 = ps.Assignment(f.center(), g.center())
     assignement_2 = ps.Assignment(h.center(), i.center())
 
-    config = ps.CreateKernelConfig(target=ps.Target.SYCL)
+    config = ps.CreateKernelConfig(target=ps.Target.SYCL, jit=ps.no_jit)
     kernel_1 = sfg.kernels.create(assignement_1, "kernel_1", config)
     kernel_2 = sfg.kernels.create(assignement_2, "kernel_2", config)
     cgh = sfg.sycl_handler("handler")
@@ -30,7 +30,7 @@ def test_parallel_for_2_kernels(sfg):
     assignement_1 = ps.Assignment(f.center(), g.center())
     assignement_2 = ps.Assignment(h.center(), i.center())
 
-    config = ps.CreateKernelConfig(target=ps.Target.SYCL)
+    config = ps.CreateKernelConfig(target=ps.Target.SYCL, jit=ps.no_jit)
     kernel_1 = sfg.kernels.create(assignement_1, "kernel_1", config)
     kernel_2 = sfg.kernels.create(assignement_2, "kernel_2", config)
     cgh = sfg.sycl_handler("handler")
@@ -50,7 +50,7 @@ def test_parallel_for_2_kernels_fail(sfg):
     assignement_1 = ps.Assignment(f.center(), g.center())
     assignement_2 = ps.Assignment(h.center(), i.center())
 
-    config = ps.CreateKernelConfig(target=ps.Target.SYCL)
+    config = ps.CreateKernelConfig(target=ps.Target.SYCL, jit=ps.no_jit)
     kernel_1 = sfg.kernels.create(assignement_1, "kernel_1", config)
     kernel_2 = sfg.kernels.create(assignement_2, "kernel_2", config)
     cgh = sfg.sycl_handler("handler")

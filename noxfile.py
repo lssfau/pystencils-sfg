@@ -19,7 +19,7 @@ def add_pystencils_git(session: nox.Session):
             "git",
             "clone",
             "--branch",
-            "v2.0-dev",
+            "master",
             "--single-branch",
             "https://i10git.cs.fau.de/pycodegen/pystencils.git",
             pystencils_dir,

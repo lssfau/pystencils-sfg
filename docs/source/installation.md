@@ -11,24 +11,33 @@ such as
 
 Furthermore, an installation of clang-format for automatic code formatting is strongly recommended. 
 
-## Install the Latest Development Revision
+## Install pystencils-sfg
 
-As pystencils-sfg is still unreleased, it can at this time only be obtained directly
-from its Git repository.
+### From PyPI
 
-Create a fresh [virtual environment](https://docs.python.org/3/library/venv.html) or activate
-an existing one. Install both the pystencils 2.0 and pystencils-sfg development revisions from Git:
+Released versions of pystencils-sfg can be installed from PyPI using `pip`:
 
-```{code-block} bash
-pip install "git+https://i10git.cs.fau.de/pycodegen/pystencils.git@v2.0-dev"
-pip install "git+https://i10git.cs.fau.de/pycodegen/pystencils-sfg.git"
+```bash
+pip install pystencilssfg~=<version>
 ```
 
-````{caution}
+### From Git
 
-*pystencils-sfg* is not compatible with the *pystencils 1.3.x* releases available from PyPI;
-at the moment, you will still have to manually install the latest version of pystencils 2.0.
-````
+You can also use `pip` to install a development revision of pystencils-sfg.
+When doing so, we recommend pulling an appropriate development version of `pystencils` along with it.
+Use the following commands (replace `<branch>` by the branches you want to check out):
+
+```{code-block} bash
+pip install "git+https://i10git.cs.fau.de/pycodegen/pystencils.git@<branch>"
+pip install "git+https://i10git.cs.fau.de/pycodegen/pystencils-sfg.git@<branch>"
+```
+
+If you intend to develop `pystencils-sfg`, you can also clone the repository and perform an editable install:
+
+```
+git clone -b <branch> https://i10git.cs.fau.de/pycodegen/pystencils-sfg.git
+pip install -e ./pystencils-sfg
+```
 
 ## Check your Installation
 
@@ -37,8 +46,6 @@ To verify that the SFG was successfully installed, execute the following command
 ```{code-block} bash
 sfg-cli version
 ```
-
-You should see an output like `0.1a4+...`.
 
 ## Next Steps
 

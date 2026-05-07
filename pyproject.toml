@@ -5,12 +5,18 @@ authors = [
     {name = "Frederik Hennig", email = "frederik.hennig@fau.de"},
 ]
 dependencies = [
-    "pystencils>=2.0.dev0",
+    "pystencils>=2.0b1",
 ]
 requires-python = ">=3.10"
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
 dynamic = ["version"]
+
+[project.urls]
+"Homepage" = "https://pycodegen.pages.i10git.cs.fau.de"
+"Documentation" = "https://pycodegen.pages.i10git.cs.fau.de/pystencils-sfg/"
+"Source Code" = "https://i10git.cs.fau.de/pycodegen/pystencils-sfg"
 
 [project.scripts]
 sfg-cli = "pystencilssfg.cli:cli_main"
