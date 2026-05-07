@@ -1,0 +1,24 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: pystencils-sfg
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Frederik
+    family-names: Hennig
+    email: frederik.hennig@fau.de
+    orcid: 'https://orcid.org/0000-0001-5298-7968'
+  - given-names: Christoph
+    family-names: Alt
+    email: christoph.alt@fau.de
+  - orcid: 'https://orcid.org/0000-0001-7749-8239'
+    email: richard.angersbach@fau.de
+    given-names: Richard
+    family-names: Angersbach
+repository-code: 'https://i10git.cs.fau.de/pycodegen/pystencils-sfg'
+url: 'https://pycodegen.pages.i10git.cs.fau.de'
+license: GPL-3.0-or-later

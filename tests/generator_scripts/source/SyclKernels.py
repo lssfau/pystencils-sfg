@@ -18,7 +18,8 @@ with SourceFileGenerator(cfg) as sfg:
         u_dst[0,0] @= (h**2 * f[0, 0] + u_src[1, 0] + u_src[-1, 0] + u_src[0, 1] + u_src[0, -1]) / 4
 
     gen_config = ps.CreateKernelConfig(
-        target=ps.Target.SYCL
+        target=ps.Target.SYCL,
+        jit=ps.no_jit
     )
 
     poisson_kernel = sfg.kernels.create(poisson_jacobi, config=gen_config)
