@@ -58,7 +58,7 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3.8", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "sympy": ("https://docs.sympy.org/latest/", None),
-    "pystencils": ("https://pycodegen.pages.i10git.cs.fau.de/docs/pystencils/2.0dev/", None),
+    "pystencils": ("https://pycodegen.pages.i10git.cs.fau.de/pystencils/", None),
 }
 
 #   References
