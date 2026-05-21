@@ -9,11 +9,10 @@ from warnings import warn
 from pystencils import (
     Field,
     CreateKernelConfig,
-    create_kernel,
-    Assignment,
-    AssignmentCollection,
+    create_kernel
 )
 from pystencils.codegen import Kernel, Lambda
+from pystencils.codegen.driver import SymbolicKernel
 from pystencils.types import create_type, UserTypeSpec, PsType
 
 from ..context import SfgContext, SfgCursor
@@ -136,7 +135,7 @@ class KernelsAdder:
 
     def create(
         self,
-        assignments: Assignment | Sequence[Assignment] | AssignmentCollection,
+        symb_kernel: SymbolicKernel,
         name: str | None = None,
         config: CreateKernelConfig | None = None,
     ):
@@ -156,7 +155,7 @@ class KernelsAdder:
 
             config.function_name = name
 
-        kernel = create_kernel(assignments, config=config)
+        kernel = create_kernel(symb_kernel, config=config)
         return self.add(kernel)
 
     def _get_loc(self) -> SfgNamespaceBlock:
