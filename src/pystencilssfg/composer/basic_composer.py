@@ -6,11 +6,7 @@ import sympy as sp
 from functools import reduce
 from warnings import warn
 
-from pystencils import (
-    Field,
-    CreateKernelConfig,
-    create_kernel
-)
+from pystencils import Field, CreateKernelConfig, create_kernel
 from pystencils.codegen import Kernel, Lambda
 from pystencils.codegen.driver import SymbolicKernel
 from pystencils.types import create_type, UserTypeSpec, PsType
@@ -656,7 +652,7 @@ class SfgFunctionSequencerBase:
         self._cursor = cursor
         self._name = name
         self._return_type: PsType = void
-        self._params: list[SfgVar] | None = None
+        self._params: list[SfgVar | tuple[SfgVar, ExprLike]] | None = None
 
         #   Qualifiers
         self._inline: bool = False
@@ -670,15 +666,19 @@ class SfgFunctionSequencerBase:
         self._return_type = create_type(rtype)
         return self
 
-    def params(self, *args: VarLike):
+    def params(self, *args: VarLike | tuple[VarLike, ExprLike]):
         """Specify the parameters for this function.
 
         Use this to manually specify the function's parameter list.
 
         If any free variables collected from the function body are not contained
         in the parameter list, an error will be raised.
+
+        Default argument may set for parameters by passing them as a tuple ``(param, default_argument)``.
         """
-        self._params = [asvar(v) for v in args]
+        self._params = [
+            ((asvar(v[0]), v[1]) if isinstance(v, tuple) else asvar(v)) for v in args
+        ]
         return self
 
     def inline(self):

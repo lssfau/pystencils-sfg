@@ -21,6 +21,7 @@ from ..ir import (
     SfgVisibility,
 )
 from ..ir.syntax import SfgNamespaceElement, SfgClassBodyElement
+from ..lang import SfgVar, ExprLike
 from ..config import CodeStyle
 
 
@@ -91,7 +92,12 @@ class SfgFilePrinter:
                 return kernel_printer.print_signature(kernel) + ";"
 
             case SfgFunction(name, _, params) | SfgMethod(name, _, params):
-                return self._func_signature(declared_entity, inclass) + ";"
+                return (
+                    self._func_signature(
+                        declared_entity, inclass, with_default_args=True
+                    )
+                    + ";"
+                )
 
             case SfgConstructor(cls, params):
                 params_str = ", ".join(
@@ -122,7 +128,9 @@ class SfgFilePrinter:
                 return kernel_printer(kernel)
 
             case SfgFunction(name, tree, params) | SfgMethod(name, tree, params):
-                sig = self._func_signature(defined_entity, inclass)
+                sig = self._func_signature(
+                    defined_entity, inclass, with_default_args=defined_entity.inline
+                )
                 body = tree.get_code(self._code_style)
                 body = "\n{\n" + self._code_style.indent(body) + "\n}"
                 return sig + body
@@ -206,7 +214,13 @@ class SfgFilePrinter:
 
         return f"{quals}{dtype.c_string()} {name}"
 
-    def _func_signature(self, func: SfgFunction | SfgMethod, inclass: bool):
+    def _func_signature(
+        self,
+        func: SfgFunction | SfgMethod,
+        inclass: bool,
+        *,
+        with_default_args: bool = False,
+    ):
         code = ""
 
         if func.attributes:
@@ -225,11 +239,20 @@ class SfgFilePrinter:
             code += "constexpr "
 
         code += func.return_type.c_string() + " "
-        params_str = ", ".join(
-            f"{param.dtype.c_string()} {param.name}" for param in func.parameters
-        )
+
+        def print_param(param: SfgVar | tuple[SfgVar, ExprLike]) -> str:
+            if isinstance(param, tuple):
+                param, arg = param
+                if with_default_args:
+                    return f"{param.dtype.c_string()} {param.name} = {arg}"
+
+            return f"{param.dtype.c_string()} {param.name}"
+
+        params_str = ", ".join(print_param(param) for param in func.parameters)
+
         if isinstance(func, SfgMethod) and not inclass:
             code += f"{func.owning_class.name}::"
+
         code += f"{func.name}({params_str})"
 
         if isinstance(func, SfgMethod):

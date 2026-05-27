@@ -35,7 +35,16 @@ def collect_includes(file: SfgSourceFile) -> set[HeaderFile]:
                 | SfgMethod(_, _, parameters)
                 | SfgConstructor(_, parameters, _, _)
             ):
-                incls: set[HeaderFile] = set().union(*(includes(p) for p in parameters))
+                incls: set[HeaderFile] = set().union(
+                    *(
+                        (
+                            includes(p[0]) | includes(p[1])
+                            if isinstance(p, tuple)
+                            else includes(p)
+                        )
+                        for p in parameters
+                    )
+                )
                 if isinstance(entity, (SfgFunction, SfgMethod)):
                     incls |= includes(entity.return_type)
                 return incls
@@ -86,10 +95,7 @@ def collect_includes(file: SfgSourceFile) -> set[HeaderFile]:
                                 *(
                                     includes(e)
                                     for e in chain.from_iterable(
-                                        (
-                                            init_args
-                                            for _, init_args in initializers
-                                        )
+                                        (init_args for _, init_args in initializers)
                                     )
                                 )
                             )

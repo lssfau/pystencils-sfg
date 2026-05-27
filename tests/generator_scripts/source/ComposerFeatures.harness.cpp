@@ -15,12 +15,14 @@ static_assert( factorial(5) == 120 );
 
 static_assert( Math::pi == 3.1415962 );
 
+static_assert( Math::abs(Math::geometric(0.5) - 1.0) < 1e-10 );
 static_assert( Math::abs(Math::geometric(0.5, 0) - 1.0) < 1e-10 );
 static_assert( Math::abs(Math::geometric(0.5, 1) - 1.5) < 1e-10 );
 static_assert( Math::abs(Math::geometric(0.5, 2) - 1.75) < 1e-10 );
 static_assert( Math::abs(Math::geometric(0.5, 3) - 1.875) < 1e-10 );
 
 int main(void) {
+    assert( std::fabs(Series::geometric(0.5) - 1.0) < 1e-10 );
     assert( std::fabs(Series::geometric(0.5, 0) - 1.0) < 1e-10 );
     assert( std::fabs(Series::geometric(0.5, 1) - 1.5) < 1e-10 );
     assert( std::fabs(Series::geometric(0.5, 2) - 1.75) < 1e-10 );

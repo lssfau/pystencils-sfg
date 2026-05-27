@@ -219,29 +219,43 @@ class SfgKernelNamespace(SfgNamespace):
 @dataclass(frozen=True, match_args=False)
 class CommonFunctionProperties:
     tree: SfgCallTreeNode
-    parameters: tuple[SfgVar, ...]
+    parameters: tuple[SfgVar | tuple[SfgVar, ExprLike], ...]
     return_type: PsType
     inline: bool
     constexpr: bool
     attributes: Sequence[str]
 
     @staticmethod
-    def collect_params(tree: SfgCallTreeNode, required_params: Sequence[SfgVar] | None):
+    def collect_params(
+        tree: SfgCallTreeNode,
+        required_params_with_defaults: (
+            Sequence[SfgVar | tuple[SfgVar, ExprLike]] | None
+        ),
+    ) -> tuple[SfgVar | tuple[SfgVar, ExprLike], ...]:
         from .postprocessing import CallTreePostProcessing
 
         param_collector = CallTreePostProcessing()
         params_set = param_collector(tree).function_params
 
-        if required_params is not None:
-            if not (params_set <= set(required_params)):
-                extras = params_set - set(required_params)
+        if required_params_with_defaults is not None:
+            required_params = set(
+                p[0] if isinstance(p, tuple) else p
+                for p in required_params_with_defaults
+            )
+            if not (params_set <= required_params):
+                extras = params_set - required_params
                 raise SfgException(
                     "Extraenous parameters: "
                     f"Found free variables {extras} that were not listed in manually specified function parameters."
                 )
-            parameters = tuple(required_params)
+            parameters = tuple(required_params_with_defaults)
         else:
-            parameters = tuple(sorted(params_set, key=lambda p: p.name))
+            parameters = tuple(
+                sorted(
+                    params_set,
+                    key=lambda p: p[0].name if isinstance(p, tuple) else p.name,
+                )
+            )
 
         return parameters
 
@@ -260,7 +274,7 @@ class SfgFunction(SfgCodeEntity, CommonFunctionProperties):
         inline: bool = False,
         constexpr: bool = False,
         attributes: Sequence[str] = (),
-        required_params: Sequence[SfgVar] | None = None,
+        required_params: Sequence[SfgVar | tuple[SfgVar, ExprLike]] | None = None,
     ):
         super().__init__(name, namespace)
 
@@ -388,7 +402,7 @@ class SfgMethod(SfgClassMember, CommonFunctionProperties):
         virtual: bool = False,
         override: bool = False,
         attributes: Sequence[str] = (),
-        required_params: Sequence[SfgVar] | None = None,
+        required_params: Sequence[SfgVar | tuple[SfgVar, ExprLike]] | None = None,
     ):
         super().__init__(cls)
 
