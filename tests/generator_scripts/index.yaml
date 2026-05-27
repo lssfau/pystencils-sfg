@@ -51,7 +51,7 @@ ComposerFeatures:
   expect-code:
     hpp:
       - regex: >-
-          \[\[nodiscard\]\]\s*static\s*double\s*geometric\(\s*double\s*q,\s*uint64_t\s*k\)
+          \[\[nodiscard\]\]\s*static\s*double\s*geometric\(\s*double\s*q,\s*uint64_t\s*k\s*=\s*0\s*\)
     cpp:
       - regex: >-
           float\sMath::exp1f\s=\s{2\.7f};

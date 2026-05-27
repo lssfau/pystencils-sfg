@@ -19,7 +19,7 @@ with SourceFileGenerator() as sfg:
         sfg.method("geometric")
         .static()
         .attr("nodiscard")
-        .params(q, k)
+        .params(q, (k, "0"))
         .returns("double")(
             sfg.branch("k == 0")(
                 "return 1.0;"
@@ -44,7 +44,7 @@ with SourceFileGenerator() as sfg:
         .static()
         .constexpr()
         .inline()
-        .params(q, k)
+        .params(q, (k, "0"))
         .returns("double")(
             sfg.branch("k == 0")(
                 "return 1.0;"

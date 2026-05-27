@@ -169,11 +169,30 @@ with SourceFileGenerator() as sfg:
     )
 ```
 
-#### Manual Parameter Lists
+#### Manual Parameter Lists and Default Arguments
 
 When function parameters are collected from the function body, the composer will always order them
 alphabetically. If this is not desired, e.g. if a generated function is expected to have a specific interface
 with a fixed parameter order, you will need to specify the parameter list manually using `.params(...)`.
+
+To set default arguments for function parameters, you must use `.params()` to specify
+all function parameters. Default arguments can be added by passing a tuple `(param, default_arg)`.
+The known rules for default arguments in C++ apply; no non-defaulted parameter may follow a defaulted one.
+
+Example:
+
+```{code-cell} ipython3
+with SourceFileGenerator() as sfg:
+    n = sfg.var("n", "uint64")
+
+    sfg.function("factorial").params((n, "0")).returns("uint64")(
+        sfg.branch(sfg.expr("{} == 0", n))(
+            "return 1;"
+        )(
+            sfg.expr("return {0} * factorial({0} - 1);", n)
+        )
+    )
+```
 
 #### Variables of C++ Class Type
 
