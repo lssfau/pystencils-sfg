@@ -5,7 +5,7 @@ authors = [
     {name = "Frederik Hennig", email = "frederik.hennig@fau.de"},
 ]
 dependencies = [
-    "pystencils>=2.0b2",
+    "pystencils~=2.0",
 ]
 requires-python = ">=3.10"
 readme = "README.md"
