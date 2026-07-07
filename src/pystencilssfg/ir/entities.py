@@ -13,6 +13,7 @@ from itertools import chain
 from pystencils import Field
 from pystencils.codegen import Kernel
 from pystencils.types import PsType, PsCustomType
+from pystencils.grids import IField
 
 from ..lang import SfgVar, SfgKernelParamVar, void, ExprLike
 from ..exceptions import SfgException
@@ -156,7 +157,7 @@ class SfgKernelHandle(SfgCodeEntity):
         self._inline: bool = inline
 
         self._scalar_params: set[SfgVar] = set()
-        self._fields: set[Field] = set()
+        self._fields: set[Field | IField] = set()
 
         for param in self._parameters:
             if param.wrapped.is_field_parameter:
