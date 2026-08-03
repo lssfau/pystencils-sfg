@@ -1,3 +1,4 @@
+import numpy as np
 import pystencils as ps
 from pystencilssfg import SourceFileGenerator, SfgComposer
 from pystencilssfg.lang.cpp import std
@@ -9,24 +10,20 @@ stencil = ((-1, 0, 0), (1, 0, 0), (0, -1, 0), (0, 1, 0), (0, 0, 1), (0, 0, -1))
 
 
 def lbm_stream(sfg: SfgComposer, field_layout: str, layout_policy: str):
-    src = ps.grids.TensorField("src", 3, (6,), dtype="double", layout=field_layout)
-    dst = ps.grids.TensorField("dst", 3, (6,), dtype="double", layout=field_layout)
+    src, dst = ps.fields("src(6), dst(6): double[3D]", layout=field_layout)
 
     src_mdspan = std.mdspan.from_field(src, layout_policy=layout_policy, extents_type="int64", ref=True)
     dst_mdspan = std.mdspan.from_field(dst, layout_policy=layout_policy, extents_type="int64", ref=True)
 
-    @ps.flow.operator(iteration_slice=ps.make_slice[1:-1, 1:-1, 1:-1], name=f"stream_{field_layout}")
-    def stream(_eq):
-        for i, dir in enumerate(stencil):
-            _eq.store[dst(i)] = src[tuple(-xi for xi in dir)](i)
+    asms = []
+    asms_zero = []
 
-    @ps.flow.operator(name=f"zero_{field_layout}")
-    def setZero(_eq):
-        for i, _ in enumerate(stencil):
-            _eq.store[dst(i)] = 0
+    for i, dir in enumerate(stencil):
+        asms.append(ps.Assignment(dst.center(i), src[-np.array(dir)](i)))
+        asms_zero.append(ps.Assignment(dst.center(i), 0))
 
-    khandle = sfg.kernels.add(stream)
-    khandle_zero = sfg.kernels.add(setZero)
+    khandle = sfg.kernels.create(asms, f"stream_{field_layout}")
+    khandle_zero = sfg.kernels.create(asms_zero, f"zero_{field_layout}")
 
     sfg.code(f"using field_{field_layout} = {strip_ptr_ref(src_mdspan.get_dtype())};")
 

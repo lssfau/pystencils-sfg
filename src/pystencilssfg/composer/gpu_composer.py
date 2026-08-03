@@ -113,28 +113,6 @@ class SfgGpuComposer(SfgComposerMixIn):
 
         return builder(**kwargs)
 
-    def cuda_invoke(
-        self,
-        kernel_handle: SfgKernelHandle,
-        num_blocks: ExprLike,
-        threads_per_block: ExprLike,
-        stream: ExprLike | None,
-    ):
-        from warnings import warn
-
-        warn(
-            "cuda_invoke is deprecated and will be removed before version 0.1. "
-            "Use `gpu_invoke` instead.",
-            FutureWarning,
-        )
-
-        return self.gpu_invoke(
-            kernel_handle,
-            grid_size=num_blocks,
-            block_size=threads_per_block,
-            stream=stream,
-        )
-
 
 class GpuInvocationBuilder:
     def __init__(

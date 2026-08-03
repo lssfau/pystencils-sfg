@@ -85,6 +85,7 @@ NestedNamespaces:
 # Kernel Generation
 
 ScaleKernel:
+JacobiMdspanLegacy:
 JacobiMdspan:
 StlContainers1D:
 VectorExtraction:
@@ -92,6 +93,7 @@ VectorExtraction:
 # std::mdspan
 
 MdSpanFixedShapeLayouts:
+MdSpanLbStreamingLegacy:
 MdSpanLbStreaming:
 
 # CUDA

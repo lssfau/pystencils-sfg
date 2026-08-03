@@ -42,13 +42,3 @@ class StdSpan(AugExpr, SupportsFieldExtraction):
             raise ValueError("Cannot map dynamically typed field to std::span")
 
         return StdSpan(field.dtype, ref=ref, const=const).var(field.name)
-
-
-def std_span_ref(field: Field):
-    from warnings import warn
-
-    warn(
-        "`std_span_ref` is deprecated and will be removed in version 0.1. Use `std.span.from_field` instead.",
-        FutureWarning,
-    )
-    return StdSpan.from_field(field, ref=True)

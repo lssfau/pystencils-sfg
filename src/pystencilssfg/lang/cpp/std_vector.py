@@ -59,13 +59,3 @@ class StdVector(AugExpr, SupportsFieldExtraction, SupportsVectorExtraction):
         return StdVector(field.dtype, unsafe=False, ref=ref, const=const).var(
             field.name
         )
-
-
-def std_vector_ref(field: Field):
-    from warnings import warn
-
-    warn(
-        "`std_vector_ref` is deprecated and will be removed in version 0.1. Use `std.vector.from_field` instead.",
-        FutureWarning,
-    )
-    return StdVector.from_field(field, ref=True)

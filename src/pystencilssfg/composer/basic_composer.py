@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Sequence, TypeAlias
+from typing import Sequence, TypeAlias, overload
 from abc import ABC, abstractmethod
 import sympy as sp
 from functools import reduce
@@ -10,6 +10,8 @@ from pystencils import Field, CreateKernelConfig, create_kernel
 from pystencils.codegen import Kernel, Lambda
 from pystencils.codegen.driver import SymbolicKernel
 from pystencils.types import create_type, UserTypeSpec, PsType
+from pystencils.grids import IField
+from pystencils.flow import Operator
 
 from ..context import SfgContext, SfgCursor
 from .custom import CustomGenerator
@@ -93,13 +95,29 @@ class KernelsAdder:
         self._inline = True
         return self
 
+    @overload
+    def add(self, kernel: Operator):
+        """Add an existing pystencils operator to this namespace."""
+
+    @overload
     def add(self, kernel: Kernel, name: str | None = None):
-        """Adds an existing pystencils AST to this namespace.
+        """Add an existing pystencils AST to this namespace.
         If a name is specified, the AST's function name is changed."""
-        if name is None:
+
+    def add(self, kernel: Kernel | Operator, name: str | None = None):
+        if isinstance(kernel, Operator):
+            operator = kernel
+            if not operator.kernel:
+                operator.generate_code()
+            assert operator.kernel is not None
+
+            kernel = operator.kernel
             kernel_name = kernel.name
         else:
-            kernel_name = name
+            if name is None:
+                kernel_name = kernel.name
+            else:
+                kernel_name = name
 
         if self._kernel_namespace.find_kernel(kernel_name) is not None:
             raise ValueError(
@@ -518,7 +536,7 @@ class SfgBasicComposer(SfgIComposer):
 
     def map_field(
         self,
-        field: Field,
+        field: Field | IField,
         index_provider: SupportsFieldExtraction,
         cast_indexing_symbols: bool = True,
     ) -> SfgDeferredFieldMapping:
