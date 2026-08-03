@@ -1,4 +1,4 @@
-#include "JacobiMdspan.hpp"
+#include "JacobiMdspanLegacy.hpp"
 
 #include <experimental/mdspan>
 #include <memory>
@@ -6,11 +6,12 @@
 namespace stdex = std::experimental;
 
 using field_t = stdex::mdspan<double, stdex::extents<int64_t, std::dynamic_extent, std::dynamic_extent>, stdex::layout_left>;
+using scalar_field_t = stdex::mdspan<double, stdex::extents<int64_t, std::dynamic_extent, std::dynamic_extent, 1>, stdex::layout_left>;
 
 int main(void)
 {
     auto data_f = std::make_unique<double[]>(64);
-    field_t f{data_f.get(), 8, 8};
+    scalar_field_t f{data_f.get(), 8, 8};
 
     auto data_u = std::make_unique<double[]>(64);
     field_t u{data_u.get(), 8, 8};

@@ -2,6 +2,7 @@ from typing import cast
 from sympy import Symbol
 
 from pystencils import Field, DynamicType
+from pystencils.grids import IField, MemoryLayout
 from pystencils.types import (
     PsType,
     PsUnsignedIntegerType,
@@ -41,14 +42,11 @@ class StdMdspan(AugExpr, SupportsFieldExtraction):
 
     **Creation from pystencils fields**
 
-    Using `from_field`, ``mdspan`` objects can be created directly from `Field <pystencils.Field>` instances.
+    Using `from_field`, ``mdspan`` objects can be created directly from both legacy `Field <pystencils.Field>`,
+    as well as pystencils 2.0 algebraic field (`IField <pystencils.grids.protocols.IField>`) instances.
     The `extents`_ of the ``mdspan`` type will be inferred from the field;
     each fixed entry in the field's shape will become a fixed entry of the ``mdspan``'s extents.
-
-    The ``mdspan``'s `layout_policy`_ defaults to `std::layout_stride`_,
-    which might not be the optimal choice depending on the memory layout of your fields.
-    You may therefore override this by specifying the name of the desired layout policy.
-    To map pystencils field layout identifiers to layout policies, consult the following table:
+    The ``mdspan`` `layout_policy`_ is inferred from the field's memory layout according to the following table:
 
     +------------------------+--------------------------+
     | pystencils Layout Name | ``mdspan`` Layout Policy |
@@ -67,6 +65,12 @@ class StdMdspan(AugExpr, SupportsFieldExtraction):
 
     The array-of-structures (``"aos"``, ``"zyxf"``) layout has no equivalent layout policy in the C++ standard,
     so it can only be mapped onto ``layout_stride``.
+
+    When creating from a legacy ``Field``, this implementation cannot infer the layout policy and
+    therefore defaults to `std::layout_stride`.
+    which might not be the optimal choice depending on the memory layout of your fields.
+    You may therefore override this by specifying the name of the desired layout policy
+    according to the table above.
 
     .. _extents: https://en.cppreference.com/w/cpp/container/mdspan/extents
     .. _layout_policy: https://en.cppreference.com/w/cpp/named_req/LayoutMappingPolicy
@@ -160,13 +164,77 @@ class StdMdspan(AugExpr, SupportsFieldExtraction):
 
     @staticmethod
     def from_field(
-        field: Field,
+        field: Field | IField,
+        *,
         extents_type: UserTypeSpec = PsUnsignedIntegerType(64),
         layout_policy: str | None = None,
         ref: bool = False,
         const: bool = False,
     ):
         """Creates a `std::mdspan` instance for a given pystencils field."""
+        match field:
+            case Field():
+                return StdMdspan.from_legacy_field(
+                    field,
+                    extents_type=extents_type,
+                    layout_policy=layout_policy,
+                    ref=ref,
+                    const=const,
+                )
+            case IField():
+                return StdMdspan.from_ifield(
+                    field,
+                    extents_type=extents_type,
+                    layout_policy=layout_policy,
+                    ref=ref,
+                    const=const,
+                )
+
+    @staticmethod
+    def from_ifield(
+        field: IField,
+        *,
+        extents_type: UserTypeSpec = PsUnsignedIntegerType(64),
+        layout_policy: str | None = None,
+        ref: bool = False,
+        const: bool = False,
+    ):
+        if isinstance(field.dtype, DynamicType):
+            raise ValueError("Cannot map dynamically typed field to std::mdspan")
+
+        bspec = field.get_buffer_spec()
+
+        extents: list[str | int] = [
+            StdMdspan.dynamic_extent if isinstance(s, Symbol) else cast(int, s)
+            for s in bspec.shape
+        ]
+
+        if layout_policy is None:
+            match field.layout:
+                case MemoryLayout.LEFTMOST:
+                    layout_policy = "layout_left"
+                case MemoryLayout.RIGHTMOST:
+                    layout_policy = "layout_right"
+                case _:
+                    layout_policy = "layout_stride"
+
+        return StdMdspan(
+            field.dtype,
+            tuple(extents),
+            index_type=extents_type,
+            layout_policy=layout_policy,
+            ref=ref,
+            const=const,
+        ).var(field.name)
+
+    @staticmethod
+    def from_legacy_field(
+        field: Field,
+        extents_type: UserTypeSpec = PsUnsignedIntegerType(64),
+        layout_policy: str | None = None,
+        ref: bool = False,
+        const: bool = False,
+    ):
         if isinstance(field.dtype, DynamicType):
             raise ValueError("Cannot map dynamically typed field to std::mdspan")
 
@@ -188,13 +256,3 @@ class StdMdspan(AugExpr, SupportsFieldExtraction):
             ref=ref,
             const=const,
         ).var(field.name)
-
-
-def mdspan_ref(field: Field, extents_type: PsType = PsUnsignedIntegerType(64)):
-    from warnings import warn
-
-    warn(
-        "`mdspan_ref` is deprecated and will be removed in version 0.1. Use `std.mdspan.from_field` instead.",
-        FutureWarning,
-    )
-    return StdMdspan.from_field(field, extents_type, ref=True)

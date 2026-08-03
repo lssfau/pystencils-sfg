@@ -7,8 +7,11 @@ from pystencils import (
     FieldType,
     create_type,
     Assignment,
+    DEFAULTS,
 )
 from pystencils.types import PsCustomType
+from pystencils.grids import TensorField
+from pystencils.flow import block
 
 from pystencilssfg.composer import make_sequence
 
@@ -123,6 +126,82 @@ def test_field_extraction(sfg):
         r"const int64_t sy { f.size(1) };",
         r"const int64_t tx { f.stride(0) };",
         r"const int64_t ty { f.stride(1) };",
+    ]
+
+    assert isinstance(call_tree.children[0], SfgSequence)
+    for line, stmt in zip(lines, call_tree.children[0].children, strict=True):
+        assert isinstance(stmt, SfgStatements)
+        assert stmt.code_string == line
+
+
+def test_ifield_extraction(sfg):
+    f = TensorField("f", 2, (), dtype="double")
+
+    @block
+    def kernel(_eq):
+        _eq.store[f()] = 13.2
+
+    khandle = sfg.kernels.create(kernel)
+
+    extraction = DemoFieldExtraction("f")
+    call_tree = make_sequence(
+        sfg.map_field(f, extraction, cast_indexing_symbols=False), sfg.call(khandle)
+    )
+
+    pp = CallTreePostProcessing()
+    free_vars = pp.get_live_variables(call_tree)
+    assert free_vars == {extraction.obj.as_variable()}
+
+    data_ptr_name = DEFAULTS.field_pointer_name("f")
+    shape_names = [DEFAULTS.field_shape_name(f.name, c) for c in range(2)]
+    stride_names = [DEFAULTS.field_stride_name(f.name, c) for c in range(2)]
+
+    lines = [
+        rf"double * RESTRICT const {data_ptr_name} {{ f.ptr() }};",
+        rf"const int64_t {shape_names[0]} {{ f.size(0) }};",
+        rf"const int64_t {shape_names[1]} {{ f.size(1) }};",
+        rf"const int64_t {stride_names[0]} {{ f.stride(0) }};",
+        rf"const int64_t {stride_names[1]} {{ f.stride(1) }};",
+    ]
+
+    assert isinstance(call_tree.children[0], SfgSequence)
+    for line, stmt in zip(lines, call_tree.children[0].children, strict=True):
+        assert isinstance(stmt, SfgStatements)
+        assert stmt.code_string == line
+
+
+def test_ifield_extraction_tensors(sfg):
+    f = TensorField("f", 2, (2, 2), dtype="double")
+
+    @block
+    def kernel(_eq):
+        _eq.store[f(1, 1)] = 13.2
+
+    khandle = sfg.kernels.create(kernel)
+
+    extraction = DemoFieldExtraction("f")
+    call_tree = make_sequence(
+        sfg.map_field(f, extraction, cast_indexing_symbols=False), sfg.call(khandle)
+    )
+
+    pp = CallTreePostProcessing()
+    free_vars = pp.get_live_variables(call_tree)
+    assert free_vars == {extraction.obj.as_variable()}
+
+    data_ptr_name = DEFAULTS.field_pointer_name("f")
+    shape_names = [DEFAULTS.field_shape_name(f.name, c) for c in range(4)]
+    stride_names = [DEFAULTS.field_stride_name(f.name, c) for c in range(4)]
+
+    lines = [
+        rf"double * RESTRICT const {data_ptr_name} {{ f.ptr() }};",
+        rf"const int64_t {shape_names[0]} {{ f.size(0) }};",
+        rf"const int64_t {shape_names[1]} {{ f.size(1) }};",
+        r"/* f.size(2) == 2 */",
+        r"/* f.size(3) == 2 */",
+        rf"const int64_t {stride_names[0]} {{ f.stride(0) }};",
+        rf"const int64_t {stride_names[1]} {{ f.stride(1) }};",
+        rf"const int64_t {stride_names[2]} {{ f.stride(2) }};",
+        rf"const int64_t {stride_names[3]} {{ f.stride(3) }};",
     ]
 
     assert isinstance(call_tree.children[0], SfgSequence)

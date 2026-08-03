@@ -10,6 +10,7 @@ import sympy as sp
 from pystencils import Field
 from pystencils.types import deconstify, PsType
 from pystencils.codegen.properties import FieldBasePtr, FieldShape, FieldStride
+from pystencils.grids import IField
 
 from ..exceptions import SfgException
 from ..config import CodeStyle
@@ -190,7 +191,7 @@ class SfgDeferredFieldMapping(SfgDeferredNode):
 
     def __init__(
         self,
-        psfield: Field,
+        psfield: Field | IField,
         extraction: SupportsFieldExtraction,
         cast_indexing_symbols: bool = True,
     ):
@@ -202,12 +203,24 @@ class SfgDeferredFieldMapping(SfgDeferredNode):
         #    Find field pointer
         ptr: SfgKernelParamVar | None = None
         rank: int
+        f_shape: tuple[sp.Expr | int, ...]
+        f_strides: tuple[sp.Expr | int, ...]
 
-        if self._field.index_shape == (1,):
-            #   explicit scalar field -> ignore index dimensions
-            rank = self._field.spatial_dimensions
-        else:
-            rank = len(self._field.shape)
+        match self._field:
+            case Field() as f:
+                if self._field.index_shape == (1,):
+                    #   explicit scalar field -> ignore index dimensions
+                    rank = self._field.spatial_dimensions
+                else:
+                    rank = len(self._field.shape)
+
+                f_shape = f.shape
+                f_strides = f.strides
+            case IField() as f:
+                buffer_spec = f.get_buffer_spec()
+                rank = buffer_spec.rank
+                f_shape = buffer_spec.shape
+                f_strides = buffer_spec.strides
 
         shape: list[SfgKernelParamVar | str | None] = [None] * rank
         strides: list[SfgKernelParamVar | str | None] = [None] * rank
@@ -224,12 +237,12 @@ class SfgDeferredFieldMapping(SfgDeferredNode):
                             strides[coord] = param  # type: ignore
 
         #   Find constant or otherwise determined sizes
-        for coord, s in enumerate(self._field.shape[:rank]):
+        for coord, s in enumerate(f_shape[:rank]):
             if shape[coord] is None:
                 shape[coord] = str(s)
 
         #   Find constant or otherwise determined strides
-        for coord, s in enumerate(self._field.strides[:rank]):
+        for coord, s in enumerate(f_strides[:rank]):
             if strides[coord] is None:
                 strides[coord] = str(s)
 
